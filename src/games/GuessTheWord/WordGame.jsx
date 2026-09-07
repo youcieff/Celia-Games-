@@ -12,10 +12,11 @@ export default function WordGame({ setView, mode }) {
     const isOnline = mode === 'online';
 
     const connRef = useRef(null);
+    const isHostRef = useRef(false);
     const [isMyTurnToWrite, setIsMyTurnToWrite] = useState(false);
 
-    // lobby | setup | waiting | playing | won | lost
-    const [gameState, setGameState] = useState(isOnline ? 'lobby' : 'setup');
+    // lobby | role-select | role-waiting | setup | waiting | playing | won | lost
+    const [gameState, setGameState] = useState(isOnline ? 'lobby' : 'role-select');
     const [secretWord, setSecretWord] = useState('');
     const [hint, setHint] = useState('');
     const [guessedLetters, setGuessedLetters] = useState([]);
@@ -24,15 +25,36 @@ export default function WordGame({ setView, mode }) {
 
     const handleGameStart = (conn, hostMode) => {
         connRef.current = conn;
-        setIsMyTurnToWrite(hostMode);
-        setGameState(hostMode ? 'setup' : 'waiting');
+        isHostRef.current = hostMode;
+        if (hostMode) {
+            setGameState('role-select');
+        } else {
+            setGameState('role-waiting');
+        }
+    };
+
+    const handleOfflineRoleSelect = (iAmWriter) => {
+        setIsMyTurnToWrite(iAmWriter);
+        setGameState(iAmWriter ? 'setup' : 'waiting-offline');
+    };
+
+    const handleOnlineRoleSelect = (hostWrites) => {
+        setIsMyTurnToWrite(hostWrites);
+        setGameState(hostWrites ? 'setup' : 'waiting');
+        if (connRef.current) {
+            connRef.current.send({ type: 'roles_set', guestWrites: hostWrites });
+        }
     };
 
     useEffect(() => {
         const conn = connRef.current;
         if (!conn) return;
         const handler = (data) => {
-            if (data.type === 'start_game') {
+            if (data.type === 'roles_set') {
+                const guestWrites = data.guestWrites;
+                setIsMyTurnToWrite(guestWrites);
+                setGameState(guestWrites ? 'setup' : 'waiting');
+            } else if (data.type === 'start_game') {
                 setSecretWord(data.word);
                 setHint(data.hint);
                 setGameState('playing');
@@ -92,7 +114,7 @@ export default function WordGame({ setView, mode }) {
         setSecretWord('');
         setHint('');
         setIsHintRevealed(false);
-        setGameState(isOnline ? (newMyTurnToWrite ? 'setup' : 'waiting') : 'setup');
+        setGameState(isOnline ? (newMyTurnToWrite ? 'setup' : 'waiting') : 'role-select');
     };
 
     const handleRestartAction = () => {
@@ -119,11 +141,17 @@ export default function WordGame({ setView, mode }) {
                             <ArrowRight size={20} />
                         </button>
                     </div>
-                    
+
                     <div className="glass-card px-3 py-1.5 rounded-full text-xs font-bold text-center leading-tight">
                         <span className="block">خمن الكلمة</span>
-                        {isOnline && gameState !== 'lobby' && <span style={{ color: 'var(--primary-color)', fontSize: '10px' }}>{isMyTurnToWrite ? '(الكاتب)' : '(المخمن)'}</span>}
-                        {!isOnline && <span style={{ color: 'var(--accent-color)', fontSize: '10px' }}>موبايل واحد</span>}
+                        {isOnline && !['lobby', 'role-select', 'role-waiting'].includes(gameState) && (
+                            <span style={{ color: 'var(--primary-color)', fontSize: '10px' }}>
+                                {isMyTurnToWrite ? '(الكاتب)' : '(المخمن)'}
+                            </span>
+                        )}
+                        {!isOnline && !['role-select', 'waiting-offline'].includes(gameState) && (
+                            <span style={{ color: 'var(--accent-color)', fontSize: '10px' }}>موبايل واحد</span>
+                        )}
                     </div>
                 </div>
 
@@ -134,7 +162,68 @@ export default function WordGame({ setView, mode }) {
                     </div>
                 )}
 
-                {/* Waiting */}
+                {/* Role Selection */}
+                {gameState === 'role-select' && (
+                    <div className="flex-1 flex items-center justify-center">
+                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pop-in">
+                            <div className="text-5xl mb-3">✍️</div>
+                            <h2 className="text-2xl font-black mb-2">مين يكتب؟</h2>
+                            <p className="opacity-60 text-sm mb-8 font-bold">
+                                {isOnline ? 'اختار مين هيفكر في كلمة ومين هيخمن' : 'اختار مين هيكتب الكلمة السرية'}
+                            </p>
+                            <div className="grid grid-cols-2 gap-4">
+                                <button
+                                    onClick={() => isOnline ? handleOnlineRoleSelect(true) : handleOfflineRoleSelect(true)}
+                                    className="glass-card glass-card-hover rounded-2xl py-6 flex flex-col items-center gap-2 border border-transparent hover:border-[var(--primary-color)] transition-all"
+                                >
+                                    <span className="text-4xl">✍️</span>
+                                    <span className="text-sm font-black gradient-text">
+                                        {isOnline ? 'أنا (الهوست) أكتب' : 'اللاعب الأول يكتب'}
+                                    </span>
+                                </button>
+                                <button
+                                    onClick={() => isOnline ? handleOnlineRoleSelect(false) : handleOfflineRoleSelect(false)}
+                                    className="glass-card glass-card-hover rounded-2xl py-6 flex flex-col items-center gap-2 border border-transparent hover:border-[var(--primary-color)] transition-all"
+                                >
+                                    <span className="text-4xl">🔍</span>
+                                    <span className="text-sm font-black gradient-text">
+                                        {isOnline ? 'الضيف يكتب' : 'اللاعب التاني يكتب'}
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Guest waiting for host to assign roles */}
+                {isOnline && gameState === 'role-waiting' && (
+                    <div className="flex-1 flex items-center justify-center">
+                        <div className="glass-card rounded-3xl p-10 text-center animate-pulse-glow">
+                            <div className="text-5xl mb-4">⏳</div>
+                            <h2 className="text-2xl font-black mb-3">الهوست بيختار الأدوار...</h2>
+                            <p className="opacity-60 font-bold">انتظر لحظة!</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Offline waiting screen */}
+                {!isOnline && gameState === 'waiting-offline' && (
+                    <div className="flex-1 flex items-center justify-center">
+                        <div className="glass-card rounded-3xl p-10 text-center animate-pop-in">
+                            <div className="text-5xl mb-4">🤫</div>
+                            <h2 className="text-2xl font-black mb-3">اللاعب التاني يكتب الكلمة</h2>
+                            <p className="opacity-60 mb-6 font-bold">اللى هيخمن يبعد شوية من الشاشة!</p>
+                            <button
+                                onClick={() => { setIsMyTurnToWrite(true); setGameState('setup'); }}
+                                className="glow-button w-full h-14 rounded-2xl text-lg font-black"
+                            >
+                                جاهز ✅
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Waiting (Online) */}
                 {isOnline && gameState === 'waiting' && (
                     <div className="flex-1 flex items-center justify-center">
                         <div className="glass-card rounded-3xl p-10 text-center animate-pulse-glow">
@@ -145,7 +234,7 @@ export default function WordGame({ setView, mode }) {
                 )}
 
                 {/* Secret Setup */}
-                {gameState === 'setup' && (!isOnline || isMyTurnToWrite) && (
+                {gameState === 'setup' && (
                     <div className="flex-1 flex items-center justify-center">
                         <SecretSetup onStart={handleStartHost} />
                     </div>
@@ -156,7 +245,6 @@ export default function WordGame({ setView, mode }) {
                     <div className="flex-1 flex flex-col">
                         <Visualizer lives={lives} maxLives={6} />
 
-                        {/* Hint Area */}
                         <div className="text-center mb-4 h-14 flex items-center justify-center">
                             {hint && lives <= 2 && gameState === 'playing' && !isHintRevealed && (
                                 <button
@@ -175,7 +263,6 @@ export default function WordGame({ setView, mode }) {
                             )}
                         </div>
 
-                        {/* Word Tiles */}
                         <div className="flex flex-wrap justify-center gap-2 mx-auto w-full max-w-sm mb-4" dir="rtl">
                             {secretWord.split('').map((char, index) => {
                                 if (char === ' ') return <div key={index} className="w-4 h-12" />;
@@ -202,7 +289,6 @@ export default function WordGame({ setView, mode }) {
                             })}
                         </div>
 
-                        {/* Keyboard - only when playing */}
                         {gameState === 'playing' && (
                             <div className="mt-auto pb-6">
                                 <VirtualKeyboard
@@ -213,7 +299,6 @@ export default function WordGame({ setView, mode }) {
                             </div>
                         )}
 
-                        {/* Result Card - centered when game ends */}
                         {(gameState === 'won' || gameState === 'lost') && (
                             <div className="flex-1 flex items-center justify-center pb-10">
                                 <div className="glass-card rounded-3xl p-8 text-center w-full animate-pop-in"
