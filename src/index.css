@@ -1,0 +1,438 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ================================================
+   ROOT TOKENS
+   ================================================ */
+:root {
+  --gradient-1: #ec4899;
+  --gradient-2: #a855f7;
+  --gradient-3: #f472b6;
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='girly'] {
+  --gradient-1: #ec4899;
+  --gradient-2: #f472b6;
+  --gradient-3: #a855f7;
+  --bg-dark-1: #1a0011;
+  --bg-dark-2: #2d0033;
+  --bg-dark-3: #1a0022;
+  --primary-color: #f472b6;
+  --primary-glow: rgba(244, 114, 182, 0.4);
+  --accent-color: #e879f9;
+  --text-color: #fdf4ff;
+  --glass-bg: rgba(255, 180, 220, 0.08);
+  --glass-border: rgba(244, 114, 182, 0.25);
+}
+
+[data-theme='masculine'] {
+  --gradient-1: #10b981;
+  --gradient-2: #06b6d4;
+  --gradient-3: #3b82f6;
+  --bg-dark-1: #020c1b;
+  --bg-dark-2: #0a1628;
+  --bg-dark-3: #040f1f;
+  --primary-color: #10b981;
+  --primary-glow: rgba(16, 185, 129, 0.4);
+  --accent-color: #06b6d4;
+  --text-color: #e0f7f4;
+  --glass-bg: rgba(16, 185, 129, 0.05);
+  --glass-border: rgba(16, 185, 129, 0.2);
+}
+
+/* ================================================
+   BASE
+   ================================================ */
+@layer base {
+  html {
+    font-family: 'Tajawal', sans-serif;
+    /* Prevent text size adjustment on orientation change */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* Smooth scroll */
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--bg-dark-1);
+    color: var(--text-color);
+    transition: background-color 0.6s ease, color 0.4s ease;
+    overflow-x: hidden;
+    /* Prevent iOS bounce only on body */
+    overscroll-behavior: none;
+  }
+
+  * {
+    /* Better tap highlight on iOS */
+    -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
+  }
+
+  button {
+    cursor: pointer;
+    /* Minimum touch target: 44px per Apple HIG */
+    min-height: 44px;
+  }
+
+  input, textarea {
+    -webkit-appearance: none;
+    appearance: none;
+    outline: none;
+  }
+}
+
+/* ================================================
+   ANIMATED GRADIENT BACKGROUND
+   ================================================ */
+.animated-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--bg-dark-1);
+  overflow: hidden;
+}
+
+.animated-bg::before {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--gradient-1) 0%, transparent 70%);
+  top: -200px;
+  right: -200px;
+  opacity: 0.25;
+  animation: float-orb-1 8s ease-in-out infinite;
+}
+
+.animated-bg::after {
+  content: '';
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--gradient-2) 0%, transparent 70%);
+  bottom: -150px;
+  left: -150px;
+  opacity: 0.2;
+  animation: float-orb-2 10s ease-in-out infinite;
+}
+
+.bg-orb-3 {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--gradient-3) 0%, transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.1;
+  animation: float-orb-3 12s ease-in-out infinite;
+}
+
+@keyframes float-orb-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-30px, 20px) scale(1.05); }
+  66% { transform: translate(20px, -30px) scale(0.95); }
+}
+
+@keyframes float-orb-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40% { transform: translate(30px, -20px) scale(1.08); }
+  70% { transform: translate(-20px, 30px) scale(0.92); }
+}
+
+@keyframes float-orb-3 {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.3); }
+}
+
+/* ================================================
+   GLASSMORPHISM CARDS
+   ================================================ */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.glass-card-hover {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              box-shadow 0.3s ease,
+              border-color 0.3s ease;
+}
+
+.glass-card-hover:hover, .glass-card-hover:active {
+  transform: translateY(-4px);
+  border-color: var(--primary-color);
+  box-shadow: var(--glass-shadow), 0 0 30px var(--primary-glow), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+/* ================================================
+   GRADIENT TEXT
+   ================================================ */
+.gradient-text {
+  background: linear-gradient(135deg, var(--gradient-1), var(--gradient-2), var(--gradient-3));
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-shift 4s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ================================================
+   GLOW BUTTON
+   ================================================ */
+.glow-button {
+  position: relative;
+  background: linear-gradient(135deg, var(--gradient-1), var(--gradient-2));
+  border: none;
+  color: white;
+  font-weight: 800;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.2s ease;
+  overflow: hidden;
+}
+
+.glow-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--gradient-2), var(--gradient-1));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.glow-button:hover::before, .glow-button:active::before {
+  opacity: 1;
+}
+
+.glow-button:active {
+  transform: scale(0.96);
+}
+
+.glow-button:not(:disabled):hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 10px 30px var(--primary-glow);
+}
+
+/* ================================================
+   THEME TOGGLE BUTTON
+   ================================================ */
+.theme-button {
+  background: linear-gradient(135deg, var(--gradient-1), var(--gradient-2));
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.theme-button:hover {
+  filter: brightness(1.1);
+  transform: scale(1.02);
+  box-shadow: 0 8px 24px var(--primary-glow);
+}
+
+/* ================================================
+   LETTER TILE (Word Game)
+   ================================================ */
+.letter-tile {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 3px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.letter-tile.revealed {
+  background: rgba(255,255,255,0.12);
+  border-bottom-color: var(--primary-color);
+  box-shadow: 0 4px 15px var(--primary-glow);
+}
+
+.letter-tile.wrong {
+  border-bottom-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ================================================
+   KEYBOARD BUTTONS
+   ================================================ */
+.key-btn {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  color: var(--text-color);
+  font-family: 'Tajawal', sans-serif;
+  font-weight: 700;
+  transition: all 0.15s ease;
+  min-width: 36px;
+}
+
+.key-btn:not(:disabled):hover {
+  border-color: var(--primary-color);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 12px var(--primary-glow);
+  transform: translateY(-2px);
+}
+
+.key-btn:active {
+  transform: scale(0.9);
+}
+
+.key-btn:disabled {
+  opacity: 0.2;
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* ================================================
+   HEART LIVES
+   ================================================ */
+.life-icon {
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  filter: drop-shadow(0 0 8px var(--primary-color));
+}
+
+.life-icon.lost {
+  opacity: 0.15;
+  transform: scale(0.7);
+  filter: none;
+}
+
+/* ================================================
+   DIGIT CELL (Code Game)
+   ================================================ */
+.digit-cell {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid var(--glass-border);
+  transition: all 0.3s ease;
+}
+
+.digit-cell.filled {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 20px var(--primary-glow);
+}
+
+/* ================================================
+   NUMPAD BUTTONS
+   ================================================ */
+.numpad-btn {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  color: var(--text-color);
+  font-family: 'Tajawal', sans-serif;
+  transition: all 0.15s ease;
+}
+
+.numpad-btn:active {
+  transform: scale(0.92);
+  background: rgba(255,255,255,0.15);
+}
+
+.numpad-btn:not(:disabled):hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 15px var(--primary-glow);
+}
+
+/* ================================================
+   HISTORY ROW (Code Game)
+   ================================================ */
+.history-row {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 10px 14px;
+  animation: slide-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(-10px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ================================================
+   INPUT FIELDS
+   ================================================ */
+.glass-input {
+  background: rgba(255,255,255,0.06);
+  border: 1.5px solid var(--glass-border);
+  color: var(--text-color);
+  font-family: 'Tajawal', sans-serif;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.glass-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 20px var(--primary-glow);
+  background: rgba(255,255,255,0.09);
+}
+
+.glass-input::placeholder {
+  color: rgba(255,255,255,0.3);
+  font-family: 'Tajawal', sans-serif;
+}
+
+/* ================================================
+   ANIMATIONS
+   ================================================ */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 10px var(--primary-glow); }
+  50% { box-shadow: 0 0 25px var(--primary-glow), 0 0 50px var(--primary-glow); }
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+@keyframes pop-in {
+  0% { transform: scale(0) rotate(-10deg); opacity: 0; }
+  80% { transform: scale(1.1) rotate(2deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-wiggle { animation: wiggle 0.8s ease-in-out; }
+.animate-pop-in { animation: pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.animate-pulse-slow { animation: pulse 3s ease-in-out infinite; }
+
+/* ================================================
+   SCROLLBAR
+   ================================================ */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--primary-color); border-radius: 999px; opacity: 0.5; }
+
+/* ================================================
+   SAFE AREA (iOS notch support)
+   ================================================ */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+.safe-area-pt {
+  padding-top: env(safe-area-inset-top, 0px);
+}
