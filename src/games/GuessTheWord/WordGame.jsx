@@ -129,7 +129,7 @@ export default function WordGame({ setView, mode }) {
 
                 {/* Lobby */}
                 {isOnline && gameState === 'lobby' && (
-                    <div className="flex-1 flex pb-20">
+                    <div className="flex-1 flex pb-20 safe-area-pb">
                         <P2PConnectionManager gameIdPrefix="celia-word" onGameStart={handleGameStart} />
                     </div>
                 )}

@@ -16,7 +16,7 @@ export default function VirtualKeyboard({ onLetterPress, guessedLetters, disable
     const [lang, setLang] = useState('ar');
 
     return (
-        <div className="pb-4 w-full px-1 safe-area-pb">
+        <div className="pb-4 w-full px-1">
             {/* Language toggle */}
             <div className="flex justify-center mb-3">
                 <div className="glass-card rounded-full p-1 flex gap-1">

@@ -225,7 +225,7 @@ export default function MemoryGame({ setView }) {
       `}</style>
 
             <div className="animated-bg"><div className="bg-orb-3" style={{ background: 'var(--accent-glow)' }} /></div>
-            <div className="min-h-dvh max-w-lg mx-auto flex flex-col safe-area-pt overflow-hidden overflow-y-auto pb-4">
+            <div className="min-h-dvh max-w-lg mx-auto flex flex-col safe-area-pt overflow-hidden overflow-y-auto pb-8 safe-area-pb">
 
                 {/* Nav */}
                 <div className="px-4 flex justify-between items-center py-4 mb-2 relative">
@@ -254,7 +254,7 @@ export default function MemoryGame({ setView }) {
                 </div>
 
                 {/* Screens */}
-                {gameState === 'lobby' && <div className="flex-1 flex pb-16 px-4"><P2PConnectionManager gameIdPrefix="celia-mem" onGameStart={handleGameStart} /></div>}
+                {gameState === 'lobby' && <div className="flex-1 flex pb-16 safe-area-pb px-4"><P2PConnectionManager gameIdPrefix="celia-mem" onGameStart={handleGameStart} /></div>}
 
                 {gameState === 'setup' && (
                     <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-10">

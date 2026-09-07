@@ -6,7 +6,7 @@ export default function CodeKeypad({ onNumber, onDelete, onSubmit, disabled, sub
     const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
     return (
-        <div className="glass-card rounded-2xl p-4 safe-area-pb">
+        <div className="glass-card rounded-2xl p-4">
             <div className="grid grid-cols-3 gap-3 mb-3">
                 {nums.map(n => (
                     <button

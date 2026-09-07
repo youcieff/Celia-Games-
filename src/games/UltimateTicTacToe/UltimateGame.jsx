@@ -177,7 +177,7 @@ export default function UltimateGame({ setView }) {
 
                 {/* Lobby */}
                 {gameState === 'lobby' && (
-                    <div className="flex-1 flex pb-16 px-4">
+                    <div className="flex-1 flex pb-16 safe-area-pb px-4">
                         <P2PConnectionManager gameIdPrefix="celia-uxo" onGameStart={handleGameStart} />
                     </div>
                 )}

@@ -192,7 +192,7 @@ export default function Connect4Game({ setView }) {
                 </div>
 
                 {/* Lobby */}
-                {gameState === 'lobby' && <div className="flex-1 flex pb-16 px-4"><P2PConnectionManager gameIdPrefix="celia-c4" onGameStart={handleGameStart} /></div>}
+                {gameState === 'lobby' && <div className="flex-1 flex pb-16 safe-area-pb px-4"><P2PConnectionManager gameIdPrefix="celia-c4" onGameStart={handleGameStart} /></div>}
 
                 {/* Setup Screen (Host) */}
                 {gameState === 'setup' && (

@@ -198,7 +198,7 @@ export default function CodeGame({ setView }) {
 
                 {/* ── Lobby ── */}
                 {gameState === 'lobby' && (
-                    <div className="flex-1 flex pb-16">
+                    <div className="flex-1 flex pb-16 safe-area-pb">
                         <P2PConnectionManager gameIdPrefix="celia-code" onGameStart={handleGameStart} />
                     </div>
                 )}
@@ -306,7 +306,7 @@ export default function CodeGame({ setView }) {
                         )}
 
                         {/* Bottom action */}
-                        <div className="mt-auto pb-4 safe-area-pb">
+                        <div className="mt-auto pb-2">
                             {(['won', 'lost'].includes(gameState)) && (
                                 <button onClick={onRestart} className="glow-button w-full h-14 rounded-2xl text-lg font-black flex items-center justify-center gap-2">
                                     <RotateCcw size={20} /> العبوا تاني

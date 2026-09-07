@@ -234,7 +234,7 @@ export default function SeaBattleGame({ setView }) {
                     </div>
                 </div>
 
-                {gameState === 'lobby' && <div className="flex-1 flex pb-16 px-4"><P2PConnectionManager gameIdPrefix="celia-sea" onGameStart={handleGameStart} /></div>}
+                {gameState === 'lobby' && <div className="flex-1 flex pb-16 safe-area-pb px-4"><P2PConnectionManager gameIdPrefix="celia-sea" onGameStart={handleGameStart} /></div>}
 
                 {gameState === 'setup' && (
                     <div className="flex-1 flex flex-col items-center px-4 pb-4">

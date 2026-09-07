@@ -149,7 +149,7 @@ export default function TicTacToeGame({ setView }) {
 
                 {/* Lobby */}
                 {gameState === 'lobby' && (
-                    <div className="flex-1 flex pb-16">
+                    <div className="flex-1 flex pb-16 safe-area-pb">
                         <P2PConnectionManager gameIdPrefix="celia-xo" onGameStart={handleGameStart} />
                     </div>
                 )}

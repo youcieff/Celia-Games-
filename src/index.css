@@ -431,8 +431,8 @@
    SAFE AREA (iOS notch support)
    ================================================ */
 .safe-area-pb {
-  padding-bottom: env(safe-area-inset-bottom, 16px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
 }
 .safe-area-pt {
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: max(16px, env(safe-area-inset-top, 16px));
 }
