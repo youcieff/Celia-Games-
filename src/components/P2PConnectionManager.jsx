@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import Peer from 'peerjs';
+import React, { useState, useEffect, useRef } from 'react';
+import { db } from '../lib/firebase';
+import { ref, set, onValue, push, onChildAdded, remove, get } from 'firebase/database';
 import Copy from 'lucide-react/dist/esm/icons/copy';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import LinkIcon from 'lucide-react/dist/esm/icons/link';
@@ -8,227 +9,134 @@ import Play from 'lucide-react/dist/esm/icons/play';
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 
 const genId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
-const JOIN_TIMEOUT_MS = 60000;  // 60 seconds total timeout
-const RETRY_INTERVAL_MS = 8000; // retry every 8 seconds
+
+// Creates a virtual "connection" object that mimics PeerJS API using Firebase
+function createFirebaseConn(roomPath, isHost) {
+    const listeners = { data: [] };
+    const outbox = isHost ? 'h2g' : 'g2h';
+    const inbox = isHost ? 'g2h' : 'h2g';
+
+    // Listen for incoming messages
+    const inboxRef = ref(db, `${roomPath}/${inbox}`);
+    const unsubscribe = onChildAdded(inboxRef, (snapshot) => {
+        const msg = snapshot.val();
+        if (msg) listeners.data.forEach(cb => cb(msg));
+    });
+
+    return {
+        send(data) {
+            push(ref(db, `${roomPath}/${outbox}`), data);
+        },
+        on(event, handler) {
+            if (!listeners[event]) listeners[event] = [];
+            if (!listeners[event].includes(handler)) listeners[event].push(handler);
+        },
+        off(event, handler) {
+            if (listeners[event]) {
+                listeners[event] = listeners[event].filter(h => h !== handler);
+            }
+        },
+        close() {
+            // Mark room as closed; cleanup old room data
+            set(ref(db, `${roomPath}/status`), 'closed');
+        },
+        _unsubscribe: unsubscribe,
+    };
+}
 
 export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
-    const [myId, setMyId] = useState(null);
+    const [myId] = useState(() => genId());
     const [joinId, setJoinId] = useState('');
     const [copied, setCopied] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
-    const [retryCount, setRetryCount] = useState(0);
-    const [countdown, setCountdown] = useState(0);
 
-    const [lobbyState, setLobbyState] = useState('lobby');
+    const [lobbyState, setLobbyState] = useState('lobby'); // 'lobby' | 'connected'
     const [myReady, setMyReady] = useState(false);
     const [oppReady, setOppReady] = useState(false);
 
-    const peerRef = useRef(null);
     const connRef = useRef(null);
     const isHostRef = useRef(false);
-    const readyHandlerRef = useRef(null);
     const isHandedOffRef = useRef(false);
-    const retryTimerRef = useRef(null);
-    const deadlineTimerRef = useRef(null);
-    const countdownIntervalRef = useRef(null);
-    const isDoneRef = useRef(false);
+    const roomPath = `rooms/${gameIdPrefix}-${myId}`;
 
+    // HOST: write room to Firebase and wait for guest
     useEffect(() => {
-        const id = genId();
-        let peer = null;
+        const hostRoomRef = ref(db, `${roomPath}/status`);
+        set(hostRoomRef, 'waiting');
 
-        const initTimeout = setTimeout(() => {
-            peer = new Peer(`${gameIdPrefix}-${id}`, {
-                config: {
-                    iceServers: [
-                        // STUN - discover public IPs (free, no relay)
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' },
-                        // TURN - relay traffic across different networks
-                        // (required when STUN fails, e.g. mobile data <-> home wifi)
-                        {
-                            urls: 'turn:openrelay.metered.ca:80',
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject',
-                        },
-                        {
-                            urls: 'turn:openrelay.metered.ca:443',
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject',
-                        },
-                        {
-                            urls: 'turns:openrelay.metered.ca:443',
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject',
-                        },
-                    ],
-                    iceCandidatePoolSize: 10,
-                },
-                debug: 0,
-            });
-
-            peer.on('open', (assignedId) => {
-                setMyId(assignedId.replace(`${gameIdPrefix}-`, ''));
-            });
-
-            peer.on('disconnected', () => {
-                setTimeout(() => {
-                    if (peer && !peer.destroyed) peer.reconnect();
-                }, 2000);
-            });
-
-            peer.on('connection', (conn) => {
-                conn.on('open', () => {
-                    isHostRef.current = true;
-                    connRef.current = conn;
-                    setLobbyState('connected');
-                    wireReadyHandler(conn);
+        // Listen for guest joining
+        const unsubStatus = onValue(ref(db, `${roomPath}/guestReady`), (snap) => {
+            if (snap.val() === true && !isHandedOffRef.current) {
+                isHostRef.current = true;
+                const conn = createFirebaseConn(roomPath, true);
+                connRef.current = conn;
+                // Listen for guest's global_ready via messages
+                conn.on('data', (d) => {
+                    if (d?.type === 'global_ready') setOppReady(true);
                 });
-            });
+                setLobbyState('connected');
+            }
+        });
 
-            peer.on('error', (err) => {
-                if (err.type === 'peer-unavailable') {
-                    // Don't immediately show error – retry logic will handle it
-                    if (!isDoneRef.current) {
-                        triggerRetry();
-                    }
-                } else if (err.type === 'network' || err.type === 'server-error') {
-                    // Reconnect on network errors
-                    setTimeout(() => {
-                        if (peer && !peer.destroyed) peer.reconnect();
-                    }, 2000);
-                }
-            });
-
-            peerRef.current = peer;
-        }, 100);
-
+        // Cleanup room on unmount
         return () => {
-            clearTimeout(initTimeout);
-            clearAllTimers();
-            if (peer && !isHandedOffRef.current) {
-                peer.destroy();
+            unsubStatus();
+            if (!isHandedOffRef.current) {
+                remove(ref(db, roomPath));
             }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [gameIdPrefix]);
+    }, []);
 
-    const clearAllTimers = () => {
-        clearTimeout(retryTimerRef.current);
-        clearTimeout(deadlineTimerRef.current);
-        clearInterval(countdownIntervalRef.current);
-    };
-
-    const wireReadyHandler = (conn) => {
-        const handler = (d) => {
-            if (d && d.type === 'global_ready') {
-                setOppReady(true);
-            }
-        };
-        readyHandlerRef.current = handler;
-        conn.on('data', handler);
-    };
-
-    const attemptConnect = useCallback((currentJoinId, attempt) => {
-        if (isDoneRef.current) return;
-
-        setRetryCount(attempt);
-        setErrorMsg('');
-
-        if (peerRef.current && peerRef.current.disconnected && !peerRef.current.destroyed) {
-            peerRef.current.reconnect();
-        }
-
-        if (!peerRef.current || peerRef.current.destroyed) return;
-
-        const conn = peerRef.current.connect(`${gameIdPrefix}-${currentJoinId.trim()}`, { reliable: true });
-
-        conn.on('open', () => {
-            if (isDoneRef.current) return;
-            isDoneRef.current = true;
-            clearAllTimers();
-            isHostRef.current = false;
-            connRef.current = conn;
-            setLobbyState('connected');
-            setIsConnecting(false);
-            setCountdown(0);
-            wireReadyHandler(conn);
-        });
-
-        conn.on('error', () => {
-            // Let the peer 'peer-unavailable' error handle retries
-        });
-    }, [gameIdPrefix]);
-
-    const triggerRetry = useCallback(() => {
-        if (isDoneRef.current) return;
-        // Schedule next attempt
-        retryTimerRef.current = setTimeout(() => {
-            setRetryCount(prev => {
-                const next = prev + 1;
-                attemptConnect(joinId, next);
-                return next;
-            });
-        }, RETRY_INTERVAL_MS);
-    }, [attemptConnect, joinId]);
-
-    const handleJoin = () => {
+    // GUEST: join a room
+    const handleJoin = async () => {
         if (!joinId || joinId.length < 4) return;
         setIsConnecting(true);
         setErrorMsg('');
-        isDoneRef.current = false;
-        clearAllTimers();
 
-        // Start countdown timer
-        const startTime = Date.now();
-        setCountdown(JOIN_TIMEOUT_MS / 1000);
-        countdownIntervalRef.current = setInterval(() => {
-            const elapsed = Date.now() - startTime;
-            const remaining = Math.max(0, Math.ceil((JOIN_TIMEOUT_MS - elapsed) / 1000));
-            setCountdown(remaining);
-        }, 1000);
+        const targetRoom = `rooms/${gameIdPrefix}-${joinId.trim().toUpperCase()}`;
+        const statusRef = ref(db, `${targetRoom}/status`);
 
-        // Hard deadline after 60 seconds
-        deadlineTimerRef.current = setTimeout(() => {
-            if (!isDoneRef.current) {
-                isDoneRef.current = true;
-                clearAllTimers();
-                setErrorMsg('انتهى الوقت. تأكد من الكود وإن الخصم فاتح اللعبة.');
+        try {
+            const snap = await get(statusRef);
+            if (!snap.exists() || snap.val() === 'closed') {
+                setErrorMsg('الغرفة دي مش موجودة. تأكد من الكود وإن الخصم فاتح اللعبة.');
                 setIsConnecting(false);
-                setCountdown(0);
+                return;
             }
-        }, JOIN_TIMEOUT_MS);
 
-        attemptConnect(joinId, 0);
-    };
+            // Signal guest has arrived
+            await set(ref(db, `${targetRoom}/guestReady`), true);
 
-    const handleRetry = () => {
-        isDoneRef.current = false;
-        clearAllTimers();
-        setRetryCount(0);
-        setCountdown(0);
-        setIsConnecting(false);
-        setErrorMsg('');
+            isHostRef.current = false;
+            const conn = createFirebaseConn(targetRoom, false);
+            connRef.current = conn;
+
+            // Listen for host's global_ready
+            conn.on('data', (d) => {
+                if (d?.type === 'global_ready') setOppReady(true);
+            });
+
+            setIsConnecting(false);
+            setLobbyState('connected');
+        } catch {
+            setErrorMsg('فشل الاتصال. تأكد من إنترنت وجرب تاني.');
+            setIsConnecting(false);
+        }
     };
 
     const handleReadyClick = () => {
         setMyReady(true);
-        if (connRef.current) {
-            connRef.current.send({ type: 'global_ready' });
-        }
+        connRef.current?.send({ type: 'global_ready' });
     };
 
+    // Both ready → start game
     useEffect(() => {
         if (myReady && oppReady && connRef.current) {
             const timeout = setTimeout(() => {
-                const conn = connRef.current;
-                if (readyHandlerRef.current) {
-                    conn.off('data', readyHandlerRef.current);
-                    readyHandlerRef.current = null;
-                }
                 isHandedOffRef.current = true;
-                onGameStart(conn, isHostRef.current);
+                onGameStart(connRef.current, isHostRef.current);
             }, 600);
             return () => clearTimeout(timeout);
         }
@@ -244,7 +152,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
     if (lobbyState === 'connected') {
         return (
             <div className="flex flex-col items-center justify-center w-full max-w-sm mx-auto h-full px-4 mb-10">
-                <div className="glass-card rounded-3xl p-8 w-full text-center animate-scale-in">
+                <div className="glass-card rounded-3xl p-8 w-full text-center">
                     <div className="w-16 h-16 bg-emerald-500/20 rounded-full mx-auto flex items-center justify-center mb-4 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
                         <span className="text-3xl">🤝</span>
                     </div>
@@ -254,7 +162,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                     <button
                         onClick={handleReadyClick}
                         disabled={myReady}
-                        className={`w-full h-14 rounded-2xl text-lg font-black flex items-center justify-center gap-2 transition-all duration-300 
+                        className={`w-full h-14 rounded-2xl text-lg font-black flex items-center justify-center gap-2 transition-all duration-300
                                    ${myReady ? 'bg-white/10 text-emerald-400 ring-2 ring-emerald-400 scale-[0.98]' : 'glow-button'}`}
                     >
                         {myReady ? 'في انتظار الخصم... ⏳' : <><Play size={20} /> بدء اللعب الآن</>}
@@ -282,22 +190,14 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                 </h2>
                 <p className="opacity-50 text-xs mb-4">ابعت الكود ده للطرف التاني وتأكد انه دخله</p>
 
-                {myId ? (
-                    <div className="flex items-center gap-2 glass-card rounded-2xl p-3 mb-2">
-                        <span className="font-mono text-2xl tracking-widest font-black flex-1">{myId}</span>
-                        <button onClick={handleCopy} className="opacity-60 hover:opacity-100 transition-opacity p-2">
-                            <Copy size={20} className={copied ? "text-emerald-400" : ""} />
-                        </button>
-                    </div>
-                ) : (
-                    <div className="flex justify-center py-3">
-                        <Loader2 className="animate-spin opacity-40" size={28} />
-                    </div>
-                )}
+                <div className="flex items-center gap-2 glass-card rounded-2xl p-3 mb-2">
+                    <span className="font-mono text-2xl tracking-widest font-black flex-1">{myId}</span>
+                    <button onClick={handleCopy} className="opacity-60 hover:opacity-100 transition-opacity p-2">
+                        <Copy size={20} className={copied ? "text-emerald-400" : ""} />
+                    </button>
+                </div>
 
-                {copied && (
-                    <p className="text-xs text-emerald-400 font-bold animate-pop-in">✓ تم النسخ!</p>
-                )}
+                {copied && <p className="text-xs text-emerald-400 font-bold animate-pop-in">✓ تم النسخ!</p>}
             </div>
 
             <div className="flex items-center gap-4 w-full">
@@ -316,10 +216,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                 <input
                     type="text"
                     value={joinId}
-                    onChange={(e) => {
-                        setJoinId(e.target.value.toUpperCase());
-                        setErrorMsg('');
-                    }}
+                    onChange={(e) => { setJoinId(e.target.value.toUpperCase()); setErrorMsg(''); }}
                     placeholder="XXXX"
                     className={`glass-input w-full rounded-2xl px-4 py-4 text-center font-mono tracking-widest font-black text-xl mb-4 uppercase ${errorMsg ? 'border-2 border-red-500/50' : ''}`}
                     dir="ltr"
@@ -329,21 +226,8 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                 />
 
                 {isConnecting && (
-                    <div className="mb-4">
-                        <div className="flex items-center justify-center gap-2 text-sm font-bold opacity-80 mb-2">
-                            <Loader2 className="animate-spin" size={16} />
-                            {retryCount === 0 ? 'جاري الاتصال...' : `محاولة رقم ${retryCount + 1}...`}
-                        </div>
-                        <div className="w-full bg-white/10 rounded-full h-1.5 mb-1">
-                            <div
-                                className="h-1.5 rounded-full transition-all duration-1000"
-                                style={{
-                                    width: `${(countdown / (JOIN_TIMEOUT_MS / 1000)) * 100}%`,
-                                    background: countdown > 20 ? 'var(--primary-color)' : countdown > 10 ? '#f59e0b' : '#ef4444'
-                                }}
-                            />
-                        </div>
-                        <p className="text-[10px] opacity-50">{countdown} ثانية متبقية</p>
+                    <div className="flex items-center justify-center gap-2 text-sm font-bold opacity-70 mb-4">
+                        <Loader2 className="animate-spin" size={16} /> جاري الاتصال...
                     </div>
                 )}
 
@@ -351,7 +235,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                     <div className="mb-4 animate-pop-in">
                         <p className="text-xs font-bold text-red-400 mb-3">{errorMsg}</p>
                         <button
-                            onClick={handleRetry}
+                            onClick={() => setErrorMsg('')}
                             className="glass-card rounded-xl px-4 py-2 text-xs font-black flex items-center gap-2 mx-auto hover:opacity-80 transition-opacity"
                         >
                             <RefreshCw size={14} /> حاول تاني
@@ -360,7 +244,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                 )}
 
                 <button
-                    onClick={isConnecting ? undefined : handleJoin}
+                    onClick={handleJoin}
                     disabled={!joinId || isConnecting}
                     className="glow-button w-full h-14 rounded-2xl font-black text-lg flex items-center justify-center gap-2 disabled:opacity-40"
                 >
