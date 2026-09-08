@@ -42,11 +42,30 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
             peer = new Peer(`${gameIdPrefix}-${id}`, {
                 config: {
                     iceServers: [
+                        // STUN - discover public IPs (free, no relay)
                         { urls: 'stun:stun.l.google.com:19302' },
                         { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' },
+                        // TURN - relay traffic across different networks
+                        // (required when STUN fails, e.g. mobile data <-> home wifi)
+                        {
+                            urls: 'turn:openrelay.metered.ca:80',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject',
+                        },
+                        {
+                            urls: 'turn:openrelay.metered.ca:443',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject',
+                        },
+                        {
+                            urls: 'turns:openrelay.metered.ca:443',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject',
+                        },
                     ],
+                    iceCandidatePoolSize: 10,
                 },
+                debug: 0,
             });
 
             peer.on('open', (assignedId) => {
