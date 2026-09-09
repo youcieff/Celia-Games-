@@ -64,6 +64,8 @@ export default function UltimateGame({ setView }) {
             setHostSymbol(msg.hostSymbol);
             setGameState('playing');
         } else if (msg.type === 'restart') {
+            const cur = stateRef.current;
+            if (checkWin(cur.bigBoard) === null) return; // Ignore if we already restarted locally
             doRestart();
         }
     };

@@ -103,6 +103,7 @@ export default function Connect4Game({ setView }) {
         } else if (msg.type === 'play') {
             dropCoin(msg.colIdx, !isHostRef.current);
         } else if (msg.type === 'restart') {
+            if (boardRef.current.every(row => row.every(c => !c))) return; // already restarted
             doRestart();
         }
     };
@@ -169,15 +170,15 @@ export default function Connect4Game({ setView }) {
                         <Logo size="small" />
                         <button onClick={() => { connRef.current?.close(); setView('hub'); }} className="glass-card w-11 h-11 flex items-center justify-center rounded-2xl hover:scale-105 transition-transform"><ArrowRight size={20} /></button>
                     </div>
-                    
+
                     <div className="flex items-center gap-2 glass-card px-3 py-1.5 rounded-[1.25rem] text-xs font-bold text-center z-10">
                         {gameState !== 'lobby' ? (
                             <div className="flex items-center gap-3">
                                 <span className="flex flex-col items-end">
                                     <span className="text-[12px] font-black gradient-text leading-none mb-1">أربعة بالصف 🔴</span>
                                     <span className="text-[9px] opacity-70 leading-none">أنت
-                                    <span className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-middle" style={{ backgroundColor: myColorObj?.hex }}></span>
-                                </span>
+                                        <span className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-middle" style={{ backgroundColor: myColorObj?.hex }}></span>
+                                    </span>
                                 </span>
                                 <div className="w-px h-5 bg-white/20"></div>
                                 <span className="flex flex-col items-center justify-center text-emerald-400">

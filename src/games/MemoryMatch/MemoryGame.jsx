@@ -116,6 +116,7 @@ export default function MemoryGame({ setView }) {
         } else if (msg.type === 'flip') {
             applyFlip(msg.index);
         } else if (msg.type === 'restart') {
+            if (stateRef.current.gameState === 'playing') return; // already restarted
             doRestart();
         }
     };

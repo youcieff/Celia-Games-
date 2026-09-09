@@ -43,6 +43,8 @@ export default function SeaBattleGame({ setView }) {
         stateRef.current = { placedShips, myGrid, targetGrid, hostTurn, hitsOnMe, hitsOnOpp };
     }, [placedShips, myGrid, targetGrid, hostTurn, hitsOnMe, hitsOnOpp]);
 
+    const isShootingRef = useRef(false);
+
     // Derived properties
     const isHost = isHostRef.current;
     const isMyTurn = isHost ? hostTurn : !hostTurn;
@@ -75,10 +77,12 @@ export default function SeaBattleGame({ setView }) {
                 }
             });
 
-            // Update my grid
-            const newMyGrid = cur.myGrid.map(arr => [...arr]);
-            newMyGrid[r][c] = isHit ? 'hit' : 'miss';
-            setMyGrid(newMyGrid);
+            // Update my grid safely without stale closure traps
+            setMyGrid(prev => {
+                const newMyGrid = prev.map(arr => [...arr]);
+                newMyGrid[r][c] = isHit ? 'hit' : 'miss';
+                return newMyGrid;
+            });
 
             if (isHit) setHitsOnMe(prev => prev + 1);
 
@@ -86,20 +90,24 @@ export default function SeaBattleGame({ setView }) {
             connRef.current?.send({ type: 'shot-result', r, c, result: isHit ? 'hit' : 'miss' });
 
             // Opponent shot us - reply back and flip turn on our side
-            setHostTurn(!cur.hostTurn);
+            setHostTurn(prev => !prev);
 
         } else if (msg.type === 'shot-result') {
             const { r, c, result } = msg;
 
-            // Update my target grid
-            const newTarget = cur.targetGrid.map(arr => [...arr]);
-            newTarget[r][c] = result;
-            setTargetGrid(newTarget);
+            isShootingRef.current = false; // Unlock for next turn
+
+            // Update my target grid safely
+            setTargetGrid(prev => {
+                const newTarget = prev.map(arr => [...arr]);
+                newTarget[r][c] = result;
+                return newTarget;
+            });
 
             if (result === 'hit') setHitsOnOpp(prev => prev + 1);
 
             // Now flip turn - we got the result
-            setHostTurn(!cur.hostTurn);
+            setHostTurn(prev => !prev);
 
         } else if (msg.type === 'restart') {
             doRestart();
@@ -150,13 +158,16 @@ export default function SeaBattleGame({ setView }) {
     };
 
     const handleShoot = (r, c) => {
-        if (gameState !== 'playing' || !isMyTurn || overallWinner) return;
+        if (gameState !== 'playing' || !isMyTurn || overallWinner || isShootingRef.current) return;
         if (targetGrid[r][c] !== null) return; // already shot here
 
         // Mark as pending locally so user can't double-click
-        const newTarget = stateRef.current.targetGrid.map(arr => [...arr]);
-        newTarget[r][c] = 'pending';
-        setTargetGrid(newTarget);
+        isShootingRef.current = true;
+        setTargetGrid(prev => {
+            const newTarget = prev.map(arr => [...arr]);
+            newTarget[r][c] = 'pending';
+            return newTarget;
+        });
 
         connRef.current?.send({ type: 'shot', r, c });
     };
@@ -164,6 +175,7 @@ export default function SeaBattleGame({ setView }) {
     const hostTurnRefC = () => stateRef.current.hostTurn;
 
     const doRestart = () => {
+        isShootingRef.current = false;
         setPlacedShips([]);
         setMyGrid(Array.from({ length: SIZE }, () => Array(SIZE).fill(null)));
         setTargetGrid(Array.from({ length: SIZE }, () => Array(SIZE).fill(null)));
@@ -193,9 +205,23 @@ export default function SeaBattleGame({ setView }) {
             <div className="w-[120px] aspect-square bg-[#0a192f]/50 border border-emerald-400/30 rounded-xl relative overflow-hidden flex flex-col p-1 gap-px mb-4">
                 {visualGrid.map((rowArr, r) => (
                     <div key={r} className="flex-1 flex gap-px">
-                        {rowArr.map((cell, c) => (
-                            <div key={c} className={`flex-1 rounded-[2px] ${cell ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : myGrid[r][c] === 'hit' ? 'bg-red-500' : myGrid[r][c] === 'miss' ? 'bg-white/40' : 'bg-emerald-400/10'}`}></div>
-                        ))}
+                        {rowArr.map((cell, c) => {
+                            const status = myGrid[r][c];
+                            let cellClass = 'bg-emerald-400/10';
+                            if (status === 'hit') {
+                                cellClass = 'bg-rose-600 shadow-[0_0_10px_rgba(225,29,72,0.8)] relative';
+                            } else if (cell) {
+                                cellClass = 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]';
+                            } else if (status === 'miss') {
+                                cellClass = 'bg-white/40';
+                            }
+
+                            return (
+                                <div key={c} className={`flex-1 rounded-[2px] overflow-hidden flex items-center justify-center ${cellClass}`}>
+                                    {status === 'hit' && <span className="text-[8px] leading-none animate-pulse">🔥</span>}
+                                </div>
+                            );
+                        })}
                     </div>
                 ))}
                 {myGrid.flat().some(x => x) && <div className="absolute inset-0 flex items-center justify-center font-bold text-xs opacity-50 bg-black/40">سفنك</div>}

@@ -66,6 +66,7 @@ export default function TicTacToeGame({ setView }) {
             setHostSymbol(msg.hostSymbol);
             setGameState('playing');
         } else if (msg.type === 'restart') {
+            if (boardRef.current.every(cell => cell === null)) return; // already restarted locally
             doRestart();
         }
     };

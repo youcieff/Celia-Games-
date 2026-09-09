@@ -42,7 +42,7 @@ export default function WordGame({ setView, mode }) {
         setIsMyTurnToWrite(hostWrites);
         setGameState(hostWrites ? 'setup' : 'waiting');
         if (connRef.current) {
-            connRef.current.send({ type: 'roles_set', guestWrites: hostWrites });
+            connRef.current.send({ type: 'roles_set', guestWrites: !hostWrites });
         }
     };
 
