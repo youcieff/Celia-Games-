@@ -27,6 +27,10 @@ export default function CodeGame({ setView }) {
     const [myGuesses, setMyGuesses] = useState([]);
     const [input, setInput] = useState('');
 
+    // Tracking opponent's progress on YOUR secret code
+    const oppConfirmedRef = useRef([]);
+    const [oppConfirmed, setOppConfirmed] = useState([]);
+
     const handleGameStart = (conn, hostMode) => {
         connRef.current = conn;
         isHostRef.current = hostMode;
@@ -50,6 +54,8 @@ export default function CodeGame({ setView }) {
                 const len = msg.length;
                 codeLengthRef.current = len;
                 setCodeLength(len);
+                oppConfirmedRef.current = Array(len).fill(false);
+                setOppConfirmed(oppConfirmedRef.current);
                 setGameState('setting-secret');
                 break;
             }
@@ -60,6 +66,14 @@ export default function CodeGame({ setView }) {
             }
             case 'guess': {
                 const result = evaluate(msg.code, secretRef.current);
+
+                const newOppConfirmed = [...oppConfirmedRef.current];
+                result.forEach((r, idx) => {
+                    if (r === 'green') newOppConfirmed[idx] = true;
+                });
+                oppConfirmedRef.current = newOppConfirmed;
+                setOppConfirmed(newOppConfirmed);
+
                 connRef.current.send({ type: 'guess_result', code: msg.code, result });
                 if (result.every(r => r === 'green')) {
                     setGameState('lost');
@@ -88,6 +102,8 @@ export default function CodeGame({ setView }) {
     const handleSelectLength = (len) => {
         codeLengthRef.current = len;
         setCodeLength(len);
+        oppConfirmedRef.current = Array(len).fill(false);
+        setOppConfirmed(oppConfirmedRef.current);
         connRef.current?.send({ type: 'code_length', length: len });
         setGameState('setting-secret');
     };
@@ -144,6 +160,8 @@ export default function CodeGame({ setView }) {
     const resetAll = () => {
         secretRef.current = '';
         oppReadyRef.current = false;
+        oppConfirmedRef.current = Array(codeLengthRef.current).fill(false);
+        setOppConfirmed(oppConfirmedRef.current);
         setMyGuesses([]);
         setInput('');
         if (isHostRef.current) {
@@ -291,7 +309,7 @@ export default function CodeGame({ setView }) {
 
                         {/* Digit cells */}
                         {(['setting-secret', 'playing'].includes(gameState)) && (
-                            <div className="flex justify-center gap-3 my-2 flex-wrap">
+                            <div className="flex justify-center gap-3 my-2 flex-wrap" dir="ltr">
                                 {Array.from({ length: codeLength }).map((_, i) => (
                                     <div
                                         key={i}
@@ -299,7 +317,11 @@ export default function CodeGame({ setView }) {
                                     >
                                         {gameState === 'setting-secret'
                                             ? (input[i] ? <Lock size={22} className="opacity-40" /> : '')
-                                            : (input[i] || '')}
+                                            : (isMyTurn
+                                                ? (input[i] || '')
+                                                : (oppConfirmed[i]
+                                                    ? <span className="text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]">{secretRef.current[i]}</span>
+                                                    : <Lock size={24} className="opacity-20 text-red-500" />))}
                                     </div>
                                 ))}
                             </div>
