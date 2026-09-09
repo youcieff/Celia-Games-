@@ -329,7 +329,7 @@ export default function SeaBattleGame({ setView }) {
                     <div className="flex-1 flex items-center justify-center -mt-10 px-4">
                         <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pulse-glow">
                             <h2 className="text-2xl font-black mb-2">في الانتظار... ⏳</h2>
-                            <p className="opacity-60 text-sm font-bold">الأدميرال التاني بيوزع أسطوله!</p>
+                            <p className="opacity-60 text-sm font-bold">الجنرال التاني بيوزع أسطوله!</p>
                         </div>
                     </div>
                 )}

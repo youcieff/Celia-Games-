@@ -31,8 +31,9 @@ export default function TicTacToeGame({ setView }) {
 
     // Game state
     const [board, setBoard] = useState(Array(9).fill(null));
+    const [hostSymbolConfig, setHostSymbolConfig] = useState('X'); // Temporary selection
     const [hostSymbol, setHostSymbol] = useState('X');
-    const [xIsNext, setXIsNext] = useState(true); // X always goes first
+    const [xIsNext, setXIsNext] = useState(true);
 
     // We use ref for board/xIsNext to avoid stale closures in network callback
     const boardRef = useRef(Array(9).fill(null));
@@ -64,6 +65,7 @@ export default function TicTacToeGame({ setView }) {
             setXIsNext(!xIsNextRef.current);
         } else if (msg.type === 'start') {
             setHostSymbol(msg.hostSymbol);
+            setXIsNext(msg.xIsNext);
             setGameState('playing');
         } else if (msg.type === 'restart') {
             if (boardRef.current.every(cell => cell === null)) return; // already restarted locally
@@ -85,15 +87,22 @@ export default function TicTacToeGame({ setView }) {
     };
 
     const handleChooseSymbol = (choice) => {
-        setHostSymbol(choice);
+        setHostSymbolConfig(choice);
+        setGameState('choosing-starts');
+    };
+
+    const handleChooseStarts = (hostStarts) => {
+        setHostSymbol(hostSymbolConfig);
+        const newXIsNext = hostSymbolConfig === 'X' ? hostStarts : !hostStarts;
+        setXIsNext(newXIsNext);
         setGameState('playing');
-        connRef.current?.send({ type: 'start', hostSymbol: choice });
+        connRef.current?.send({ type: 'start', hostSymbol: hostSymbolConfig, xIsNext: newXIsNext });
     };
 
     const doRestart = () => {
         setBoard(Array(9).fill(null));
-        setXIsNext(true);
         setGameState(isHost ? 'choosing-symbol' : 'waiting-start');
+
     };
 
     const handleRestart = () => {
@@ -160,7 +169,7 @@ export default function TicTacToeGame({ setView }) {
                     <div className="flex-1 flex flex-col items-center justify-center -mt-10 px-4">
                         <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pop-in">
                             <h2 className="text-2xl font-black mb-3">🎮 اختار تلعب بإيه؟</h2>
-                            <p className="opacity-60 text-sm mb-6 font-bold">دايماً X بيلعب الأول</p>
+                            <p className="opacity-60 text-sm mb-6 font-bold">المرحلة 1 من 2</p>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <button
@@ -168,14 +177,37 @@ export default function TicTacToeGame({ setView }) {
                                     className="glass-card glass-card-hover rounded-2xl py-6 flex flex-col items-center gap-2 border border-transparent hover:border-emerald-400/50"
                                 >
                                     <span className="text-5xl font-black text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]">X</span>
-                                    <span className="text-sm font-bold opacity-70 mt-2">العب الأول</span>
                                 </button>
                                 <button
                                     onClick={() => handleChooseSymbol('O')}
                                     className="glass-card glass-card-hover rounded-2xl py-6 flex flex-col items-center gap-2 border border-transparent hover:border-pink-400/50"
                                 >
                                     <span className="text-5xl font-black text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.6)]">O</span>
-                                    <span className="text-sm font-bold opacity-70 mt-2">خلي الخصم يبدأ</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Screen: Choosing Starts (Host) */}
+                {gameState === 'choosing-starts' && (
+                    <div className="flex-1 flex flex-col items-center justify-center -mt-10 px-4">
+                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pop-in">
+                            <h2 className="text-2xl font-black mb-3">مين هيبدأ الدور؟</h2>
+                            <p className="opacity-60 text-sm mb-6 font-bold">المرحلة 2 من 2</p>
+
+                            <div className="flex flex-col gap-3">
+                                <button
+                                    onClick={() => handleChooseStarts(true)}
+                                    className="glass-card glass-card-hover rounded-2xl py-4 font-black flex items-center justify-center gap-2 border border-transparent hover:border-emerald-400/50"
+                                >
+                                    أبدأ أنا الأول 🙋‍♂️
+                                </button>
+                                <button
+                                    onClick={() => handleChooseStarts(false)}
+                                    className="glass-card glass-card-hover rounded-2xl py-4 font-black flex items-center justify-center gap-2 border border-transparent hover:border-emerald-400/50"
+                                >
+                                    الخصم الأول 🤝
                                 </button>
                             </div>
                         </div>
@@ -187,7 +219,7 @@ export default function TicTacToeGame({ setView }) {
                     <div className="flex-1 flex items-center justify-center -mt-10 px-4">
                         <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pulse-glow">
                             <h2 className="text-2xl font-black mb-2">في الانتظار... ⏳</h2>
-                            <p className="opacity-60 text-sm font-bold">الطرف التاني بيختار X ولا O</p>
+                            <p className="opacity-60 text-sm font-bold">الطرف التاني بيظبط إعدادات اللعبة</p>
                         </div>
                     </div>
                 )}

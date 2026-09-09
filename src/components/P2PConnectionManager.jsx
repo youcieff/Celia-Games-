@@ -7,6 +7,8 @@ import LinkIcon from 'lucide-react/dist/esm/icons/link';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import Play from 'lucide-react/dist/esm/icons/play';
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
+import Bot from 'lucide-react/dist/esm/icons/bot';
+import createAIConn from '../ai/createAIConn';
 
 const genId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
@@ -251,6 +253,33 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                     {isConnecting ? <Loader2 className="animate-spin" size={22} /> : '🚀 انضمام الآن'}
                 </button>
             </div>
+
+            {/* Play vs AI — available for all games */}
+            {gameIdPrefix && (
+                <>
+                    <div className="flex items-center gap-4 w-full">
+                        <div className="h-px flex-1" style={{ background: 'var(--glass-border)' }}></div>
+                        <span className="opacity-40 text-sm font-bold">أو العب اوفلاين</span>
+                        <div className="h-px flex-1" style={{ background: 'var(--glass-border)' }}></div>
+                    </div>
+
+                    <div className="glass-card rounded-3xl p-6 w-full text-center">
+                        <button
+                            onClick={() => {
+                                setIsConnecting(true);
+                                setTimeout(() => {
+                                    onGameStart(createAIConn(gameIdPrefix), true); // player is host against AI
+                                }, 800);
+                            }}
+                            disabled={isConnecting}
+                            className="bg-white/10 w-full h-14 rounded-2xl font-black text-lg flex items-center justify-center gap-2 mb-2 hover:bg-emerald-400 hover:text-black transition-colors"
+                        >
+                            <Bot size={22} /> العب ضد الذكاء الاصطناعي
+                        </button>
+                        <p className="opacity-50 text-[10px] font-bold">متوسط الصعوبة • لا يحتاج إنترنت</p>
+                    </div>
+                </>
+            )}
         </div>
     );
 }
