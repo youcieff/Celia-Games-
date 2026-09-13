@@ -341,7 +341,7 @@ export default function TicTacToeGame({ setView }) {
             />
 
             {/* Emotes Layer */}
-            {gameState === 'playing' && <EmotesOverlay conn={connRef.current} />}
+            {gameState === 'playing' && !winData && <EmotesOverlay conn={connRef.current} />}
 
             {/* Match Recap Modal */}
             <MatchRecapModal

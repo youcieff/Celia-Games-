@@ -59,7 +59,7 @@ export default function EmotesOverlay({ conn }) {
 
             {/* Emote Button & Menu */}
             {conn && (
-                <div className="absolute bottom-6 right-4 pointer-events-auto flex flex-col items-end gap-2">
+                <div className="absolute bottom-20 right-4 sm:bottom-24 sm:right-6 pointer-events-auto flex flex-col items-end gap-2">
                     {isOpen && (
                         <div className="glass-card p-3 rounded-2xl grid grid-cols-4 gap-2 mb-2 animate-pop-in origin-bottom-right">
                             {EMOTES.map(emoji => (

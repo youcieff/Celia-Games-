@@ -1,3 +1,4 @@
+import React from 'react';
 import { useTheme } from '../context/ThemeContext';
 import Heart from 'lucide-react/dist/esm/icons/heart';
 import Shield from 'lucide-react/dist/esm/icons/shield';
@@ -10,17 +11,19 @@ export default function ThemeToggle() {
     return (
         <button
             onClick={toggleTheme}
-            className="theme-button relative flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all duration-500 overflow-hidden shadow-lg"
+            className="theme-button h-11 px-3.5 rounded-2xl flex items-center gap-1.5 font-black text-xs transition-all duration-300 shadow-md select-none shrink-0 border border-white/10"
+            title={isGirly ? 'التبديل إلى مود ولادي' : 'التبديل إلى مود بناتي'}
+            aria-label="تبديل الثيم"
         >
             {isGirly ? (
                 <>
-                    <Heart className="w-4 h-4 fill-current animate-pulse-slow" />
-                    <span>بناتي</span>
+                    <Heart size={14} className="fill-current animate-pulse-slow shrink-0" />
+                    <span className="whitespace-nowrap leading-none">بناتي</span>
                 </>
             ) : (
                 <>
-                    <Shield className="w-4 h-4 fill-current" />
-                    <span>ولادي</span>
+                    <Shield size={14} className="fill-current shrink-0" />
+                    <span className="whitespace-nowrap leading-none">ولادي</span>
                 </>
             )}
         </button>

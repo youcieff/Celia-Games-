@@ -1,31 +1,37 @@
-// AI for Dots & Boxes. Greedy strategy: takes a box if possible, else picks the safest edge.
+// AI for Dots & Boxes.
+// Optimized for 4x4 grid (ROWS=4, COLS=4) matching DotsBoxesGame.jsx
+// Captures boxes aggressively, avoids opening boxes for opponent.
+
 export default class DotsBoxesAI {
     constructor(mockConn) {
         this.conn = mockConn;
-        this.ROWS = 6;
-        this.COLS = 6;
-        this.hLines = Array.from({length: this.ROWS+1}, () => Array(this.COLS).fill(null));
-        this.vLines = Array.from({length: this.ROWS}, () => Array(this.COLS+1).fill(null));
-        this.boxes = Array.from({length: this.ROWS}, () => Array(this.COLS).fill(null));
+        this.ROWS = 4;
+        this.COLS = 4;
+        this.hLines = Array.from({ length: this.ROWS + 1 }, () => Array(this.COLS).fill(null));
+        this.vLines = Array.from({ length: this.ROWS }, () => Array(this.COLS + 1).fill(null));
+        this.boxes = Array.from({ length: this.ROWS }, () => Array(this.COLS).fill(null));
         this.isMyTurn = false;
+        this.moveTimer = null;
 
-        setTimeout(() => this.conn._sendToPlayer({ type: 'global_ready' }), 800);
+        setTimeout(() => this.conn._sendToPlayer({
+            type: 'global_ready',
+            profile: { nickname: 'الذكاء الاصطناعي 🤖', avatar: '🤖' }
+        }), 600);
     }
 
     onMessage(msg) {
         if (msg.type === 'start') {
             this._reset();
-            this.isMyTurn = !msg.config.hostPlaysFirst;
-            if (this.isMyTurn) {
-                setTimeout(() => this.makeMove(), 1000);
-            }
+            // Host always starts in DotsBoxesGame; AI is guest
+            this.isMyTurn = false;
         } else if (msg.type === 'play') {
-            this._applyLine(msg.lineType, msg.r, msg.c, 'opp'); // player = 'opp' for AI
-            const captured = this._checkCaptures('opp');
-            if (!captured) {
-                // No box captured by player, it's AI's turn
+            // Player moved
+            this._applyLine(msg.lineType, msg.r, msg.c, 'host');
+            const captured = this._checkCaptures('host');
+            if (captured.length === 0) {
+                // No box captured by player -> AI's turn
                 this.isMyTurn = true;
-                setTimeout(() => this.makeMove(), 800 + Math.random() * 600);
+                this.scheduleMove(700 + Math.random() * 400);
             }
         } else if (msg.type === 'restart') {
             this._reset();
@@ -34,9 +40,17 @@ export default class DotsBoxesAI {
     }
 
     _reset() {
-        this.hLines = Array.from({length: this.ROWS+1}, () => Array(this.COLS).fill(null));
-        this.vLines = Array.from({length: this.ROWS}, () => Array(this.COLS+1).fill(null));
-        this.boxes = Array.from({length: this.ROWS}, () => Array(this.COLS).fill(null));
+        if (this.moveTimer) clearTimeout(this.moveTimer);
+        this.hLines = Array.from({ length: this.ROWS + 1 }, () => Array(this.COLS).fill(null));
+        this.vLines = Array.from({ length: this.ROWS }, () => Array(this.COLS + 1).fill(null));
+        this.boxes = Array.from({ length: this.ROWS }, () => Array(this.COLS).fill(null));
+    }
+
+    scheduleMove(delay = 600) {
+        if (this.moveTimer) clearTimeout(this.moveTimer);
+        this.moveTimer = setTimeout(() => {
+            this.makeMove();
+        }, delay);
     }
 
     _applyLine(type, r, c, owner) {
@@ -45,18 +59,18 @@ export default class DotsBoxesAI {
     }
 
     _checkCaptures(owner) {
-        let captured = false;
+        const newlyCaptured = [];
         for (let r = 0; r < this.ROWS; r++) {
             for (let c = 0; c < this.COLS; c++) {
                 if (!this.boxes[r][c] &&
                     this.hLines[r][c] && this.hLines[r+1][c] &&
                     this.vLines[r][c] && this.vLines[r][c+1]) {
                     this.boxes[r][c] = owner;
-                    captured = true;
+                    newlyCaptured.push({ r, c });
                 }
             }
         }
-        return captured;
+        return newlyCaptured;
     }
 
     _countEdges(r, c) {
@@ -70,13 +84,29 @@ export default class DotsBoxesAI {
 
     _getAllMoves() {
         const moves = [];
-        for (let r = 0; r <= this.ROWS; r++)
-            for (let c = 0; c < this.COLS; c++)
+        for (let r = 0; r <= this.ROWS; r++) {
+            for (let c = 0; c < this.COLS; c++) {
                 if (!this.hLines[r][c]) moves.push({ type: 'h', r, c });
-        for (let r = 0; r < this.ROWS; r++)
-            for (let c = 0; c <= this.COLS; c++)
+            }
+        }
+        for (let r = 0; r < this.ROWS; r++) {
+            for (let c = 0; c <= this.COLS; c++) {
                 if (!this.vLines[r][c]) moves.push({ type: 'v', r, c });
+            }
+        }
         return moves;
+    }
+
+    _getAffectedBoxes(type, r, c) {
+        const list = [];
+        if (type === 'h') {
+            if (r > 0) list.push([r - 1, c]);
+            if (r < this.ROWS) list.push([r, c]);
+        } else {
+            if (c > 0) list.push([r, c - 1]);
+            if (c < this.COLS) list.push([r, c]);
+        }
+        return list.filter(([br, bc]) => br >= 0 && br < this.ROWS && bc >= 0 && bc < this.COLS);
     }
 
     makeMove() {
@@ -84,55 +114,54 @@ export default class DotsBoxesAI {
         const allMoves = this._getAllMoves();
         if (allMoves.length === 0) return;
 
-        // GREEDY: Try to complete a box first
+        // 1. GREEDY: Check if any move immediately completes 1 or more boxes
         for (const move of allMoves) {
-            // Simulate
-            this._applyLine(move.type, move.r, move.c, 'host');
-            const captured = this._checkCaptures('host');
-            if (captured) {
-                this.isMyTurn = false;
-                this.conn._sendToPlayer({ type: 'play', lineType: move.type, r: move.r, c: move.c });
-                // After a capture, AI plays again
-                setTimeout(() => {
-                    this.isMyTurn = true;
-                    this.makeMove();
-                }, 900);
-                return;
-            }
-            // Undo
+            this._applyLine(move.type, move.r, move.c, 'opp');
+            const newlyCaptured = this._checkCaptures('opp');
+
+            // Undo simulation
             if (move.type === 'h') this.hLines[move.r][move.c] = null;
             else this.vLines[move.r][move.c] = null;
-            for (let r = 0; r < this.ROWS; r++)
-                for (let c = 0; c < this.COLS; c++)
-                    if (this.boxes[r][c] === 'host') this.boxes[r][c] = null;
+            for (const b of newlyCaptured) {
+                this.boxes[b.r][b.c] = null;
+            }
+
+            if (newlyCaptured.length > 0) {
+                // Apply actual move
+                this._applyLine(move.type, move.r, move.c, 'opp');
+                this._checkCaptures('opp');
+                this.conn._sendToPlayer({ type: 'play', lineType: move.type, r: move.r, c: move.c });
+
+                // Since AI captured, AI gets another turn!
+                this.isMyTurn = true;
+                this.scheduleMove(700);
+                return;
+            }
         }
 
-        // No capture available: pick a "safe" move (prefer boxes with 0 or 1 edges)
-        const safe = allMoves.filter(m => {
-            // Estimate how many edges the neighbouring boxes would have
+        // 2. SAFE MOVE: Pick a move where no affected box reaches 3 edges (which would give opponent a box)
+        const safeMoves = allMoves.filter(m => {
             const affected = this._getAffectedBoxes(m.type, m.r, m.c);
             return affected.every(([br, bc]) => this._countEdges(br, bc) < 2);
         });
-        const pool = safe.length > 0 ? safe : allMoves;
+
+        const pool = safeMoves.length > 0 ? safeMoves : allMoves;
         const move = pool[Math.floor(Math.random() * pool.length)];
 
-        this._applyLine(move.type, move.r, move.c, 'host');
-        this._checkCaptures('host');
-        this.isMyTurn = false;
+        this._applyLine(move.type, move.r, move.c, 'opp');
+        const captured = this._checkCaptures('opp');
+
         this.conn._sendToPlayer({ type: 'play', lineType: move.type, r: move.r, c: move.c });
-    }
 
-    _getAffectedBoxes(type, r, c) {
-        const boxes = [];
-        if (type === 'h') {
-            if (r > 0) boxes.push([r-1, c]);
-            if (r < this.ROWS) boxes.push([r, c]);
+        if (captured.length > 0) {
+            this.isMyTurn = true;
+            this.scheduleMove(700);
         } else {
-            if (c > 0) boxes.push([r, c-1]);
-            if (c < this.COLS) boxes.push([r, c]);
+            this.isMyTurn = false;
         }
-        return boxes.filter(([br, bc]) => br >= 0 && br < this.ROWS && bc >= 0 && bc < this.COLS);
     }
 
-    close() {}
+    close() {
+        if (this.moveTimer) clearTimeout(this.moveTimer);
+    }
 }

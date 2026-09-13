@@ -4,6 +4,7 @@ import Logo from '../../components/Logo';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Wifi from 'lucide-react/dist/esm/icons/wifi';
+import GlobalMuteButton from '../../components/GlobalMuteButton';
 
 const ROWS = 4; // number of boxes vertically
 const COLS = 4; // number of boxes horizontally
@@ -187,9 +188,10 @@ export default function DotsBoxesGame({ setView }) {
 
                 {/* Nav */}
                 <div className="px-4 flex justify-between items-center py-4 mb-2 relative">
-                    <div className="flex items-center gap-3 z-10">
+                    <div className="flex items-center gap-2 z-10">
                         <Logo size="small" />
                         <button onClick={() => { connRef.current?.close(); setView('hub'); }} className="glass-card w-11 h-11 flex items-center justify-center rounded-2xl hover:scale-105 transition-transform"><ArrowRight size={20} /></button>
+                        <GlobalMuteButton />
                     </div>
 
                     <div className="flex items-center gap-2 glass-card px-3 py-1.5 rounded-[1.25rem] text-xs font-bold text-center z-10">
@@ -298,112 +300,137 @@ export default function DotsBoxesGame({ setView }) {
                             </div>
                         </div>
 
-                        {/* Grid Rendering */}
-                        <div className="w-[95%] aspect-square relative touch-none select-none">
+                        {/* Grid Arena Card */}
+                        <div className="w-full max-w-[370px] px-2 flex justify-center">
+                            <div className="w-full aspect-square relative glass-card p-6 sm:p-7 rounded-[2.25rem] border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.5)] touch-none select-none flex items-center justify-center">
 
-                            {/* Background Glass container for the entire grid to look clean */}
-                            <div className="absolute inset-[-20px] bg-white/[0.03] rounded-3xl border border-white/[0.05] shadow-2xl pointer-events-none" />
+                                {/* Inner play field */}
+                                <div className="w-full h-full relative">
 
-                            {/* 1. Draw Boxes (Background logic) */}
-                            {boxes.map((rowArr, r) =>
-                                rowArr.map((boxHolder, c) => {
-                                    const bColor = boxHolder ? getColorObj(boxHolder) : null;
-                                    return (
-                                        <div key={`box-${r}-${c}`}
-                                            className="absolute pointer-events-none flex items-center justify-center p-1.5"
-                                            style={{
-                                                top: `${(r / ROWS) * 100}%`,
-                                                left: `${(c / COLS) * 100}%`,
-                                                width: `${100 / COLS}%`,
-                                                height: `${100 / ROWS}%`,
-                                            }}>
-                                            <div className={`w-full h-full rounded-[6px] transition-all duration-300 ${boxHolder ? 'animate-pop-in' : ''}`}
+                                    {/* 1. Draw Visible Boxes (Structure & Captures) */}
+                                    {boxes.map((rowArr, r) =>
+                                        rowArr.map((boxHolder, c) => {
+                                            const bColor = boxHolder ? getColorObj(boxHolder) : null;
+                                            return (
+                                                <div key={`box-${r}-${c}`}
+                                                    className="absolute pointer-events-none flex items-center justify-center p-1 sm:p-1.5"
+                                                    style={{
+                                                        top: `${(r / ROWS) * 100}%`,
+                                                        left: `${(c / COLS) * 100}%`,
+                                                        width: `${100 / COLS}%`,
+                                                        height: `${100 / ROWS}%`,
+                                                    }}>
+                                                    <div className={`w-full h-full rounded-xl sm:rounded-2xl transition-all duration-500 flex items-center justify-center ${
+                                                        boxHolder
+                                                            ? 'animate-pop-in scale-100 shadow-lg border-2'
+                                                            : 'border border-dashed border-white/15 bg-white/[0.02]'
+                                                    }`}
+                                                        style={{
+                                                            backgroundColor: bColor ? `${bColor.hex}33` : 'rgba(255,255,255,0.02)',
+                                                            borderColor: bColor ? bColor.hex : 'rgba(255,255,255,0.12)',
+                                                            boxShadow: bColor ? `inset 0 0 16px ${bColor.glow}, 0 0 12px ${bColor.glow}` : 'none'
+                                                        }}
+                                                    >
+                                                        {boxHolder && (
+                                                            <span className="text-xl sm:text-2xl font-black drop-shadow-md animate-scale-in" style={{ color: bColor.hex }}>
+                                                                {boxHolder === 'host' ? (isHost ? '👑' : '🤖') : (isHost ? '🤖' : '👑')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+
+                                    {/* 2. Draw Horizontal Lines (Clickable with generous tap targets) */}
+                                    {hLines.map((rowArr, r) =>
+                                        rowArr.map((lineHolder, c) => {
+                                            const lColor = lineHolder ? getColorObj(lineHolder) : null;
+                                            const canClick = isMyTurn && !lineHolder && !isGameOver;
+
+                                            return (
+                                                <div key={`hline-${r}-${c}`}
+                                                    onClick={() => handleLineClick('h', r, c)}
+                                                    className={`absolute flex items-center justify-center -translate-y-1/2 z-10 
+                                                        ${canClick ? 'cursor-pointer group' : ''}`}
+                                                    style={{
+                                                        top: `${(r / ROWS) * 100}%`,
+                                                        left: `${(c / COLS) * 100}%`,
+                                                        width: `${100 / COLS}%`,
+                                                        height: '36px', // generous tap target
+                                                    }}>
+                                                    <div className={`w-[80%] h-[6px] rounded-full transition-all duration-300
+                                                        ${lineHolder
+                                                            ? 'scale-100 opacity-100'
+                                                            : canClick
+                                                                ? 'bg-white/25 group-hover:bg-white/70 group-active:scale-105 group-hover:shadow-[0_0_8px_rgba(255,255,255,0.6)]'
+                                                                : 'bg-white/10'
+                                                        }`}
+                                                        style={lineHolder ? { backgroundColor: lColor.hex, boxShadow: `0 0 12px ${lColor.glow}, 0 0 4px ${lColor.hex}` } : {}}
+                                                    />
+                                                </div>
+                                            );
+                                        })
+                                    )}
+
+                                    {/* 3. Draw Vertical Lines (Clickable with generous tap targets) */}
+                                    {vLines.map((rowArr, r) =>
+                                        rowArr.map((lineHolder, c) => {
+                                            const lColor = lineHolder ? getColorObj(lineHolder) : null;
+                                            const canClick = isMyTurn && !lineHolder && !isGameOver;
+
+                                            return (
+                                                <div key={`vline-${r}-${c}`}
+                                                    onClick={() => handleLineClick('v', r, c)}
+                                                    className={`absolute flex items-center justify-center -translate-x-1/2 z-10
+                                                        ${canClick ? 'cursor-pointer group' : ''}`}
+                                                    style={{
+                                                        top: `${(r / ROWS) * 100}%`,
+                                                        left: `${(c / COLS) * 100}%`,
+                                                        width: '36px', // generous tap target
+                                                        height: `${100 / ROWS}%`,
+                                                    }}>
+                                                    <div className={`w-[6px] h-[80%] rounded-full transition-all duration-300
+                                                        ${lineHolder
+                                                            ? 'scale-100 opacity-100'
+                                                            : canClick
+                                                                ? 'bg-white/25 group-hover:bg-white/70 group-active:scale-105 group-hover:shadow-[0_0_8px_rgba(255,255,255,0.6)]'
+                                                                : 'bg-white/10'
+                                                        }`}
+                                                        style={lineHolder ? { backgroundColor: lColor.hex, boxShadow: `0 0 12px ${lColor.glow}, 0 0 4px ${lColor.hex}` } : {}}
+                                                    />
+                                                </div>
+                                            );
+                                        })
+                                    )}
+
+                                    {/* 4. Draw Intersection Dots (Glowing Pearls) */}
+                                    {Array.from({ length: ROWS + 1 }).map((_, r) =>
+                                        Array.from({ length: COLS + 1 }).map((_, c) => (
+                                            <div key={`dot-${r}-${c}`} className="absolute -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex items-center justify-center"
                                                 style={{
-                                                    backgroundColor: bColor ? bColor.hex : 'transparent',
-                                                    opacity: boxHolder ? 0.3 : 0,
-                                                    boxShadow: boxHolder ? `inset 0 0 15px ${bColor.glow}, 0 0 10px ${bColor.glow}` : 'none'
+                                                    top: `${(r / ROWS) * 100}%`,
+                                                    left: `${(c / COLS) * 100}%`,
+                                                    width: '16px',
+                                                    height: '16px',
                                                 }}
-                                            />
-                                        </div>
-                                    );
-                                })
-                            )}
+                                            >
+                                                <div className="w-3.5 h-3.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.9),0_0_4px_rgba(255,255,255,1)] ring-2 ring-[#0a0f1d]" />
+                                            </div>
+                                        ))
+                                    )}
 
-                            {/* 2. Draw Horizontal Lines (Clickable) */}
-                            {hLines.map((rowArr, r) =>
-                                rowArr.map((lineHolder, c) => {
-                                    const lColor = lineHolder ? getColorObj(lineHolder) : null;
-                                    const canClick = isMyTurn && !lineHolder && !isGameOver;
-
-                                    return (
-                                        <div key={`hline-${r}-${c}`}
-                                            onClick={() => handleLineClick('h', r, c)}
-                                            className={`absolute flex items-center justify-center -translate-y-1/2 z-10 
-                                     ${canClick ? 'cursor-pointer group' : ''}`}
-                                            style={{
-                                                top: `${(r / ROWS) * 100}%`,
-                                                left: `${(c / COLS) * 100}%`,
-                                                width: `${100 / COLS}%`,
-                                                height: '24px', // generous tap target
-                                            }}>
-                                            <div className={`w-[90%] h-[6px] rounded-full transition-all duration-200
-                                       ${lineHolder ? 'opacity-100 scale-100' : 'opacity-10 scale-50 group-hover:opacity-40 group-hover:scale-100 group-hover:bg-white'} 
-                                      `}
-                                                style={lineHolder ? { backgroundColor: lColor.hex, boxShadow: `0 0 10px ${lColor.glow}` } : { backgroundColor: 'var(--text-color)' }}
-                                            />
-                                        </div>
-                                    );
-                                })
-                            )}
-
-                            {/* 3. Draw Vertical Lines (Clickable) */}
-                            {vLines.map((rowArr, r) =>
-                                rowArr.map((lineHolder, c) => {
-                                    const lColor = lineHolder ? getColorObj(lineHolder) : null;
-                                    const canClick = isMyTurn && !lineHolder && !isGameOver;
-
-                                    return (
-                                        <div key={`vline-${r}-${c}`}
-                                            onClick={() => handleLineClick('v', r, c)}
-                                            className={`absolute flex items-center justify-center -translate-x-1/2 z-10
-                                     ${canClick ? 'cursor-pointer group' : ''}`}
-                                            style={{
-                                                top: `${(r / ROWS) * 100}%`,
-                                                left: `${(c / COLS) * 100}%`,
-                                                width: '24px', // tap target
-                                                height: `${100 / ROWS}%`,
-                                            }}>
-                                            <div className={`w-[6px] h-[90%] rounded-full transition-all duration-200
-                                       ${lineHolder ? 'opacity-100 scale-100' : 'opacity-10 scale-50 group-hover:opacity-40 group-hover:scale-100 group-hover:bg-white'} 
-                                      `}
-                                                style={lineHolder ? { backgroundColor: lColor.hex, boxShadow: `0 0 10px ${lColor.glow}` } : { backgroundColor: 'var(--text-color)' }}
-                                            />
-                                        </div>
-                                    );
-                                })
-                            )}
-
-                            {/* 4. Draw Intersection Dots (Over everything) pointer-events-none */}
-                            {Array.from({ length: ROWS + 1 }).map((_, r) =>
-                                Array.from({ length: COLS + 1 }).map((_, c) => (
-                                    <div key={`dot-${r}-${c}`} className="absolute bg-[var(--text-color)] rounded-full -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none shadow-[0_0_8px_rgba(255,255,255,0.3)] opacity-60"
-                                        style={{
-                                            top: `${(r / ROWS) * 100}%`,
-                                            left: `${(c / COLS) * 100}%`,
-                                            width: `${DOT_SIZE}px`,
-                                            height: `${DOT_SIZE}px`,
-                                        }}
-                                    />
-                                ))
-                            )}
-
+                                </div>
+                            </div>
                         </div>
 
                         {/* After Game finishes */}
                         {isGameOver && (
-                            <button onClick={handleRestart} className="mt-12 mb-4 glow-button bg-white/10 w-[90%] max-w-[380px] h-14 rounded-2xl text-lg font-black flex items-center justify-center gap-2 animate-pop-in">
-                                <RotateCcw size={20} /> العبوا من جديد!
-                            </button>
+                            <div className="w-full max-w-[370px] px-2 mt-8 mb-6 animate-pop-in">
+                                <button onClick={handleRestart} className="glow-button w-full h-14 rounded-2xl text-lg font-black flex items-center justify-center gap-2 shadow-xl">
+                                    <RotateCcw size={20} /> العبوا من جديد!
+                                </button>
+                            </div>
                         )}
 
                     </div>

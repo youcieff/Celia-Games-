@@ -7,6 +7,7 @@ import Visualizer from './Visualizer';
 import Logo from '../../components/Logo';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
+import GlobalMuteButton from '../../components/GlobalMuteButton';
 
 export default function WordGame({ setView, mode }) {
     const isOnline = mode === 'online';
@@ -132,7 +133,7 @@ export default function WordGame({ setView, mode }) {
             <div className="min-h-dvh max-w-md mx-auto px-4 flex flex-col safe-area-pt overflow-x-hidden overflow-y-auto">
                 {/* Nav */}
                 <div className="flex justify-between items-center py-4 relative">
-                    <div className="flex items-center gap-3 z-10">
+                    <div className="flex items-center gap-2 z-10">
                         <Logo size="small" />
                         <button
                             onClick={() => { if (connRef.current) connRef.current.close(); setView('hub'); }}
@@ -140,6 +141,7 @@ export default function WordGame({ setView, mode }) {
                         >
                             <ArrowRight size={20} />
                         </button>
+                        <GlobalMuteButton />
                     </div>
 
                     <div className="glass-card px-3 py-1.5 rounded-full text-xs font-bold text-center leading-tight">

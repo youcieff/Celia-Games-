@@ -2,6 +2,7 @@ import React from 'react';
 import ThemeToggle from './ThemeToggle';
 import Logo from './Logo';
 import ProfileWidget from './ProfileWidget';
+import GlobalMuteButton from './GlobalMuteButton';
 import { playSound, playHaptic } from '../lib/audioEngine';
 
 /* ─── game catalogue ─────────────────────────────────────────────────────── */
@@ -142,11 +143,12 @@ export default function Hub({ setView }) {
             <div className="min-h-dvh flex flex-col items-center px-4 safe-area-pt">
 
                 {/* ── Header ── */}
-                <header className="w-full max-w-md flex justify-between items-center py-4 mb-1">
+                <header className="w-full max-w-md flex justify-between items-center py-3 mb-1">
                     <Logo />
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                         <ProfileWidget />
                         <ThemeToggle />
+                        <GlobalMuteButton />
                     </div>
                 </header>
 

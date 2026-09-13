@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Volume2 from 'lucide-react/dist/esm/icons/volume-2';
 import VolumeX from 'lucide-react/dist/esm/icons/volume-x';
-import { getMuted, toggleMute, playSound } from '../lib/audioEngine';
+import { getMuted, toggleMute, playSound, playHaptic } from '../lib/audioEngine';
 
-export default function GlobalMuteButton() {
+export default function GlobalMuteButton({ className = '' }) {
     const [muted, setMutedState] = useState(() => getMuted());
 
     useEffect(() => {
@@ -11,24 +11,28 @@ export default function GlobalMuteButton() {
             if (getMuted() !== muted) {
                 setMutedState(getMuted());
             }
-        }, 1000);
+        }, 800);
         return () => clearInterval(interval);
     }, [muted]);
 
-    const handleToggleMute = () => {
+    const handleToggleMute = (e) => {
+        e?.stopPropagation();
         const next = toggleMute();
         setMutedState(next);
+        playHaptic(15);
         if (!next) playSound('click');
     };
 
     return (
         <button
             onClick={handleToggleMute}
-            className="fixed bottom-6 left-6 z-[9999] glass-card w-12 h-12 flex items-center justify-center rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all text-white/80 hover:text-white"
-            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}
+            className={`glass-card w-11 h-11 flex items-center justify-center rounded-2xl hover:scale-105 active:scale-95 transition-all select-none shrink-0 border border-white/10 ${
+                muted ? 'border-rose-500/30 text-rose-400 bg-rose-500/10 shadow-[0_0_10px_rgba(244,63,94,0.2)]' : 'text-emerald-400 hover:text-emerald-300'
+            } ${className}`}
             title={muted ? 'تفعيل الصوت' : 'كتم الصوت'}
+            aria-label={muted ? 'تفعيل الصوت' : 'كتم الصوت'}
         >
-            {muted ? <VolumeX size={20} className="text-rose-400" /> : <Volume2 size={20} className="text-emerald-400" />}
+            {muted ? <VolumeX size={19} className="text-rose-400" /> : <Volume2 size={19} className="text-emerald-400" />}
         </button>
     );
 }

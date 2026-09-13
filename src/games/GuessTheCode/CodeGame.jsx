@@ -9,6 +9,7 @@ import Lock from 'lucide-react/dist/esm/icons/lock';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Wifi from 'lucide-react/dist/esm/icons/wifi';
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
+import GlobalMuteButton from '../../components/GlobalMuteButton';
 
 export default function CodeGame({ setView }) {
     // ── stable refs (no stale closures) ──────────────────────────────
@@ -185,7 +186,7 @@ export default function CodeGame({ setView }) {
 
                 {/* ── Navbar ── */}
                 <div className="flex justify-between items-center py-4 relative">
-                    <div className="flex items-center gap-3 z-10">
+                    <div className="flex items-center gap-2 z-10">
                         <Logo size="small" />
                         <button
                             onClick={() => { connRef.current?.close(); setView('hub'); }}
@@ -193,6 +194,7 @@ export default function CodeGame({ setView }) {
                         >
                             <ArrowRight size={20} />
                         </button>
+                        <GlobalMuteButton />
                     </div>
 
                     <div className="flex items-center gap-2 glass-card px-3 py-1.5 rounded-2xl text-xs font-bold text-center">

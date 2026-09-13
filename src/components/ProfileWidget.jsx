@@ -28,14 +28,14 @@ export default function ProfileWidget() {
     return (
         <>
             <div
-                className="glass-card px-4 py-2 rounded-2xl flex items-center justify-between gap-4 cursor-pointer hover:bg-white/5 transition-colors"
+                className="glass-card h-11 px-3 rounded-2xl flex items-center gap-2 cursor-pointer hover:bg-white/10 transition-all select-none shrink-0 border border-white/10 shadow-sm"
                 onClick={handleOpen}
             >
-                <div className="flex items-center gap-2">
-                    <span className="text-2xl drop-shadow-md">{profile.avatar}</span>
-                    <span className="font-bold text-sm tracking-wide opacity-90">{profile.nickname}</span>
-                </div>
-                <Edit3 size={14} className="opacity-50" />
+                <span className="text-xl leading-none drop-shadow shrink-0">{profile.avatar}</span>
+                <span className="font-black text-xs tracking-wide opacity-90 max-w-[70px] sm:max-w-[85px] truncate whitespace-nowrap">
+                    {profile.nickname}
+                </span>
+                <Edit3 size={12} className="opacity-40 shrink-0" />
             </div>
 
             {isOpen && (

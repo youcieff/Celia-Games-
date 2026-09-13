@@ -4,6 +4,7 @@ import Logo from '../../components/Logo';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Wifi from 'lucide-react/dist/esm/icons/wifi';
+import GlobalMuteButton from '../../components/GlobalMuteButton';
 
 // Helper to check winning states on a 3x3 array (Classic XO)
 const checkWin = (squares) => {
@@ -148,7 +149,7 @@ export default function UltimateGame({ setView }) {
 
                 {/* Nav */}
                 <div className="px-4 flex justify-between items-center py-4 mb-2 relative">
-                    <div className="flex items-center gap-3 z-10">
+                    <div className="flex items-center gap-2 z-10">
                         <Logo size="small" />
                         <button
                             onClick={() => { connRef.current?.close(); setView('hub'); }}
@@ -156,6 +157,7 @@ export default function UltimateGame({ setView }) {
                         >
                             <ArrowRight size={20} />
                         </button>
+                        <GlobalMuteButton />
                     </div>
 
                     <div className="flex items-center gap-2 glass-card px-3 py-1.5 rounded-[1.25rem] text-xs font-bold leading-tight text-center z-10">
