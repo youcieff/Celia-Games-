@@ -17,7 +17,7 @@ export default function createAIConn(gameIdPrefix) {
                 if (aiInstance && aiInstance.onMessage) {
                     aiInstance.onMessage(data);
                 }
-            }, 600 + Math.random() * 500);
+            }, 500 + Math.random() * 400);
         },
         on(event, handler) {
             if (!listeners[event]) listeners[event] = [];
@@ -33,6 +33,9 @@ export default function createAIConn(gameIdPrefix) {
             aiInstance = null;
         },
         _sendToPlayer(data) {
+            if (data && data.type === 'global_ready' && !data.profile) {
+                data.profile = { nickname: 'الذكاء الاصطناعي 🤖', avatar: '🤖' };
+            }
             if (listeners['data']) {
                 listeners['data'].forEach(cb => cb(data));
             }

@@ -13,8 +13,11 @@ export default class SeaBattleAI {
         this.targetQueue = []; // cells to try next after a hit
 
         setTimeout(() => {
-            this.conn._sendToPlayer({ type: 'global_ready' });
-        }, 800);
+            this.conn._sendToPlayer({
+                type: 'global_ready',
+                profile: { nickname: 'الذكاء الاصطناعي 🤖', avatar: '🤖' }
+            });
+        }, 600);
     }
 
     placeShipsRandomly() {
@@ -61,9 +64,11 @@ export default class SeaBattleAI {
             this.placeShipsRandomly();
             setTimeout(() => {
                 this.conn._sendToPlayer({ type: 'ready' });
-            }, 1000);
+            }, 600);
+        } else if (msg.type === 'ready-ack') {
+            // Acknowledge
         } else if (msg.type === 'shot') {
-            // Player shot at us
+            // Player (Host) shot at us (Guest)
             const { r, c } = msg;
             let isHit = false;
 
@@ -75,13 +80,19 @@ export default class SeaBattleAI {
                 this.myGrid[r][c] = 'miss';
             }
 
-            // Tell player result
-            this.conn._sendToPlayer({ type: 'shot-result', r, c, result: isHit ? 'hit' : 'miss' });
+            // Tell player result with explicit nextTurn
+            this.conn._sendToPlayer({
+                type: 'shot-result',
+                r,
+                c,
+                result: isHit ? 'hit' : 'miss',
+                nextTurn: 'guest' // AI turn next
+            });
 
             // Now it's our turn
             if (this.hitsOnMe < this.TOTAL_HEALTH) {
                 this.isAiTurn = true;
-                setTimeout(() => this.makeMove(), 1500); 
+                setTimeout(() => this.makeMove(), 1100); 
             }
         } else if (msg.type === 'shot-result') {
             // Player tells us result of our shot
@@ -101,7 +112,6 @@ export default class SeaBattleAI {
             this.hitsOnMe = 0;
             this.targetQueue = [];
             this.targetGrid = Array.from({ length: this.SIZE }, () => Array(this.SIZE).fill(null));
-            // Just wait for 'ready'
         }
     }
 
@@ -121,7 +131,7 @@ export default class SeaBattleAI {
             }
         }
 
-        // Hunt mode (checkerboard approach preferred but random valid fallback)
+        // Hunt mode
         if (r === -1) {
             let validMoves = [];
             for (let i = 0; i < this.SIZE; i++) {
@@ -131,7 +141,6 @@ export default class SeaBattleAI {
             }
             if (validMoves.length === 0) return;
 
-            // Checkerboard subset
             let huntingMoves = validMoves.filter(m => (m.r + m.c) % 2 === 0);
             if (huntingMoves.length === 0) huntingMoves = validMoves;
 
@@ -143,7 +152,12 @@ export default class SeaBattleAI {
         this.targetGrid[r][c] = 'pending';
         this.isAiTurn = false;
         
-        this.conn._sendToPlayer({ type: 'shot', r, c });
+        this.conn._sendToPlayer({
+            type: 'shot',
+            r,
+            c,
+            shooter: 'guest'
+        });
     }
 
     close() {}

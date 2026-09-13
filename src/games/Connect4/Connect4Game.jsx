@@ -124,6 +124,12 @@ export default function Connect4Game({ setView }) {
         if (droppedRow !== -1) {
             setBoard(newBoard);
             setHostTurn(!hostTurnRef.current);
+            setTimeout(() => {
+                import('../../lib/audioEngine').then(({ playSound, playHaptic }) => {
+                    playSound('pop');
+                    playHaptic(20);
+                });
+            }, 300); // Delay sound to match when coin lands
         }
     };
 
@@ -144,8 +150,8 @@ export default function Connect4Game({ setView }) {
 
     const doRestart = () => {
         setBoard(Array.from({ length: ROWS }, () => Array(COLS).fill(null)));
-        setHostTurn(isHost ? hostPlaysFirst : (clientConfig?.hostPlaysFirst ?? true));
-        setGameState(isHost ? 'setup' : 'waiting-start');
+        setHostTurn(isHostRef.current ? hostPlaysFirst : (clientConfig?.hostPlaysFirst ?? true));
+        setGameState(isHostRef.current ? 'setup' : 'waiting-start');
     };
 
     const handleRestart = () => {
@@ -297,11 +303,13 @@ export default function Connect4Game({ setView }) {
                                                         style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 10% 10%, 10% 90%, 90% 90%, 90% 10%, 10% 10%)' /* basic inverse hole approximation, but border overlay is better */ }} />
 
                                                     {/* Chip */}
-                                                    <div className={`absolute rounded-full transition-all duration-300 transform w-[90%] h-[90%] z-0
-                                          ${cell ? 'scale-100 opacity-100 translate-y-0' : 'scale-50 opacity-0 -translate-y-[200px]'}
+                                                    <div className={`absolute rounded-full transition-transform transform w-[90%] h-[90%] z-0
+                                          ${cell ? 'scale-100 translate-y-0' : 'scale-100 -translate-y-[150%]'}
                                           ${isWinningChip ? 'animate-pulse-glow z-30 ring-4 ring-white' : ''}
                                          `}
                                                         style={{
+                                                            transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)', // Bouncy effect
+                                                            transitionDuration: '500ms',
                                                             backgroundColor: cObj?.hex,
                                                             boxShadow: isWinningChip ? `0 0 20px ${cObj?.glow}` : `inset -3px -3px 8px rgba(0,0,0,0.4), inset 3px 3px 8px rgba(255,255,255,0.4)`
                                                         }}

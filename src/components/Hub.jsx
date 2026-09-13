@@ -1,182 +1,226 @@
 import React from 'react';
 import ThemeToggle from './ThemeToggle';
 import Logo from './Logo';
-import Gamepad2 from 'lucide-react/dist/esm/icons/gamepad-2';
-import Brain from 'lucide-react/dist/esm/icons/brain';
+import ProfileWidget from './ProfileWidget';
+import { playSound, playHaptic } from '../lib/audioEngine';
 
+/* ─── game catalogue ─────────────────────────────────────────────────────── */
+const GAMES = [
+    {
+        id: 'code-game',
+        emoji: '🔐',
+        title: 'خمن الكود',
+        desc: 'كود سري وردود فعل ملونة',
+        badge: 'أونلاين',
+        accent: '#00e5a0',
+    },
+    {
+        id: 'word-game',          // special — has sub-modes
+        emoji: '🧠',
+        title: 'خمن الكلمة',
+        desc: 'حرف حرف لحد ما تخمنها',
+        badge: null,              // handled separately
+        accent: '#818cf8',
+    },
+    {
+        id: 'xo-game',
+        emoji: '✖️⭕',
+        title: 'إكس أو',
+        desc: 'الكلاسيك',
+        badge: 'أونلاين',
+        accent: '#f472b6',
+    },
+    {
+        id: 'big-xo-game',
+        emoji: '🎯',
+        title: 'Big XO',
+        desc: '٩ إكس أو في واحدة',
+        badge: 'أونلاين',
+        accent: '#a78bfa',
+    },
+    {
+        id: 'connect-4',
+        emoji: '🟡',
+        title: 'Connect 4',
+        desc: 'رص ٤ في صف',
+        badge: 'أونلاين',
+        accent: '#fbbf24',
+    },
+    {
+        id: 'memory-game',
+        emoji: '🃏',
+        title: 'Memory Match',
+        desc: 'تطابق الورق',
+        badge: 'أونلاين',
+        accent: '#34d399',
+    },
+    {
+        id: 'dots-boxes',
+        emoji: '⬜',
+        title: 'Dots & Boxes',
+        desc: 'أكمل المربع',
+        badge: 'أونلاين',
+        accent: '#60a5fa',
+    },
+    {
+        id: 'sea-battle',
+        emoji: '🚢',
+        title: 'Sea Battle',
+        desc: 'حرب السفن',
+        badge: 'أونلاين',
+        accent: '#38bdf8',
+    },
+    {
+        id: 'guess-time',
+        emoji: '⏱️',
+        title: 'خمن الوقت',
+        desc: 'وقّف الساعة في اللحظة',
+        badge: 'أونلاين',
+        accent: '#fb923c',
+    },
+    {
+        id: 'bus-complete',
+        emoji: '🚌',
+        title: 'أتوبيس كومبليت',
+        desc: 'اسم حيوان نبات جماد بلد',
+        badge: 'أونلاين',
+        accent: '#4ade80',
+    },
+];
+
+/* ─── word game sub-selector ─────────────────────────────────────────────── */
+function WordGameSelector({ onSelect }) {
+    return (
+        <div className="grid grid-cols-2 gap-2 mt-3">
+            <button
+                onClick={() => onSelect('word-game-local')}
+                className="glass-card rounded-2xl py-3 px-4 flex flex-col items-center gap-1 transition-all hover:border-[var(--primary-color)] active:scale-95"
+            >
+                <span className="text-2xl">📱</span>
+                <span className="text-sm font-black">أوفلاين</span>
+                <span className="text-[10px] opacity-40 font-medium">جهاز واحد</span>
+            </button>
+            <button
+                onClick={() => onSelect('word-game-online')}
+                className="glass-card rounded-2xl py-3 px-4 flex flex-col items-center gap-1 transition-all hover:border-[var(--primary-color)] active:scale-95"
+            >
+                <span className="text-2xl">🌐</span>
+                <span className="text-sm font-black">أونلاين</span>
+                <span className="text-[10px] opacity-40 font-medium">جهازين</span>
+            </button>
+        </div>
+    );
+}
+
+/* ─── main hub ───────────────────────────────────────────────────────────── */
 export default function Hub({ setView }) {
+    const [wordExpanded, setWordExpanded] = React.useState(false);
+
+    const go = (viewName) => {
+        playSound('click');
+        playHaptic(15);
+        setView(viewName);
+    };
+
+    const handleCardClick = (game) => {
+        if (game.id === 'word-game') {
+            playSound('click');
+            setWordExpanded(v => !v);
+        } else {
+            go(game.id);
+        }
+    };
+
     return (
         <>
-            {/* Animated Background */}
-            <div className="animated-bg"><div className="bg-orb-3"></div></div>
+            {/* Background */}
+            <div className="animated-bg">
+                <div className="bg-orb-3" />
+                <div className="animated-bg-noise" />
+            </div>
 
-            <div className="min-h-dvh flex flex-col items-center px-5 pt-safe safe-area-pt">
-                {/* Header */}
-                <header className="w-full max-w-md flex justify-between items-center py-5">
+            <div className="min-h-dvh flex flex-col items-center px-4 safe-area-pt">
+
+                {/* ── Header ── */}
+                <header className="w-full max-w-md flex justify-between items-center py-4 mb-1">
                     <Logo />
-                    <ThemeToggle />
+                    <div className="flex items-center gap-2">
+                        <ProfileWidget />
+                        <ThemeToggle />
+                    </div>
                 </header>
 
-                {/* Tagline */}
-                <div className="text-center mb-8 mt-2">
-                    <p className="opacity-60 text-sm font-medium">اختار اللعبة وابدأ التحدي 🏆</p>
+                {/* ── Hero Tagline ── */}
+                <div className="w-full max-w-md mb-6">
+                    <p className="text-xs font-bold opacity-40 tracking-widest uppercase">
+                        اختار اللعبة وابدأ التحدي
+                    </p>
                 </div>
 
-                {/* Games */}
-                <main className="w-full max-w-md flex flex-col gap-5 flex-1">
+                {/* ── Games List ── */}
+                <main className="w-full max-w-md flex flex-col gap-3 flex-1 pb-24">
 
-                    {/* Guess The Code */}
-                    <button
-                        onClick={() => setView('code-game')}
-                        className="glass-card glass-card-hover rounded-3xl p-6 text-right w-full"
-                    >
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="w-14 h-14 rounded-2xl glass-card flex items-center justify-center shrink-0" style={{ boxShadow: '0 0 20px var(--primary-glow)' }}>
-                                <Gamepad2 className="w-7 h-7" style={{ color: 'var(--primary-color)' }} />
-                            </div>
-                            <div>
-                                <h3 className="text-2xl font-black mb-0.5">خمن الكود</h3>
-                                <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400">
-                                    ● أونلاين — جهازين
-                                </span>
-                            </div>
-                        </div>
-                        <p className="text-sm opacity-60 leading-relaxed">
-                            كل لاعب يحط كود سري، وتتحدوا في التخمين مع ردود فعل ملونة فورية.
-                        </p>
-                    </button>
-
-                    {/* Guess The Word */}
-                    <div className="glass-card rounded-3xl p-6 text-right w-full">
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="w-14 h-14 rounded-2xl glass-card flex items-center justify-center shrink-0" style={{ boxShadow: '0 0 20px var(--primary-glow)' }}>
-                                <Brain className="w-7 h-7" style={{ color: 'var(--accent-color)' }} />
-                            </div>
-                            <div>
-                                <h3 className="text-2xl font-black mb-0.5">خمن الكلمة</h3>
-                                <span className="text-xs font-bold opacity-60">اختار طريقة اللعب</span>
-                            </div>
-                        </div>
-                        <p className="text-sm opacity-60 leading-relaxed mb-5">
-                            اللاعب الأول يكتب كلمة سرية، والتاني يحاول يخمنها قبل ما الفرص تخلص.
-                        </p>
-                        <div className="grid grid-cols-2 gap-3">
+                    {GAMES.map((game) => (
+                        <div key={game.id}>
                             <button
-                                onClick={() => setView('word-game-local')}
-                                className="glass-card glass-card-hover rounded-2xl py-3 px-4 flex flex-col items-center gap-1"
+                                onClick={() => handleCardClick(game)}
+                                className="game-card"
+                                style={{ '--card-accent': game.accent }}
                             >
-                                <span className="text-lg">📱</span>
-                                <span className="text-sm font-black">أوفلاين</span>
-                                <span className="text-[11px] opacity-50">جهاز واحد</span>
+                                {/* shimmer layer */}
+                                <span className="game-card-shimmer" />
+
+                                {/* icon */}
+                                <div
+                                    className="game-card-icon flex items-center justify-center"
+                                    style={{ 
+                                        boxShadow: `0 0 20px ${game.accent}55`,
+                                        fontSize: game.id === 'xo-game' ? '1.1rem' : '1.5rem',
+                                        letterSpacing: game.id === 'xo-game' ? '-2px' : 'normal'
+                                    }}
+                                >
+                                    {game.emoji}
+                                </div>
+
+                                {/* text */}
+                                <div className="game-card-body">
+                                    <p className="game-card-title">{game.title}</p>
+                                    <p className="game-card-desc">{game.desc}</p>
+                                </div>
+
+                                {/* badge / arrow */}
+                                {game.badge && (
+                                    <span
+                                        className="game-card-badge"
+                                        style={{
+                                            color: game.accent,
+                                            borderColor: `${game.accent}55`,
+                                            background: `${game.accent}14`,
+                                        }}
+                                    >
+                                        {game.badge}
+                                    </span>
+                                )}
+                                {game.id === 'word-game' && (
+                                    <span className="text-white/30 text-sm font-black ml-1 transition-transform"
+                                        style={{ transform: wordExpanded ? 'rotate(90deg)' : 'none', display: 'inline-block' }}>
+                                        ›
+                                    </span>
+                                )}
                             </button>
-                            <button
-                                onClick={() => setView('word-game-online')}
-                                className="glass-card glass-card-hover rounded-2xl py-3 px-4 flex flex-col items-center gap-1"
-                            >
-                                <span className="text-lg">🌐</span>
-                                <span className="text-sm font-black">أونلاين</span>
-                                <span className="text-[11px] opacity-50">جهازين</span>
-                            </button>
+
+                            {/* word game sub-menu */}
+                            {game.id === 'word-game' && wordExpanded && (
+                                <div className="mt-2 animate-fade-in">
+                                    <WordGameSelector onSelect={go} />
+                                </div>
+                            )}
                         </div>
-                    </div>
-
-                    {/* Grid for XOs */}
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* Classic XO */}
-                        <button
-                            onClick={() => setView('xo-game')}
-                            className="glass-card glass-card-hover rounded-3xl p-5 text-center flex flex-col items-center"
-                        >
-                            <div className="text-4xl font-black mb-3">
-                                <span className="text-emerald-400">X</span>
-                                <span className="text-pink-400">O</span>
-                            </div>
-                            <h3 className="text-xl font-black mb-1">إكس أو</h3>
-                            <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400">أونلاين</span>
-                        </button>
-
-                        {/* Big XO */}
-                        <button
-                            onClick={() => setView('big-xo-game')}
-                            className="glass-card glass-card-hover rounded-3xl p-5 text-center flex flex-col items-center"
-                        >
-                            <div className="text-4xl font-black mb-3 grid grid-cols-3 gap-0.5 leading-none">
-                                {[...Array(9)].map((_, i) => <div key={i} className="w-2 h-2 rounded-sm bg-[var(--primary-color)]"></div>)}
-                            </div>
-                            <h3 className="text-xl font-black mb-1">Big XO</h3>
-                            <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400">أونلاين</span>
-                        </button>
-                    </div>
-
-                    {/* Additional Games Grid */}
-                    <div className="mt-4">
-                        <button
-                            onClick={() => setView('connect-4')}
-                            className="glass-card glass-card-hover rounded-3xl p-5 text-center w-full flex flex-col items-center"
-                        >
-                            <div className="flex gap-1 mb-3">
-                                <div className="w-4 h-4 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
-                                <div className="w-4 h-4 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]"></div>
-                                <div className="w-4 h-4 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
-                                <div className="w-4 h-4 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]"></div>
-                            </div>
-                            <h3 className="text-xl font-black mb-1">Connect 4</h3>
-                            <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400">أربعة في الرص - أونلاين</span>
-                        </button>
-                    </div>
-
-                    {/* Memory Match Game */}
-                    <div className="mt-4">
-                        <button
-                            onClick={() => setView('memory-game')}
-                            className="glass-card glass-card-hover rounded-3xl p-5 text-center w-full flex flex-col items-center"
-                        >
-                            <div className="grid grid-cols-2 gap-1.5 mb-3">
-                                <div className="w-5 h-6 rounded-md bg-[var(--primary-color)] flex items-center justify-center opacity-80 shadow-[0_0_8px_var(--primary-glow)]">🃏</div>
-                                <div className="w-5 h-6 rounded-md bg-white/10 flex items-center justify-center border border-white/20"></div>
-                                <div className="w-5 h-6 rounded-md bg-white/10 flex items-center justify-center border border-white/20"></div>
-                                <div className="w-5 h-6 rounded-md bg-[var(--primary-color)] flex items-center justify-center opacity-80 shadow-[0_0_8px_var(--primary-glow)]">🃏</div>
-                            </div>
-                            <h3 className="text-xl font-black mb-1">Memory Match</h3>
-                            <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400">لعبة الذاكرة - أونلاين</span>
-                        </button>
-                    </div>
-
-                    {/* Dots and Boxes Game */}
-                    <div className="mt-4">
-                        <button
-                            onClick={() => setView('dots-boxes')}
-                            className="glass-card glass-card-hover rounded-3xl p-5 text-center w-full flex flex-col items-center"
-                        >
-                            <div className="grid grid-cols-2 gap-1 mb-3">
-                                <div className="w-5 h-5 rounded-[4px] border-2 border-[var(--primary-color)] shadow-[0_0_8px_var(--primary-glow)] bg-[var(--primary-color)]/20"></div>
-                                <div className="w-5 h-5 rounded-[4px] border-2 border-white/20"></div>
-                                <div className="w-5 h-5 rounded-[4px] border-2 border-white/20"></div>
-                                <div className="w-5 h-5 rounded-[4px] border-2 border-[var(--accent-color)] shadow-[0_0_8px_var(--primary-glow)] bg-[var(--accent-color)]/20"></div>
-                            </div>
-                            <h3 className="text-xl font-black mb-1">Dots & Boxes</h3>
-                            <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400">أكمل المربع - أونلاين</span>
-                        </button>
-                    </div>
-
-                    {/* Sea Battle Game */}
-                    <div className="mt-4">
-                        <button
-                            onClick={() => setView('sea-battle')}
-                            className="glass-card glass-card-hover rounded-3xl p-5 text-center w-full flex flex-col items-center"
-                        >
-                            <div className="flex gap-2 mb-3">
-                                <div className="w-6 h-6 rounded-md bg-blue-500/20 border border-blue-400/50 shadow-[0_0_8px_rgba(59,130,246,0.6)] flex items-center justify-center">🚢</div>
-                                <div className="w-6 h-6 rounded-md bg-rose-500/20 border border-rose-400/50 shadow-[0_0_10px_rgba(244,63,94,0.8)] flex items-center justify-center">💥</div>
-                            </div>
-                            <h3 className="text-xl font-black mb-1">Sea Battle</h3>
-                            <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400">حرب السفن - أونلاين</span>
-                        </button>
-                    </div>
+                    ))}
 
                 </main>
 
-                <footer className="py-6 opacity-30 text-xs font-semibold">
+                <footer className="py-5 text-[11px] font-bold opacity-20 tracking-widest">
                     ألعاب سيليا — صُنع بكل ❤️
                 </footer>
             </div>

@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import P2PConnectionManager from '../../components/P2PConnectionManager';
 import Logo from '../../components/Logo';
-import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
-import Wifi from 'lucide-react/dist/esm/icons/wifi';
+import Film from 'lucide-react/dist/esm/icons/film';
+import { playSound, playHaptic } from '../../lib/audioEngine';
+import EmotesOverlay from '../../components/EmotesOverlay';
+import PlayerGameHeader from '../../components/PlayerGameHeader';
+import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
+import MatchRecapModal from '../../components/MatchRecapModal';
+import useProfile from '../../hooks/useProfile';
 
 // Helper to check winning states
 const calculateWinner = (squares) => {
@@ -23,19 +28,27 @@ const calculateWinner = (squares) => {
 };
 
 export default function TicTacToeGame({ setView }) {
-    // ── WebRTC Refs & States ─────────────────────────────────────────
     const connRef = useRef(null);
     const isHostRef = useRef(false);
 
-    const [gameState, setGameState] = useState('lobby'); // lobby, choosing-symbol, waiting-start, playing, finished
+    const [myProfile] = useProfile();
+    const [oppProfile, setOppProfile] = useState(null);
+
+    const [gameState, setGameState] = useState('lobby'); // lobby, choosing-symbol, choosing-starts, waiting-start, playing
 
     // Game state
     const [board, setBoard] = useState(Array(9).fill(null));
-    const [hostSymbolConfig, setHostSymbolConfig] = useState('X'); // Temporary selection
+    const [hostSymbolConfig, setHostSymbolConfig] = useState('X');
     const [hostSymbol, setHostSymbol] = useState('X');
     const [xIsNext, setXIsNext] = useState(true);
 
-    // We use ref for board/xIsNext to avoid stale closures in network callback
+    // History for Match Recap
+    const [moveHistory, setMoveHistory] = useState([]);
+    const [showRecap, setShowRecap] = useState(false);
+
+    // Score stats
+    const [scores, setScores] = useState({ me: 0, opp: 0 });
+
     const boardRef = useRef(Array(9).fill(null));
     const xIsNextRef = useRef(true);
 
@@ -44,15 +57,15 @@ export default function TicTacToeGame({ setView }) {
         xIsNextRef.current = xIsNext;
     }, [board, xIsNext]);
 
-    // Derived properties
     const isHost = isHostRef.current;
     const mySymbol = isHost ? hostSymbol : (hostSymbol === 'X' ? 'O' : 'X');
     const isMyTurn = (mySymbol === 'X' && xIsNext) || (mySymbol === 'O' && !xIsNext);
     const winData = calculateWinner(board);
 
-    const handleGameStart = (conn, hostMode) => {
+    const handleGameStart = (conn, hostMode, oppProf) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
+        if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
         setGameState(hostMode ? 'choosing-symbol' : 'waiting-start');
     };
@@ -61,14 +74,35 @@ export default function TicTacToeGame({ setView }) {
         if (msg.type === 'play') {
             const newBoard = [...boardRef.current];
             newBoard[msg.index] = msg.symbol;
+
+            playSound('pop');
+            playHaptic(25);
+
+            setMoveHistory(prev => [...prev, { index: msg.index, symbol: msg.symbol, player: 'opp' }]);
+
             setBoard(newBoard);
             setXIsNext(!xIsNextRef.current);
+
+            const win = calculateWinner(newBoard);
+            if (win) {
+                if (win.winner === 'draw') {
+                    playSound('ding');
+                } else if (win.winner === mySymbol) {
+                    playSound('win');
+                    playHaptic([50, 50, 100]);
+                    setScores(s => ({ ...s, me: s.me + 1 }));
+                } else {
+                    playSound('lose');
+                    setScores(s => ({ ...s, opp: s.opp + 1 }));
+                }
+            }
         } else if (msg.type === 'start') {
             setHostSymbol(msg.hostSymbol);
             setXIsNext(msg.xIsNext);
             setGameState('playing');
+            playSound('ding');
         } else if (msg.type === 'restart') {
-            if (boardRef.current.every(cell => cell === null)) return; // already restarted locally
+            if (boardRef.current.every(cell => cell === null)) return;
             doRestart();
         }
     };
@@ -76,18 +110,37 @@ export default function TicTacToeGame({ setView }) {
     const handleClick = (index) => {
         if (gameState !== 'playing' || !isMyTurn || board[index] || winData) return;
 
-        // Apply move locally
+        playSound('click');
+        playHaptic(15);
+
         const newBoard = [...board];
         newBoard[index] = mySymbol;
+
+        setMoveHistory(prev => [...prev, { index, symbol: mySymbol, player: 'me' }]);
+
         setBoard(newBoard);
         setXIsNext(!xIsNext);
 
-        // Send to peer
+        const win = calculateWinner(newBoard);
+        if (win) {
+            if (win.winner === 'draw') {
+                playSound('ding');
+            } else if (win.winner === mySymbol) {
+                playSound('win');
+                playHaptic([50, 50, 100]);
+                setScores(s => ({ ...s, me: s.me + 1 }));
+            } else {
+                playSound('lose');
+                setScores(s => ({ ...s, opp: s.opp + 1 }));
+            }
+        }
+
         connRef.current?.send({ type: 'play', index, symbol: mySymbol });
     };
 
     const handleChooseSymbol = (choice) => {
         setHostSymbolConfig(choice);
+        playSound('click');
         setGameState('choosing-starts');
     };
 
@@ -95,14 +148,16 @@ export default function TicTacToeGame({ setView }) {
         setHostSymbol(hostSymbolConfig);
         const newXIsNext = hostSymbolConfig === 'X' ? hostStarts : !hostStarts;
         setXIsNext(newXIsNext);
+        playSound('ding');
         setGameState('playing');
         connRef.current?.send({ type: 'start', hostSymbol: hostSymbolConfig, xIsNext: newXIsNext });
     };
 
     const doRestart = () => {
         setBoard(Array(9).fill(null));
-        setGameState(isHost ? 'choosing-symbol' : 'waiting-start');
-
+        setMoveHistory([]);
+        setShowRecap(false);
+        setGameState(isHostRef.current ? 'choosing-symbol' : 'waiting-start');
     };
 
     const handleRestart = () => {
@@ -110,13 +165,12 @@ export default function TicTacToeGame({ setView }) {
         connRef.current?.send({ type: 'restart' });
     };
 
-    // Rendering helpers
     const getCellClass = (index) => {
-        let base = "digit-cell w-full aspect-square flex items-center justify-center text-5xl font-black rounded-2xl cursor-pointer hover:border-[var(--primary-color)] transition-all ";
+        let base = "digit-cell w-full aspect-square flex items-center justify-center text-5xl font-black rounded-2xl cursor-pointer hover:border-emerald-400 transition-all ";
         if (board[index] === 'X') base += "text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.6)] ";
         if (board[index] === 'O') base += "text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.6)] ";
         if (winData && winData.line.includes(index) && winData.winner !== 'draw') {
-            base += "bg-[var(--primary-color)]/20 shadow-[0_0_20px_var(--primary-glow)] border-[var(--primary-color)] ";
+            base += "bg-emerald-500/20 shadow-[0_0_20px_rgba(52,211,153,0.4)] border-2 border-emerald-400 animate-pulse ";
         }
         return base;
     };
@@ -126,36 +180,28 @@ export default function TicTacToeGame({ setView }) {
             <div className="animated-bg"><div className="bg-orb-3" /></div>
             <div className="min-h-dvh max-w-md mx-auto px-4 flex flex-col safe-area-pt overflow-x-hidden overflow-y-auto pb-6">
 
-                {/* Nav */}
-                <div className="flex justify-between items-center py-4 mb-4 relative">
-                    <div className="flex items-center gap-3 z-10">
+                {/* Header with Player Cards */}
+                {gameState !== 'lobby' ? (
+                    <PlayerGameHeader
+                        title="إكس أو 🎮"
+                        gameEmoji="🎮"
+                        isMyTurn={isMyTurn}
+                        oppProfile={oppProfile}
+                        myScore={scores.me}
+                        oppScore={scores.opp}
+                        onLeave={() => { connRef.current?.close(); setView('hub'); }}
+                    />
+                ) : (
+                    <div className="flex justify-between items-center py-4 mb-4">
                         <Logo size="small" />
                         <button
-                            onClick={() => { connRef.current?.close(); setView('hub'); }}
-                            className="glass-card w-11 h-11 flex items-center justify-center rounded-2xl hover:scale-105 transition-transform"
+                            onClick={() => setView('hub')}
+                            className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 transition-transform"
                         >
-                            <ArrowRight size={20} />
+                            الرئيسية
                         </button>
                     </div>
-
-                    <div className="flex items-center gap-2 glass-card px-3 py-1.5 rounded-[1.25rem] text-xs font-bold leading-tight text-center">
-                        {gameState !== 'lobby' ? (
-                            <div className="flex items-center gap-3">
-                                <span className="flex flex-col items-end">
-                                    <span className="text-[12px] font-black gradient-text leading-none mb-1">إكس أو 🎮</span>
-                                    <span className="text-[9px] opacity-70 leading-none">أنت ({mySymbol})</span>
-                                </span>
-                                <div className="w-px h-5 bg-white/20"></div>
-                                <span className="flex flex-col items-center justify-center text-emerald-400">
-                                    <Wifi size={12} />
-                                    <span className="text-[8px] mt-0.5 font-black">متصل</span>
-                                </span>
-                            </div>
-                        ) : (
-                            <span className="text-[11px] font-black gradient-text">إكس أو 🎮</span>
-                        )}
-                    </div>
-                </div>
+                )}
 
                 {/* Lobby */}
                 {gameState === 'lobby' && (
@@ -164,89 +210,91 @@ export default function TicTacToeGame({ setView }) {
                     </div>
                 )}
 
-                {/* Screen: Choosing Symbol (Host) */}
+                {/* Choosing Symbol (Host) */}
                 {gameState === 'choosing-symbol' && (
-                    <div className="flex-1 flex flex-col items-center justify-center -mt-10 px-4">
-                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pop-in">
-                            <h2 className="text-2xl font-black mb-3">🎮 اختار تلعب بإيه؟</h2>
-                            <p className="opacity-60 text-sm mb-6 font-bold">المرحلة 1 من 2</p>
+                    <div className="flex-1 flex flex-col items-center justify-center -mt-6 px-4 animate-fade-in">
+                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center border border-white/10 shadow-2xl">
+                            <h2 className="text-2xl font-black mb-1">🎮 اختار تلعب بإيه؟</h2>
+                            <p className="opacity-60 text-xs mb-6 font-bold">المرحلة 1 من 2</p>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <button
                                     onClick={() => handleChooseSymbol('X')}
-                                    className="glass-card glass-card-hover rounded-2xl py-6 flex flex-col items-center gap-2 border border-transparent hover:border-emerald-400/50"
+                                    className="glass-card rounded-2xl h-28 flex flex-col items-center justify-center gap-2 border border-transparent hover:border-emerald-400/50 hover:scale-105 active:scale-95 transition-all"
                                 >
-                                    <span className="text-5xl font-black text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]">X</span>
+                                    <span className="text-6xl leading-none font-black text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]">X</span>
                                 </button>
                                 <button
                                     onClick={() => handleChooseSymbol('O')}
-                                    className="glass-card glass-card-hover rounded-2xl py-6 flex flex-col items-center gap-2 border border-transparent hover:border-pink-400/50"
+                                    className="glass-card rounded-2xl h-28 flex flex-col items-center justify-center gap-2 border border-transparent hover:border-pink-400/50 hover:scale-105 active:scale-95 transition-all"
                                 >
-                                    <span className="text-5xl font-black text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.6)]">O</span>
+                                    <span className="text-6xl leading-none font-black text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.6)]">O</span>
                                 </button>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* Screen: Choosing Starts (Host) */}
+                {/* Choosing Starts (Host) */}
                 {gameState === 'choosing-starts' && (
-                    <div className="flex-1 flex flex-col items-center justify-center -mt-10 px-4">
-                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pop-in">
-                            <h2 className="text-2xl font-black mb-3">مين هيبدأ الدور؟</h2>
-                            <p className="opacity-60 text-sm mb-6 font-bold">المرحلة 2 من 2</p>
+                    <div className="flex-1 flex flex-col items-center justify-center -mt-6 px-4 animate-fade-in">
+                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center border border-white/10 shadow-2xl">
+                            <h2 className="text-2xl font-black mb-1">مين هيبدأ الدور؟</h2>
+                            <p className="opacity-60 text-xs mb-6 font-bold">المرحلة 2 من 2</p>
 
                             <div className="flex flex-col gap-3">
                                 <button
                                     onClick={() => handleChooseStarts(true)}
-                                    className="glass-card glass-card-hover rounded-2xl py-4 font-black flex items-center justify-center gap-2 border border-transparent hover:border-emerald-400/50"
+                                    className="glass-card rounded-2xl py-4 font-black flex items-center justify-center gap-2 border border-transparent hover:border-emerald-400/50 hover:scale-105 active:scale-95 transition-all"
                                 >
                                     أبدأ أنا الأول 🙋‍♂️
                                 </button>
                                 <button
                                     onClick={() => handleChooseStarts(false)}
-                                    className="glass-card glass-card-hover rounded-2xl py-4 font-black flex items-center justify-center gap-2 border border-transparent hover:border-emerald-400/50"
+                                    className="glass-card rounded-2xl py-4 font-black flex items-center justify-center gap-2 border border-transparent hover:border-emerald-400/50 hover:scale-105 active:scale-95 transition-all"
                                 >
-                                    الخصم الأول 🤝
+                                    الخصم يبدأ 🤝
                                 </button>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* Screen: Waiting (Client) */}
+                {/* Waiting Screen (Guest) */}
                 {gameState === 'waiting-start' && (
-                    <div className="flex-1 flex items-center justify-center -mt-10 px-4">
-                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pulse-glow">
+                    <div className="flex-1 flex items-center justify-center -mt-6 px-4 animate-fade-in">
+                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center border border-emerald-400/30">
                             <h2 className="text-2xl font-black mb-2">في الانتظار... ⏳</h2>
-                            <p className="opacity-60 text-sm font-bold">الطرف التاني بيظبط إعدادات اللعبة</p>
+                            <p className="opacity-60 text-sm font-bold">
+                                {oppProfile?.nickname || 'المضيف'} بيظبط إعدادات اللعبة الآن
+                            </p>
                         </div>
                     </div>
                 )}
 
-                {/* Game */}
+                {/* Game Playing */}
                 {gameState === 'playing' && (
-                    <div className="flex-1 flex flex-col">
+                    <div className="flex-1 flex flex-col animate-fade-in">
 
-                        {/* Status Info */}
-                        <div className="text-center mb-8">
+                        {/* Status Bar */}
+                        <div className="text-center mb-6">
                             {!winData ? (
-                                <div className={`glass-card rounded-2xl py-3 px-6 inline-block transition-all ${isMyTurn ? 'animate-pulse-glow border-[var(--primary-color)]' : ''}`}>
-                                    <p className="font-black text-lg" style={{ color: isMyTurn ? 'var(--primary-color)' : 'inherit' }}>
-                                        {isMyTurn ? `🎯 دورك تلعب بـ (${mySymbol})!` : '⏳ دور الطرف التاني...'}
+                                <div className={`glass-card rounded-2xl py-2.5 px-6 inline-block transition-all ${isMyTurn ? 'border-2 border-emerald-400/60 bg-emerald-500/10 animate-pulse' : 'border border-white/5'}`}>
+                                    <p className={`font-black text-sm ${isMyTurn ? 'text-emerald-400' : 'opacity-70'}`}>
+                                        {isMyTurn ? `🎯 دورك تلعب بـ (${mySymbol})!` : '⏳ انتظر دور الخصم...'}
                                     </p>
                                 </div>
                             ) : (
                                 <div className="glass-card rounded-2xl py-3 px-6 text-center animate-pop-in">
-                                    <p className={`font-black text-3xl mb-1 ${winData.winner === mySymbol ? 'text-emerald-400' : (winData.winner === 'draw' ? 'text-yellow-400' : 'text-red-400')}`}>
-                                        {winData.winner === 'draw' ? '⚖️ تعادل!' : winData.winner === mySymbol ? '🎉 كسبت التحدي!' : '💔 خسرت التحدي!'}
+                                    <p className={`font-black text-2xl mb-1 ${winData.winner === mySymbol ? 'text-emerald-400' : (winData.winner === 'draw' ? 'text-amber-400' : 'text-rose-400')}`}>
+                                        {winData.winner === 'draw' ? '⚖️ تعادل ممتاز!' : winData.winner === mySymbol ? '🎉 كسبت التحدي!' : '💔 خسرت التحدي!'}
                                     </p>
                                 </div>
                             )}
                         </div>
 
                         {/* Board */}
-                        <div className="grid grid-cols-3 gap-3 w-full max-w-sm mx-auto p-4 glass-card rounded-3xl" dir="ltr">
+                        <div className="grid grid-cols-3 gap-3 w-full max-w-sm mx-auto p-4 glass-card rounded-3xl border border-white/10 shadow-2xl" dir="ltr">
                             {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((index) => (
                                 <button
                                     key={index}
@@ -261,12 +309,23 @@ export default function TicTacToeGame({ setView }) {
                             ))}
                         </div>
 
-                        {/* Actions */}
-                        <div className="mt-auto pb-4 safe-area-pb pt-10">
+                        {/* Post-game Actions */}
+                        <div className="mt-auto pb-4 safe-area-pb pt-6">
                             {winData && (
-                                <button onClick={handleRestart} className="glow-button w-full h-14 rounded-2xl text-lg font-black flex items-center justify-center gap-2 animate-pop-in">
-                                    <RotateCcw size={20} /> العبوا تاني
-                                </button>
+                                <div className="flex gap-2 animate-pop-in">
+                                    <button
+                                        onClick={() => setShowRecap(true)}
+                                        className="glass-card flex-1 h-14 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-white/10"
+                                    >
+                                        <Film size={16} className="text-amber-400" /> إعادة الجولة
+                                    </button>
+                                    <button
+                                        onClick={handleRestart}
+                                        className="glow-button flex-[2] h-14 rounded-2xl text-base font-black flex items-center justify-center gap-2"
+                                    >
+                                        <RotateCcw size={18} /> العبوا تاني
+                                    </button>
+                                </div>
                             )}
                         </div>
 
@@ -274,6 +333,27 @@ export default function TicTacToeGame({ setView }) {
                 )}
 
             </div>
+
+            {/* Connection Pause Overlay */}
+            <ConnectionPauseOverlay
+                conn={connRef.current}
+                onLeave={() => { connRef.current?.close(); setView('hub'); }}
+            />
+
+            {/* Emotes Layer */}
+            {gameState === 'playing' && <EmotesOverlay conn={connRef.current} />}
+
+            {/* Match Recap Modal */}
+            <MatchRecapModal
+                isOpen={showRecap}
+                onClose={() => setShowRecap(false)}
+                onRestart={handleRestart}
+                gameType="xo"
+                history={moveHistory}
+                winner={winData ? (winData.winner === mySymbol ? 'me' : (winData.winner === 'draw' ? 'draw' : 'opp')) : 'me'}
+                myProfile={myProfile}
+                oppProfile={oppProfile}
+            />
         </>
     );
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../lib/firebase';
-import { ref, set, onValue, push, onChildAdded, remove, get } from 'firebase/database';
+import { ref, set, onValue, push, onChildAdded, remove, get, onDisconnect } from 'firebase/database';
 import Copy from 'lucide-react/dist/esm/icons/copy';
 import Plus from 'lucide-react/dist/esm/icons/plus';
 import LinkIcon from 'lucide-react/dist/esm/icons/link';
@@ -14,20 +14,53 @@ const genId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
 // Creates a virtual "connection" object that mimics PeerJS API using Firebase
 function createFirebaseConn(roomPath, isHost) {
-    const listeners = { data: [] };
+    const listeners = { data: [], 'peer-disconnect': [], 'peer-reconnect': [] };
     const outbox = isHost ? 'h2g' : 'g2h';
     const inbox = isHost ? 'g2h' : 'h2g';
+    const myRole = isHost ? 'host' : 'guest';
+    const oppRole = isHost ? 'guest' : 'host';
+
+    // Presence & connection health monitoring
+    const myPresenceRef = ref(db, `${roomPath}/presence/${myRole}`);
+    const oppPresenceRef = ref(db, `${roomPath}/presence/${oppRole}`);
+    const connectedRef = ref(db, '.info/connected');
+
+    let unsubConnected = onValue(connectedRef, (snap) => {
+        if (snap.val() === true) {
+            try {
+                onDisconnect(myPresenceRef).set('offline');
+                set(myPresenceRef, 'online');
+            } catch (e) { }
+        }
+    });
+
+    let hasEverConnected = false;
+    let unsubOppPresence = onValue(oppPresenceRef, (snap) => {
+        const val = snap.val();
+        if (val === 'online') {
+            if (hasEverConnected) {
+                listeners['peer-reconnect']?.forEach(cb => cb());
+            }
+            hasEverConnected = true;
+        } else if (val === 'offline' && hasEverConnected) {
+            listeners['peer-disconnect']?.forEach(cb => cb());
+        }
+    });
 
     // Listen for incoming messages
     const inboxRef = ref(db, `${roomPath}/${inbox}`);
     const unsubscribe = onChildAdded(inboxRef, (snapshot) => {
         const msg = snapshot.val();
-        if (msg) listeners.data.forEach(cb => cb(msg));
+        if (msg) listeners.data?.forEach(cb => cb(msg));
     });
 
     return {
         send(data) {
-            push(ref(db, `${roomPath}/${outbox}`), data);
+            try {
+                push(ref(db, `${roomPath}/${outbox}`), data);
+            } catch (e) {
+                console.error('Firebase send error:', e);
+            }
         },
         on(event, handler) {
             if (!listeners[event]) listeners[event] = [];
@@ -39,8 +72,12 @@ function createFirebaseConn(roomPath, isHost) {
             }
         },
         close() {
-            // Mark room as closed; cleanup old room data
-            set(ref(db, `${roomPath}/status`), 'closed');
+            try {
+                set(myPresenceRef, 'offline');
+                set(ref(db, `${roomPath}/status`), 'closed');
+                unsubConnected();
+                unsubOppPresence();
+            } catch (e) { }
         },
         _unsubscribe: unsubscribe,
     };
@@ -56,6 +93,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
     const [lobbyState, setLobbyState] = useState('lobby'); // 'lobby' | 'connected'
     const [myReady, setMyReady] = useState(false);
     const [oppReady, setOppReady] = useState(false);
+    const [oppProfile, setOppProfile] = useState(null);
 
     const connRef = useRef(null);
     const isHostRef = useRef(false);
@@ -75,7 +113,10 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                 connRef.current = conn;
                 // Listen for guest's global_ready via messages
                 conn.on('data', (d) => {
-                    if (d?.type === 'global_ready') setOppReady(true);
+                    if (d?.type === 'global_ready') {
+                        setOppReady(true);
+                        if (d.profile) setOppProfile(d.profile);
+                    }
                 });
                 setLobbyState('connected');
             }
@@ -117,7 +158,10 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
 
             // Listen for host's global_ready
             conn.on('data', (d) => {
-                if (d?.type === 'global_ready') setOppReady(true);
+                if (d?.type === 'global_ready') {
+                    setOppReady(true);
+                    if (d.profile) setOppProfile(d.profile);
+                }
             });
 
             setIsConnecting(false);
@@ -130,7 +174,12 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
 
     const handleReadyClick = () => {
         setMyReady(true);
-        connRef.current?.send({ type: 'global_ready' });
+        let prof = { nickname: 'لاعب عظيم', avatar: '😎' };
+        try {
+            const stored = localStorage.getItem('celia_games_profile');
+            if (stored) prof = JSON.parse(stored);
+        } catch (e) { }
+        connRef.current?.send({ type: 'global_ready', profile: prof });
     };
 
     // Both ready → start game
@@ -138,11 +187,27 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
         if (myReady && oppReady && connRef.current) {
             const timeout = setTimeout(() => {
                 isHandedOffRef.current = true;
-                onGameStart(connRef.current, isHostRef.current);
+                onGameStart(connRef.current, isHostRef.current, oppProfile);
             }, 600);
             return () => clearTimeout(timeout);
         }
-    }, [myReady, oppReady, onGameStart]);
+    }, [myReady, oppReady, onGameStart, oppProfile]);
+
+    // Robust sync: retry sending global_ready until oppReady is received
+    useEffect(() => {
+        let interval;
+        if (myReady && !oppReady) {
+            let prof = { nickname: 'لاعب عظيم', avatar: '😎' };
+            try {
+                const stored = localStorage.getItem('celia_games_profile');
+                if (stored) prof = JSON.parse(stored);
+            } catch (e) { }
+            interval = setInterval(() => {
+                connRef.current?.send({ type: 'global_ready', profile: prof });
+            }, 1000);
+        }
+        return () => { if (interval) clearInterval(interval); };
+    }, [myReady, oppReady]);
 
     const handleCopy = () => {
         navigator.clipboard.writeText(myId);

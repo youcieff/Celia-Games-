@@ -133,7 +133,7 @@ export default function UltimateGame({ setView }) {
         setBigBoard(Array(9).fill(null));
         setXIsNext(true);
         setActiveBoardIdx(null);
-        setGameState(isHost ? 'choosing-symbol' : 'waiting-start');
+        setGameState(isHostRef.current ? 'choosing-symbol' : 'waiting-start');
     };
 
     const handleRestart = () => {

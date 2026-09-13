@@ -1,46 +1,93 @@
 import React, { useState, useEffect, useRef } from 'react';
 import P2PConnectionManager from '../../components/P2PConnectionManager';
 import Logo from '../../components/Logo';
-import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
-import Wifi from 'lucide-react/dist/esm/icons/wifi';
-import Ghost from 'lucide-react/dist/esm/icons/ghost';
-import Zap from 'lucide-react/dist/esm/icons/zap';
-import Flame from 'lucide-react/dist/esm/icons/flame';
-import Crown from 'lucide-react/dist/esm/icons/crown';
-import Diamond from 'lucide-react/dist/esm/icons/diamond';
-import Heart from 'lucide-react/dist/esm/icons/heart';
-import Star from 'lucide-react/dist/esm/icons/star';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
-import Cat from 'lucide-react/dist/esm/icons/cat';
-import Dog from 'lucide-react/dist/esm/icons/dog';
-import Bird from 'lucide-react/dist/esm/icons/bird';
-import Fish from 'lucide-react/dist/esm/icons/fish';
-import Rabbit from 'lucide-react/dist/esm/icons/rabbit';
-import Bug from 'lucide-react/dist/esm/icons/bug';
-import Snail from 'lucide-react/dist/esm/icons/snail';
-import Turtle from 'lucide-react/dist/esm/icons/turtle';
-import Cpu from 'lucide-react/dist/esm/icons/cpu';
-import Monitor from 'lucide-react/dist/esm/icons/monitor';
-import Smartphone from 'lucide-react/dist/esm/icons/smartphone';
-import Keyboard from 'lucide-react/dist/esm/icons/keyboard';
-import Mouse from 'lucide-react/dist/esm/icons/mouse';
-import Gamepad2 from 'lucide-react/dist/esm/icons/gamepad-2';
-import Headphones from 'lucide-react/dist/esm/icons/headphones';
-import Speaker from 'lucide-react/dist/esm/icons/speaker';
+import { playSound, playHaptic } from '../../lib/audioEngine';
+import EmotesOverlay from '../../components/EmotesOverlay';
+import PlayerGameHeader from '../../components/PlayerGameHeader';
+import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
+import useProfile from '../../hooks/useProfile';
 
-// Premium Icon Themes
-const THEMES = {
-    mystic: [Ghost, Zap, Flame, Crown, Diamond, Heart, Star, Sparkles],
-    animals: [Cat, Dog, Bird, Fish, Rabbit, Bug, Snail, Turtle],
-    tech: [Cpu, Monitor, Smartphone, Keyboard, Mouse, Gamepad2, Headphones, Speaker]
+// Premium realistic themes with rich multi-layered visuals and dynamic changing capability
+export const REALISTIC_THEMES = {
+    random: {
+        name: '🎲 تشكيلة متجددة دايماً',
+        desc: 'تتغير الرموز والأشكال تلقائياً في كل جولة'
+    },
+    gems: {
+        name: '💎 الكنوز والجواهر الملكية',
+        desc: 'ألماس وياقوت وذهب ملكي لامع',
+        cards: [
+            { id: 'sapphire', symbol: '💎', title: 'ياقوت أزرق', gradient: 'from-blue-600/40 to-indigo-950/80', border: 'border-blue-400' },
+            { id: 'crown', symbol: '👑', title: 'تاج الملوك', gradient: 'from-amber-500/40 to-yellow-950/80', border: 'border-amber-400' },
+            { id: 'gold', symbol: '✨', title: 'سبيكة ذهب', gradient: 'from-yellow-500/40 to-amber-950/80', border: 'border-yellow-400' },
+            { id: 'ring', symbol: '💍', title: 'خاتم الزمرد', gradient: 'from-emerald-500/40 to-teal-950/80', border: 'border-emerald-400' },
+            { id: 'crystal', symbol: '🔮', title: 'بلورة سحرية', gradient: 'from-purple-600/40 to-fuchsia-950/80', border: 'border-purple-400' },
+            { id: 'trophy', symbol: '🏆', title: 'كأس البطولة', gradient: 'from-amber-600/40 to-orange-950/80', border: 'border-amber-400' },
+            { id: 'star', symbol: '⭐', title: 'نجم أسطوري', gradient: 'from-yellow-400/40 to-amber-950/80', border: 'border-yellow-400' },
+            { id: 'key', symbol: '🗝️', title: 'مفتاح الكنز', gradient: 'from-orange-500/40 to-stone-950/80', border: 'border-orange-400' }
+        ]
+    },
+    cosmos: {
+        name: '🪐 رحلة الفضاء والمجرات',
+        desc: 'كواكب ومركبات فضاء ثلاثية الأبعاد',
+        cards: [
+            { id: 'saturn', symbol: '🪐', title: 'كوكب زحل', gradient: 'from-amber-600/40 to-purple-950/80', border: 'border-amber-400' },
+            { id: 'rocket', symbol: '🚀', title: 'صاروخ فضائي', gradient: 'from-rose-600/40 to-orange-950/80', border: 'border-rose-400' },
+            { id: 'astronaut', symbol: '👨‍🚀', title: 'رائد فضاء', gradient: 'from-sky-600/40 to-indigo-950/80', border: 'border-sky-400' },
+            { id: 'galaxy', symbol: '🌌', title: 'مجرة حلزونية', gradient: 'from-purple-700/40 to-pink-950/80', border: 'border-purple-400' },
+            { id: 'comet', symbol: '☄️', title: 'نيزك مشتعل', gradient: 'from-orange-600/40 to-red-950/80', border: 'border-orange-400' },
+            { id: 'ufo', symbol: '🛸', title: 'مركبة فضائية', gradient: 'from-emerald-600/40 to-teal-950/80', border: 'border-emerald-400' },
+            { id: 'moon', symbol: '🌕', title: 'قمر كامل', gradient: 'from-slate-500/40 to-blue-950/80', border: 'border-slate-300' },
+            { id: 'telescope', symbol: '🔭', title: 'مرصد كوني', gradient: 'from-indigo-600/40 to-slate-950/80', border: 'border-indigo-400' }
+        ]
+    },
+    safari: {
+        name: '🦁 سفاري البرية الملكية',
+        desc: 'حيوانات واقعية بتفاصيل ثلاثية الأبعاد',
+        cards: [
+            { id: 'lion', symbol: '🦁', title: 'الأسد الذهبي', gradient: 'from-amber-600/40 to-yellow-950/80', border: 'border-amber-400' },
+            { id: 'tiger', symbol: '🐯', title: 'النمر المفترس', gradient: 'from-orange-600/40 to-amber-950/80', border: 'border-orange-400' },
+            { id: 'eagle', symbol: '🦅', title: 'النسر الملكي', gradient: 'from-stone-600/40 to-amber-950/80', border: 'border-stone-400' },
+            { id: 'wolf', symbol: '🐺', title: 'الذئب الفضي', gradient: 'from-cyan-700/40 to-slate-950/80', border: 'border-cyan-400' },
+            { id: 'dolphin', symbol: '🐬', title: 'دولفين المحيط', gradient: 'from-sky-600/40 to-blue-950/80', border: 'border-sky-400' },
+            { id: 'panda', symbol: '🐼', title: 'الباندا العملاق', gradient: 'from-emerald-700/40 to-stone-950/80', border: 'border-emerald-400' },
+            { id: 'fox', symbol: '🦊', title: 'الثعلب الأحمر', gradient: 'from-red-600/40 to-orange-950/80', border: 'border-red-400' },
+            { id: 'owl', symbol: '🦉', title: 'بومة الحكمة', gradient: 'from-indigo-600/40 to-violet-950/80', border: 'border-indigo-400' }
+        ]
+    },
+    gourmet: {
+        name: '🍓 المذاق وفنون الطهي',
+        desc: 'حلويات وفواكه استوائية شهية وجذابة',
+        cards: [
+            { id: 'pizza', symbol: '🍕', title: 'بيتزا إيطالية', gradient: 'from-amber-600/40 to-red-950/80', border: 'border-amber-400' },
+            { id: 'burger', symbol: '🍔', title: 'برجر الشيف', gradient: 'from-orange-600/40 to-yellow-950/80', border: 'border-orange-400' },
+            { id: 'sushi', symbol: '🍣', title: 'سوشي فاخر', gradient: 'from-rose-600/40 to-pink-950/80', border: 'border-rose-400' },
+            { id: 'donut', symbol: '🍩', title: 'دونات الكراميل', gradient: 'from-pink-600/40 to-purple-950/80', border: 'border-pink-400' },
+            { id: 'strawberry', symbol: '🍓', title: 'فراولة طازجة', gradient: 'from-red-600/40 to-rose-950/80', border: 'border-red-400' },
+            { id: 'avocado', symbol: '🥑', title: 'أفوكادو صحي', gradient: 'from-lime-600/40 to-emerald-950/80', border: 'border-lime-400' },
+            { id: 'pancakes', symbol: '🥞', title: 'بان كيك بالعسل', gradient: 'from-amber-500/40 to-yellow-950/80', border: 'border-amber-400' },
+            { id: 'icecream', symbol: '🍦', title: 'آيس كريم مثلج', gradient: 'from-cyan-600/40 to-blue-950/80', border: 'border-cyan-400' }
+        ]
+    },
+    mythic: {
+        name: '⚡ الأساطير وقوى الطبيعة',
+        desc: 'دروع وسيوف وسحر المحاربين القدامى',
+        cards: [
+            { id: 'lightning', symbol: '⚡', title: 'صاعقة البرق', gradient: 'from-yellow-500/40 to-amber-950/80', border: 'border-yellow-400' },
+            { id: 'shield', symbol: '🛡️', title: 'درع الفايكنج', gradient: 'from-blue-600/40 to-slate-950/80', border: 'border-blue-400' },
+            { id: 'sword', symbol: '⚔️', title: 'السيف الأسطوري', gradient: 'from-rose-600/40 to-stone-950/80', border: 'border-rose-400' },
+            { id: 'bow', symbol: '🏹', title: 'قوس الرماية', gradient: 'from-emerald-600/40 to-teal-950/80', border: 'border-emerald-400' },
+            { id: 'potion', symbol: '🧪', title: 'إكسير القوة', gradient: 'from-purple-600/40 to-indigo-950/80', border: 'border-purple-400' },
+            { id: 'dragon', symbol: '🐲', title: 'التنين المجنح', gradient: 'from-emerald-600/40 to-lime-950/80', border: 'border-emerald-400' },
+            { id: 'axe', symbol: '🪓', title: 'فأس المعركة', gradient: 'from-stone-600/40 to-amber-950/80', border: 'border-stone-400' },
+            { id: 'feather', symbol: '🪶', title: 'ريشة العنقاء', gradient: 'from-orange-600/40 to-red-950/80', border: 'border-orange-400' }
+        ]
+    }
 };
 
-const THEME_NAMES = {
-    mystic: '✨ السحر والغموض',
-    animals: '🐾 الحيوانات الأليفة',
-    tech: '💻 التكنولوجيا'
-};
+const THEME_KEYS = ['gems', 'cosmos', 'safari', 'gourmet', 'mythic'];
 
 const shuffleArray = (array) => {
     const newArr = [...array];
@@ -52,44 +99,54 @@ const shuffleArray = (array) => {
 };
 
 const generateDeck = (themeKey) => {
-    const icons = THEMES[themeKey];
-    const deck = [...icons, ...icons].map((Icon, idx) => ({
+    let activeKey = themeKey;
+    if (activeKey === 'random' || !REALISTIC_THEMES[activeKey]) {
+        activeKey = THEME_KEYS[Math.floor(Math.random() * THEME_KEYS.length)];
+    }
+    const cardDefs = REALISTIC_THEMES[activeKey].cards;
+    const deck = [...cardDefs, ...cardDefs].map((card, idx) => ({
         id: idx,
-        iconName: Icon.displayName || Icon.name || idx.toString(),
-        iconIndex: icons.indexOf(Icon),
+        cardId: card.id,
+        symbol: card.symbol,
+        title: card.title,
+        gradient: card.gradient,
+        border: card.border,
+        themeKey: activeKey,
         isFlipped: false,
         isMatched: false
     }));
-    return shuffleArray(deck);
+    return { deck: shuffleArray(deck), activeKey };
 };
 
 export default function MemoryGame({ setView }) {
     const connRef = useRef(null);
     const isHostRef = useRef(false);
 
-    const [gameState, setGameState] = useState('lobby');
+    const [myProfile] = useProfile();
+    const [oppProfile, setOppProfile] = useState(null);
 
-    const [theme, setTheme] = useState('mystic');
+    const [gameState, setGameState] = useState('lobby'); // lobby, setup, waiting-start, playing
+    const [theme, setTheme] = useState('random');
+    const [activeThemeName, setActiveThemeName] = useState('');
     const [cards, setCards] = useState([]);
 
-    // Game Logic
-    // hostTurn logic: true = host relies, false = client relies
+    // Turn & logic
     const [hostTurn, setHostTurn] = useState(true);
     const [flippedIndices, setFlippedIndices] = useState([]);
     const [scores, setScores] = useState({ host: 0, client: 0 });
-    const [isProcessing, setIsProcessing] = useState(false); // Locks board during animation
+    const [isProcessing, setIsProcessing] = useState(false);
 
-    const stateRef = useRef({ cards, flippedIndices, hostTurn, isProcessing });
+    const stateRef = useRef({ cards, flippedIndices, hostTurn, isProcessing, gameState });
     useEffect(() => {
-        stateRef.current = { cards, flippedIndices, hostTurn, isProcessing };
-    }, [cards, flippedIndices, hostTurn, isProcessing]);
+        stateRef.current = { cards, flippedIndices, hostTurn, isProcessing, gameState };
+    }, [cards, flippedIndices, hostTurn, isProcessing, gameState]);
 
-    // Derived properties
     const isHost = isHostRef.current;
     const isMyTurn = isHost ? hostTurn : !hostTurn;
 
     const totalPairs = cards.length / 2;
     const isGameOver = totalPairs > 0 && (scores.host + scores.client === totalPairs);
+
     let overallWinner = null;
     if (isGameOver) {
         if (scores.host === scores.client) overallWinner = 'draw';
@@ -97,83 +154,96 @@ export default function MemoryGame({ setView }) {
         else overallWinner = isHost ? 'opp' : 'me';
     }
 
-    const handleGameStart = (conn, hostMode) => {
+    const handleGameStart = (conn, hostMode, oppProf) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
+        if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
         setGameState(hostMode ? 'setup' : 'waiting-start');
     };
 
     const onData = (msg) => {
-        const cur = stateRef.current;
-
         if (msg.type === 'start') {
             setTheme(msg.theme);
+            setActiveThemeName(REALISTIC_THEMES[msg.activeKey]?.name || 'تشكيلة سينمائية');
             setCards(msg.deck);
             setHostTurn(true);
             setScores({ host: 0, client: 0 });
             setGameState('playing');
+            playSound('ding');
         } else if (msg.type === 'flip') {
             applyFlip(msg.index);
         } else if (msg.type === 'restart') {
-            if (stateRef.current.gameState === 'playing') return; // already restarted
             doRestart();
         }
     };
 
     const handleStartGame = () => {
-        const deck = generateDeck(theme);
+        const { deck, activeKey } = generateDeck(theme);
         setCards(deck);
+        setActiveThemeName(REALISTIC_THEMES[activeKey]?.name || 'تشكيلة سينمائية');
         setHostTurn(true);
         setScores({ host: 0, client: 0 });
         setGameState('playing');
-        connRef.current?.send({ type: 'start', theme, deck });
+        playSound('ding');
+        connRef.current?.send({ type: 'start', theme, activeKey, deck });
     };
 
     const applyFlip = (index) => {
-        const { cards, flippedIndices, hostTurn } = stateRef.current;
-
-        // Optimistic UI Flip
-        const newCards = [...cards];
+        const cur = stateRef.current;
+        const newCards = [...cur.cards];
         newCards[index] = { ...newCards[index], isFlipped: true };
         setCards(newCards);
 
-        const newFlipped = [...flippedIndices, index];
+        playSound('whoosh');
+        playHaptic(15);
+
+        const newFlipped = [...cur.flippedIndices, index];
         setFlippedIndices(newFlipped);
 
-        // If memory match logic is full
         if (newFlipped.length === 2) {
-            setIsProcessing(true); // Lock clicks
+            setIsProcessing(true);
             const [idx1, idx2] = newFlipped;
-
-            const matchStatus = newCards[idx1].iconIndex === newCards[idx2].iconIndex;
+            const match = newCards[idx1].cardId === newCards[idx2].cardId;
 
             setTimeout(() => {
                 setFlippedIndices([]);
                 setIsProcessing(false);
 
-                if (matchStatus) {
-                    // Matched
+                if (match) {
+                    playSound('match');
+                    playHaptic([60, 40, 80]);
+
                     const matchedCards = [...newCards];
                     matchedCards[idx1].isMatched = true;
                     matchedCards[idx2].isMatched = true;
                     setCards(matchedCards);
+
+                    const scorer = cur.hostTurn ? 'host' : 'client';
                     setScores(prev => ({
                         ...prev,
-                        [hostTurn ? 'host' : 'client']: prev[hostTurn ? 'host' : 'client'] + 1
+                        [scorer]: prev[scorer] + 1
                     }));
-                    // the player gets another turn, so hostTurn remains the same
-                } else {
-                    // Not matched, flip back
-                    const unflippedCards = [...newCards];
-                    unflippedCards[idx1].isFlipped = false;
-                    unflippedCards[idx2].isFlipped = false;
-                    setCards(unflippedCards);
 
-                    // Next turn
-                    setHostTurn(!hostTurn);
+                    // If it's the AI's turn (host=false) and we're the host, signal AI to keep playing
+                    if (isHostRef.current && !cur.hostTurn) {
+                        connRef.current?.send({ type: 'your_turn', matchedIndices: [idx1, idx2] });
+                    }
+                } else {
+                    const resetCards = [...newCards];
+                    resetCards[idx1].isFlipped = false;
+                    resetCards[idx2].isFlipped = false;
+                    setCards(resetCards);
+
+                    const newHostTurn = !cur.hostTurn;
+                    setHostTurn(newHostTurn);
+
+                    // If turn flips to guest (AI) and we are the host, signal AI to play
+                    if (isHostRef.current && !newHostTurn) {
+                        connRef.current?.send({ type: 'your_turn' });
+                    }
                 }
-            }, 1000);
+            }, 900);
         }
     };
 
@@ -190,7 +260,8 @@ export default function MemoryGame({ setView }) {
         setCards([]);
         setScores({ host: 0, client: 0 });
         setFlippedIndices([]);
-        setGameState(isHost ? 'setup' : 'waiting-start');
+        setIsProcessing(false);
+        setGameState(isHostRef.current ? 'setup' : 'waiting-start');
     };
 
     const handleRestart = () => {
@@ -198,173 +269,236 @@ export default function MemoryGame({ setView }) {
         connRef.current?.send({ type: 'restart' });
     };
 
-    // Utility to get the dynamic Icon component safely
-    const renderIcon = (themeKey, iconIndex) => {
-        const IconComponent = THEMES[themeKey][iconIndex];
-        return IconComponent ? <IconComponent size={32} strokeWidth={2.5} /> : null;
-    };
-
     return (
         <>
-            {/* Dynamic styles injected inline for perfect 3D performance scoped to this component */}
             <style>{`
-        .mem-card { perspective: 1000px; }
-        .mem-inner { 
-          position: relative; w-full h-full; transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform-style: preserve-3d; 
-        }
-        .mem-card.flipped .mem-inner { transform: rotateY(180deg); }
-        .mem-front, .mem-back {
-          position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 1rem;
-          display: flex; align-items: center; justify-content: center;
-        }
-        .mem-front { background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.1); }
-        .mem-back { 
-          background: rgba(255,255,255,0.15); transform: rotateY(180deg); border: 2px solid var(--primary-color);
-          box-shadow: 0 0 15px var(--primary-glow); color: var(--primary-color);
-        }
-        .mem-matched { opacity: 0.5; transform: scale(0.95); transition: all 0.5s; box-shadow: none; border-color: transparent }
-      `}</style>
+                .mem-scene { perspective: 1200px; }
+                .mem-card-3d {
+                    position: relative;
+                    width: 100%;
+                    height: 100%;
+                    transform-style: preserve-3d;
+                    transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+                }
+                .mem-card-3d.flipped {
+                    transform: rotateY(180deg);
+                }
+                .mem-face {
+                    position: absolute;
+                    inset: 0;
+                    backface-visibility: hidden;
+                    border-radius: 1.25rem;
+                }
+                .mem-back-face {
+                    transform: rotateY(180deg);
+                }
+                .mem-matched-pulse {
+                    animation: matchGlow 1.5s infinite alternate ease-in-out;
+                }
+                @keyframes matchGlow {
+                    0% { box-shadow: 0 0 10px rgba(52, 211, 153, 0.4); }
+                    100% { box-shadow: 0 0 25px rgba(52, 211, 153, 0.9); }
+                }
+            `}</style>
 
             <div className="animated-bg"><div className="bg-orb-3" style={{ background: 'var(--accent-glow)' }} /></div>
-            <div className="min-h-dvh max-w-lg mx-auto flex flex-col safe-area-pt overflow-hidden overflow-y-auto pb-8 safe-area-pb">
+            <div className="min-h-dvh max-w-lg mx-auto flex flex-col safe-area-pt overflow-x-hidden overflow-y-auto pb-6">
 
-                {/* Nav */}
-                <div className="px-4 flex justify-between items-center py-4 mb-2 relative">
-                    <div className="flex items-center gap-3 z-10">
+                {/* Header */}
+                {gameState !== 'lobby' ? (
+                    <PlayerGameHeader
+                        title="تطابق الذاكرة 🃏"
+                        gameEmoji="🃏"
+                        isMyTurn={isMyTurn}
+                        oppProfile={oppProfile}
+                        myScore={isHost ? scores.host : scores.client}
+                        oppScore={isHost ? scores.client : scores.host}
+                        statusText={activeThemeName ? `الثيم: ${activeThemeName}` : null}
+                        onLeave={() => { connRef.current?.close(); setView('hub'); }}
+                    />
+                ) : (
+                    <div className="px-4 flex justify-between items-center py-4 mb-2">
                         <Logo size="small" />
-                        <button onClick={() => { connRef.current?.close(); setView('hub'); }} className="glass-card w-11 h-11 flex items-center justify-center rounded-2xl hover:scale-105 transition-transform"><ArrowRight size={20} /></button>
+                        <button
+                            onClick={() => setView('hub')}
+                            className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 transition-transform"
+                        >
+                            الرئيسية
+                        </button>
                     </div>
+                )}
 
-                    <div className="flex items-center gap-2 glass-card px-3 py-1.5 rounded-2xl text-xs font-bold text-center z-10">
-                        {gameState !== 'lobby' ? (
-                            <div className="flex items-center gap-3">
-                                <span className="flex flex-col items-end">
-                                    <span className="text-[12px] font-black gradient-text leading-none mb-1">ميموري 🃏</span>
-                                    <span className="text-[9px] opacity-70 leading-none">أنت {isHost ? '(الهوست)' : '(الضيف)'}</span>
-                                </span>
-                                <div className="w-px h-5 bg-white/20"></div>
-                                <span className="flex flex-col items-center justify-center text-emerald-400">
-                                    <Wifi size={12} />
-                                    <span className="text-[8px] mt-0.5 font-black">متصل</span>
-                                </span>
-                            </div>
-                        ) : (
-                            <span className="text-[11px] font-black gradient-text">ميموري 🃏</span>
-                        )}
+                {/* Lobby Screen */}
+                {gameState === 'lobby' && (
+                    <div className="flex-1 flex pb-16 safe-area-pb px-4">
+                        <P2PConnectionManager gameIdPrefix="celia-mem" onGameStart={handleGameStart} />
                     </div>
-                </div>
+                )}
 
-                {/* Screens */}
-                {gameState === 'lobby' && <div className="flex-1 flex pb-16 safe-area-pb px-4"><P2PConnectionManager gameIdPrefix="celia-mem" onGameStart={handleGameStart} /></div>}
-
+                {/* Setup Screen (Host selects theme or dynamic random) */}
                 {gameState === 'setup' && (
-                    <div className="flex-1 flex flex-col items-center justify-center px-4 -mt-10">
-                        <div className="glass-card rounded-3xl p-6 w-full max-w-sm">
-                            <h2 className="text-2xl font-black mb-6 text-center">🎴 اختار ستايل الكروت</h2>
+                    <div className="flex-1 flex flex-col items-center justify-center px-4 animate-fade-in">
+                        <div className="glass-card rounded-3xl p-6 w-full max-w-sm border border-white/10 shadow-2xl">
+                            <div className="flex items-center justify-center gap-2 mb-1">
+                                <Sparkles size={20} className="text-amber-400" />
+                                <h2 className="text-xl font-black text-center gradient-text">اختر عالم البطاقات</h2>
+                            </div>
+                            <p className="opacity-60 text-xs mb-5 text-center font-bold">
+                                رسومات ثلاثية الأبعاد عالية الدقة تتجدد تلقائياً
+                            </p>
 
-                            <div className="flex flex-col gap-3 mb-6">
-                                {Object.keys(THEMES).map(k => (
-                                    <button key={k} onClick={() => setTheme(k)} className={`glass-card p-4 rounded-xl font-bold flex items-center justify-between transition-all ${theme === k ? 'ring-2 ring-[var(--primary-color)] scale-105 shadow-[0_0_15px_var(--primary-glow)]' : 'opacity-60'}`}>
-                                        <span>{THEME_NAMES[k]}</span>
-                                        <span className="opacity-50 text-xs">8 أزواج</span>
+                            <div className="flex flex-col gap-2.5 mb-6">
+                                {Object.keys(REALISTIC_THEMES).map(k => (
+                                    <button
+                                        key={k}
+                                        onClick={() => {
+                                            setTheme(k);
+                                            playSound('click');
+                                            playHaptic(10);
+                                        }}
+                                        className={`glass-card p-3 rounded-2xl font-bold flex items-center justify-between transition-all text-right
+                                            ${theme === k
+                                                ? 'border-2 border-emerald-400 bg-emerald-500/15 shadow-[0_0_20px_rgba(52,211,153,0.3)] scale-[1.02]'
+                                                : 'opacity-70 hover:opacity-100 hover:bg-white/5'}`}
+                                    >
+                                        <div>
+                                            <div className="text-sm font-black">{REALISTIC_THEMES[k].name}</div>
+                                            <div className="text-[10px] opacity-60 mt-0.5">{REALISTIC_THEMES[k].desc}</div>
+                                        </div>
+                                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${theme === k ? 'border-emerald-400 bg-emerald-400' : 'border-white/30'}`}>
+                                            {theme === k && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                                        </div>
                                     </button>
                                 ))}
                             </div>
 
-                            <div className="mb-6 p-4 rounded-xl bg-black/20 text-xs opacity-70 font-bold leading-relaxed text-center">
-                                اجمع أزواج من الكروت المتشابهة وحقق أعلى سكور. كل زوج تلاقيه هيديلك نقطة، وتلعب كمان دور!
-                            </div>
-
-                            <button onClick={handleStartGame} className="glow-button w-full h-14 rounded-2xl text-lg font-black">🕹️ ابدأ اللعب</button>
+                            <button
+                                onClick={handleStartGame}
+                                className="glow-button w-full h-14 rounded-2xl text-base font-black flex items-center justify-center gap-2"
+                            >
+                                🕹️ ابدأ اللعبة الآن
+                            </button>
                         </div>
                     </div>
                 )}
 
+                {/* Waiting Screen (Guest) */}
                 {gameState === 'waiting-start' && (
-                    <div className="flex-1 flex items-center justify-center -mt-10 px-4">
-                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pulse-glow">
-                            <h2 className="text-2xl font-black mb-2">في الانتظار... ⏳</h2>
-                            <p className="opacity-60 text-sm font-bold">الطرف التاني بيخلط الكروت عشان نبدأ!</p>
+                    <div className="flex-1 flex items-center justify-center px-4 animate-fade-in">
+                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center border border-emerald-400/30 shadow-2xl">
+                            <div className="w-16 h-16 bg-emerald-500/20 rounded-full mx-auto flex items-center justify-center mb-3 animate-bounce">
+                                <span className="text-3xl">🎴</span>
+                            </div>
+                            <h2 className="text-xl font-black mb-1">في الانتظار... ⏳</h2>
+                            <p className="opacity-60 text-xs font-bold mb-4">
+                                {oppProfile?.nickname || 'المضيف'} يختار عالم البطاقات ويخلطها الآن!
+                            </p>
                         </div>
                     </div>
                 )}
 
+                {/* Playing Screen */}
                 {gameState === 'playing' && (
-                    <div className="flex-1 flex flex-col items-center px-4">
+                    <div className="flex-1 flex flex-col items-center px-4 animate-fade-in">
 
-                        {/* Status Bar */}
-                        <div className="w-full flex justify-between items-center glass-card rounded-2xl p-4 mb-4">
-                            {/* My Score */}
-                            <div className="flex flex-col items-center">
-                                <span className="text-xs font-bold opacity-60">أنت</span>
-                                <span className="text-2xl font-black text-[var(--primary-color)] drop-shadow-[0_0_8px_var(--primary-glow)]">{isHost ? scores.host : scores.client}</span>
-                            </div>
-
-                            {/* Turn indicator */}
-                            <div className="flex flex-col items-center justify-center">
-                                {!isGameOver ? (
-                                    <span className={`text-sm font-black px-4 py-2 rounded-full transition-all ${isMyTurn ? 'bg-[var(--primary-color)]/20 text-[var(--primary-color)] shadow-[0_0_15px_var(--primary-glow)]' : 'opacity-50 blur-[0.5px]'}`}>
-                                        {isMyTurn ? '🎯 دورك' : 'دور الخصم...'}
-                                    </span>
-                                ) : (
-                                    <span className="text-sm font-black px-4 py-2 bg-yellow-400/20 text-yellow-400 rounded-full animate-pulse-glow">
-                                        {overallWinner === 'draw' ? 'تعادل' : overallWinner === 'me' ? 'أنت الفائز! 🎉' : 'خسرت 💔'}
-                                    </span>
-                                )}
-                            </div>
-
-                            {/* Opp Score */}
-                            <div className="flex flex-col items-center">
-                                <span className="text-xs font-bold opacity-60">الخصم</span>
-                                <span className="text-2xl font-black text-[var(--accent-color)]">{isHost ? scores.client : scores.host}</span>
-                            </div>
+                        {/* Status Message */}
+                        <div className="text-center mb-3">
+                            {!isGameOver ? (
+                                <div className={`glass-card rounded-2xl py-2 px-6 inline-block transition-all ${isMyTurn ? 'border-2 border-emerald-400/60 bg-emerald-500/10 animate-pulse' : 'border border-white/5'}`}>
+                                    <p className={`font-black text-xs ${isMyTurn ? 'text-emerald-400' : 'opacity-70'}`}>
+                                        {isMyTurn ? '🎯 دورك، اقلب كرتين متطابقين!' : '⏳ دور الخصم يقلب الكروت...'}
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="glass-card rounded-2xl py-2.5 px-6 text-center animate-pop-in">
+                                    <p className={`font-black text-xl mb-0.5 ${overallWinner === 'me' ? 'text-emerald-400' : (overallWinner === 'draw' ? 'text-amber-400' : 'text-rose-400')}`}>
+                                        {overallWinner === 'draw' ? '⚖️ تعادل ذكي!' : overallWinner === 'me' ? '👑 انتصرت في التحدي!' : '💔 فاز الخصم، حاول تاني!'}
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Grid 4x4 */}
-                        <div className={`grid grid-cols-4 gap-2 w-[95%] aspect-square transition-all ${!isMyTurn && !isGameOver ? 'opacity-90' : ''}`} dir="ltr">
-                            {cards.map((card, index) => (
-                                <div
-                                    key={index}
-                                    onClick={() => handleCardClick(index)}
-                                    className={`mem-card w-full h-full cursor-pointer ${card.isFlipped ? 'flipped' : ''}`}
-                                >
-                                    <div className={`mem-inner w-full h-full ${card.isMatched ? 'mem-matched' : ''}`}>
+                        {/* 4x4 Grid of 3D Cards */}
+                        <div className="grid grid-cols-4 gap-2.5 w-[96%] aspect-square max-w-md mx-auto mem-scene" dir="ltr">
+                            {cards.map((card, index) => {
+                                const isFlipped = card.isFlipped || card.isMatched;
 
-                                        <div className="mem-front hover:bg-white/10 transition-colors">
-                                            {/* Premium clean back face - gradient glow only */}
-                                            <div className="w-full h-full rounded-2xl relative overflow-hidden"
-                                                style={{
-                                                    background: 'linear-gradient(135deg, rgba(var(--primary-rgb, 56,189,248), 0.15) 0%, rgba(var(--accent-rgb, 168,85,247), 0.1) 100%)',
-                                                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
-                                                }}>
-                                                {/* Subtle corner shine */}
-                                                <div className="absolute top-0 left-0 w-1/2 h-1/2 rounded-full opacity-20"
-                                                    style={{ background: 'radial-gradient(circle at 30% 30%, white, transparent 70%)' }} />
-                                                {/* Center glow dot */}
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <div className="w-3 h-3 rounded-full opacity-30"
-                                                        style={{ background: 'var(--primary-color)', boxShadow: '0 0 12px 4px var(--primary-color)' }} />
+                                return (
+                                    <div
+                                        key={index}
+                                        onClick={() => handleCardClick(index)}
+                                        className={`relative w-full h-full cursor-pointer select-none ${card.isMatched ? 'pointer-events-none' : ''}`}
+                                    >
+                                        <div className={`mem-card-3d ${isFlipped ? 'flipped' : ''}`}>
+
+                                            {/* Card Back Face: Luxury Obsidian Foil */}
+                                            <div className="mem-face glass-card border border-white/15 overflow-hidden flex items-center justify-center p-1 shadow-lg hover:border-emerald-400/50 hover:scale-[1.02] transition-all bg-gradient-to-br from-[#0c1b33] via-[#081224] to-[#040914]">
+                                                {/* Guilloche border design */}
+                                                <div className="w-full h-full rounded-xl border border-amber-400/20 flex flex-col items-center justify-center relative overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-black/60">
+                                                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent rotate-45 pointer-events-none" />
+                                                    <span className="text-xl drop-shadow-[0_0_8px_rgba(251,191,36,0.6)] animate-pulse">
+                                                        ⚜️
+                                                    </span>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        <div className="mem-back drop-shadow-[0_0_8px_var(--primary-glow)]">
-                                            {renderIcon(theme, card.iconIndex)}
+                                            {/* Card Front Face: High-Fidelity 3D Realistic Card */}
+                                            <div className={`mem-face mem-back-face glass-card overflow-hidden flex flex-col items-center justify-center p-1 shadow-2xl border-2 transition-all
+                                                ${card.border} bg-gradient-to-b ${card.gradient}
+                                                ${card.isMatched ? 'mem-matched-pulse border-emerald-400' : ''}
+                                            `}>
+                                                <div className="w-full h-full rounded-xl flex flex-col items-center justify-center relative overflow-hidden">
+                                                    {/* Specular Glint */}
+                                                    <div className="absolute top-0 right-0 left-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-t-xl" />
+
+                                                    {/* Emoji Symbol */}
+                                                    <span className="text-3xl sm:text-4xl drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] filter hover:scale-110 transition-transform">
+                                                        {card.symbol}
+                                                    </span>
+
+                                                    {/* Arabic Title */}
+                                                    <span className="text-[9px] font-black mt-1 text-white/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] tracking-tight text-center px-0.5 line-clamp-1">
+                                                        {card.title}
+                                                    </span>
+
+                                                    {/* Matched Star Badge */}
+                                                    {card.isMatched && (
+                                                        <div className="absolute top-1 right-1 text-[8px] bg-emerald-500 text-black font-black px-1 rounded-full shadow-md animate-pop-in">
+                                                            ✓
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
+                        {/* Restart Action */}
                         {isGameOver && (
-                            <button onClick={handleRestart} className="mt-6 glow-button w-[95%] h-14 rounded-2xl text-lg font-black flex items-center justify-center gap-2 animate-pop-in">
-                                <RotateCcw size={20} /> لعبة جديدة
+                            <button
+                                onClick={handleRestart}
+                                className="mt-5 glow-button w-[95%] h-14 rounded-2xl text-base font-black flex items-center justify-center gap-2 animate-pop-in shadow-2xl"
+                            >
+                                <RotateCcw size={18} /> جولة جديدة متجددة 🎴
                             </button>
                         )}
 
                     </div>
                 )}
+
             </div>
+
+            {/* Auto-Reconnect & Pause */}
+            <ConnectionPauseOverlay
+                conn={connRef.current}
+                onLeave={() => { connRef.current?.close(); setView('hub'); }}
+            />
+
+            {/* Emotes Overlay */}
+            {gameState === 'playing' && <EmotesOverlay conn={connRef.current} />}
         </>
     );
 }

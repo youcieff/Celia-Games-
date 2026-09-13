@@ -48,6 +48,17 @@ export default class WordAI {
         } else if (msg.type === 'restart') {
             this.guessedLetters = [];
             this.guessIndex = 0;
+            if (msg.youWillWrite !== undefined) {
+                this.isMyTurnToWrite = msg.youWillWrite;
+                if (this.isMyTurnToWrite) {
+                    this.currentWord = WORD_BANK[Math.floor(Math.random() * WORD_BANK.length)];
+                    setTimeout(() => {
+                        this.conn._sendToPlayer({ type: 'start_game', word: this.currentWord, hint: '' });
+                    }, 1000);
+                } else {
+                    // We need to wait for start_game to make a guess
+                }
+            }
         }
     }
 

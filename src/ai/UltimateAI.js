@@ -29,6 +29,11 @@ export default class UltimateAI {
             this.activeBoardIdx = null;
             this.aiSymbol = msg.hostSymbol === 'X' ? 'O' : 'X';
             this.xIsNext = true;
+            
+            const isAiTurn = (this.aiSymbol === 'X' && this.xIsNext) || (this.aiSymbol === 'O' && !this.xIsNext);
+            if (isAiTurn) {
+                setTimeout(() => this.makeMove(), 1000);
+            }
         } else if (msg.type === 'play') {
             this.boards[msg.boardIdx][msg.cellIdx] = msg.symbol;
             const miniWin = checkWin(this.boards[msg.boardIdx]);

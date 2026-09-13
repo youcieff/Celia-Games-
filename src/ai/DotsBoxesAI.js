@@ -15,8 +15,10 @@ export default class DotsBoxesAI {
     onMessage(msg) {
         if (msg.type === 'start') {
             this._reset();
-            // host starts in Dots & Boxes
-            this.isMyTurn = false;
+            this.isMyTurn = !msg.config.hostPlaysFirst;
+            if (this.isMyTurn) {
+                setTimeout(() => this.makeMove(), 1000);
+            }
         } else if (msg.type === 'play') {
             this._applyLine(msg.lineType, msg.r, msg.c, 'opp'); // player = 'opp' for AI
             const captured = this._checkCaptures('opp');

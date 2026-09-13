@@ -11,11 +11,9 @@ export default function Logo({ size = 'large' }) {
         : { filter: 'drop-shadow(0 0 8px rgba(0, 0, 0, 0.3))' };
 
     return (
-        <div className="flex items-center font-black tracking-tight select-none">
-
-            {/* Logo Image in its natural spot (on the right in RTL layout) */}
+        <div className="flex items-center gap-2 font-black tracking-tight select-none shrink-0">
             <div
-                className={`flex items-center justify-center ${isSmall ? 'w-14 h-14' : 'w-20 h-20'} shrink-0 rounded-[22%] overflow-hidden shadow-2xl transition-all hover:scale-105 z-10`}
+                className={`flex items-center justify-center ${isSmall ? 'w-10 h-10' : 'w-14 h-14'} shrink-0 rounded-[22%] overflow-hidden shadow-2xl transition-all hover:scale-105`}
                 style={imageStyle}
             >
                 <img
@@ -24,16 +22,11 @@ export default function Logo({ size = 'large' }) {
                     className="w-full h-full object-cover scale-[1.05] rounded-[22%]"
                 />
             </div>
-
-            {/* Absolute Text centered perfectly on screen horizontally, without forced vertical positioning so it aligns perfectly with header */}
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center pt-1" style={{ position: 'absolute' }}>
-                <span
-                    className={`whitespace-nowrap gradient-text ${isSmall ? 'text-xs' : 'text-base'} leading-none font-bold opacity-90 drop-shadow-[0_0_8px_var(--primary-color)]`}
-                >
-                    ألعاب سيليا
-                </span>
-            </div>
-
+            <span
+                className={`gradient-text ${isSmall ? 'text-sm' : 'text-base'} leading-none font-bold opacity-90 drop-shadow-[0_0_8px_var(--primary-color)] whitespace-nowrap`}
+            >
+                ألعاب سيليا
+            </span>
         </div>
     );
 }

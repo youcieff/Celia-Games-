@@ -66,6 +66,9 @@ export default class CodeAI {
             setTimeout(() => {
                 this.conn._sendToPlayer({ type: 'secret_ready' });
             }, 800);
+        } else if (msg.type === 'secret_ready') {
+            // Host is ready, and since AI is guest, it goes first.
+            setTimeout(() => this.makeGuess(), 1500);
         } else if (msg.type === 'guess') {
             // Player is guessing AI's secret
             const result = evaluate(msg.code, this.secret);
