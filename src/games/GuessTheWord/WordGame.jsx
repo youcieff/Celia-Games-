@@ -8,6 +8,9 @@ import Logo from '../../components/Logo';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
+import useProfile from '../../hooks/useProfile';
+import { AvatarDisplay } from '../../components/icons/AvatarIcons';
+import EmotesOverlay, { ChatTriggerButton } from '../../components/EmotesOverlay';
 import { IconWordGame, IconEdit, IconTrophy, IconHourglass } from '../../components/icons/GameIcons';
 
 export default function WordGame({ setView, mode }) {
@@ -17,6 +20,10 @@ export default function WordGame({ setView, mode }) {
     const isHostRef = useRef(false);
     const [isMyTurnToWrite, setIsMyTurnToWrite] = useState(false);
 
+    const [myProfile] = useProfile();
+    const [oppProfile, setOppProfile] = useState(null);
+    const opp = oppProfile || { nickname: 'الخصم', avatar: 'alien' };
+
     // lobby | role-select | role-waiting | setup | waiting | playing | won | lost
     const [gameState, setGameState] = useState(isOnline ? 'lobby' : 'role-select');
     const [secretWord, setSecretWord] = useState('');
@@ -25,9 +32,10 @@ export default function WordGame({ setView, mode }) {
     const [lives, setLives] = useState(6);
     const [isHintRevealed, setIsHintRevealed] = useState(false);
 
-    const handleGameStart = (conn, hostMode) => {
+    const handleGameStart = (conn, hostMode, oppProf) => {
         connRef.current = conn;
         isHostRef.current = hostMode;
+        if (oppProf) setOppProfile(oppProf);
         if (hostMode) {
             setGameState('role-select');
         } else {
@@ -52,7 +60,9 @@ export default function WordGame({ setView, mode }) {
         const conn = connRef.current;
         if (!conn) return;
         const handler = (data) => {
-            if (data.type === 'roles_set') {
+            if (data.type === 'global_ready' && data.profile) {
+                setOppProfile(data.profile);
+            } else if (data.type === 'roles_set') {
                 const guestWrites = data.guestWrites;
                 setIsMyTurnToWrite(guestWrites);
                 setGameState(guestWrites ? 'setup' : 'waiting');
@@ -155,7 +165,12 @@ export default function WordGame({ setView, mode }) {
                         )}
                     </div>
 
-                    <GlobalMuteButton className="w-10 h-10 !rounded-2xl shrink-0" />
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        {isOnline && !['lobby', 'role-select', 'role-waiting'].includes(gameState) && (
+                            <ChatTriggerButton onClick={() => window.dispatchEvent(new CustomEvent('toggle-game-chat'))} />
+                        )}
+                        <GlobalMuteButton className="w-10 h-10 !rounded-2xl shrink-0" />
+                    </div>
                 </header>
 
                 {/* Lobby */}
@@ -248,6 +263,30 @@ export default function WordGame({ setView, mode }) {
                 {/* Playing / Won / Lost */}
                 {(gameState === 'playing' || gameState === 'won' || gameState === 'lost') && (
                     <div className="flex-1 flex flex-col">
+                        {/* Duel bar for Word Game */}
+                        {isOnline && (
+                            <div className="grid grid-cols-2 gap-2 w-full max-w-sm mx-auto mb-2 px-1">
+                                <div className={`glass-card p-2 rounded-xl flex items-center gap-2 border transition-all ${!isMyTurnToWrite ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-white/10 opacity-70'}`}>
+                                    <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden border border-white/10 shrink-0">
+                                        <AvatarDisplay avatarId={myProfile.avatar} size={18} />
+                                    </div>
+                                    <div className="flex flex-col min-w-0 flex-1 text-right">
+                                        <span className="text-[10px] font-black truncate">{myProfile.nickname || 'أنت'}</span>
+                                        <span className="text-[9px] font-bold text-emerald-400">{isMyTurnToWrite ? 'الكاتب' : 'المخمن (دورك)'}</span>
+                                    </div>
+                                </div>
+                                <div className={`glass-card p-2 rounded-xl flex items-center gap-2 border transition-all ${isMyTurnToWrite ? 'border-sky-400 bg-sky-500/10' : 'border-white/10 opacity-70'}`}>
+                                    <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden border border-white/10 shrink-0">
+                                        <AvatarDisplay avatarId={opp.avatar} size={18} />
+                                    </div>
+                                    <div className="flex flex-col min-w-0 flex-1 text-right">
+                                        <span className="text-[10px] font-black truncate">{opp.nickname || 'الخصم'}</span>
+                                        <span className="text-[9px] font-bold text-sky-400">{!isMyTurnToWrite ? 'الكاتب' : 'المخمن'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <Visualizer lives={lives} maxLives={6} />
 
                         <div className="text-center mb-4 h-14 flex items-center justify-center">
@@ -324,6 +363,9 @@ export default function WordGame({ setView, mode }) {
                     </div>
                 )}
             </div>
+            {isOnline && ['playing', 'won', 'lost'].includes(gameState) && (
+                <EmotesOverlay conn={connRef.current} oppProfile={opp} showStandaloneButton={false} />
+            )}
         </>
     );
 }

@@ -647,8 +647,7 @@ export default function GuessTimeGame({ setView }) {
                 )}
             </div>
 
-            <ConnectionPauseOverlay conn={connRef.current} onLeave={() => { connRef.current?.close(); setView('hub'); }} />
-            {gameState.startsWith('playing') && <EmotesOverlay conn={connRef.current} />}
+            {gameState.startsWith('playing') && <EmotesOverlay conn={connRef.current} oppProfile={oppProfile} showStandaloneButton={false} />}
         </>
     );
 }

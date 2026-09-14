@@ -5,6 +5,7 @@ import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Wifi from 'lucide-react/dist/esm/icons/wifi';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
+import EmotesOverlay, { ChatTriggerButton } from '../../components/EmotesOverlay';
 import useProfile from '../../hooks/useProfile';
 import { AvatarDisplay } from '../../components/icons/AvatarIcons';
 import { IconBigXOGame, IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
@@ -178,7 +179,12 @@ export default function UltimateGame({ setView }) {
                         )}
                     </div>
 
-                    <GlobalMuteButton className="w-10 h-10 !rounded-2xl shrink-0" />
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        {gameState === 'playing' && (
+                            <ChatTriggerButton onClick={() => window.dispatchEvent(new CustomEvent('toggle-game-chat'))} />
+                        )}
+                        <GlobalMuteButton className="w-10 h-10 !rounded-2xl shrink-0" />
+                    </div>
                 </header>
 
                 {/* Lobby */}
@@ -347,6 +353,9 @@ export default function UltimateGame({ setView }) {
                     </div>
                 )}
             </div>
+            {gameState === 'playing' && (
+                <EmotesOverlay conn={connRef.current} oppProfile={opp} showStandaloneButton={false} />
+            )}
         </>
     );
 }

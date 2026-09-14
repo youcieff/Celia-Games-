@@ -13,7 +13,7 @@ import { MemoryCardIcon } from '../../components/icons/MemoryCardIcons';
 import { IconMemoryGame, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
 // Premium realistic themes with rich multi-layered visuals and dynamic changing capability
-export const REALISTIC_THEMES = {
+const REALISTIC_THEMES = {
     random: {
         name: 'تشكيلة متجددة دايماً',
         desc: 'تتغير الرموز والأشكال تلقائياً في كل جولة'
@@ -431,50 +431,45 @@ export default function MemoryGame({ setView }) {
                                 const isFlipped = card.isFlipped || card.isMatched;
 
                                 return (
-                                    <div
-                                        key={index}
-                                        onClick={() => handleCardClick(index)}
-                                        className={`relative w-full h-full cursor-pointer select-none ${card.isMatched ? 'pointer-events-none' : ''}`}
-                                    >
-                                        <div className={`mem-card-3d ${isFlipped ? 'flipped' : ''}`}>
+                                    <div key={index} className="relative w-full h-full aspect-square">
+                                        {/* Subtle ghost frame when card is matched and vanished */}
+                                        <div className="absolute inset-0 rounded-2xl border border-white/5 bg-white/[0.02]" />
 
-                                            {/* Card Back Face: Luxury Obsidian Foil */}
-                                            <div className="mem-face glass-card border border-white/15 overflow-hidden flex items-center justify-center p-1 shadow-lg hover:border-emerald-400/50 hover:scale-[1.02] transition-all bg-gradient-to-br from-[#0c1b33] via-[#081224] to-[#040914]">
-                                                {/* Guilloche border design */}
-                                                <div className="w-full h-full rounded-xl border border-amber-400/20 flex flex-col items-center justify-center relative overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-black/60">
-                                                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent rotate-45 pointer-events-none" />
-                                                    <div className="w-5 h-5 rotate-45 border-2 border-amber-400/60 bg-amber-400/20 shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
-                                                </div>
-                                            </div>
+                                        {/* 3D Card with disappear animation when matched */}
+                                        <div
+                                            onClick={() => handleCardClick(index)}
+                                            className={`relative w-full h-full select-none transition-all duration-500 ease-out ${
+                                                card.isMatched
+                                                    ? 'opacity-0 scale-0 pointer-events-none'
+                                                    : 'cursor-pointer hover:scale-[1.03]'
+                                            }`}
+                                        >
+                                            <div className={`mem-card-3d ${isFlipped ? 'flipped' : ''}`}>
 
-                                            {/* Card Front Face: High-Fidelity 3D Realistic Card */}
-                                            <div className={`mem-face mem-back-face glass-card overflow-hidden flex flex-col items-center justify-center p-1 shadow-2xl border-2 transition-all
-                                                ${card.border} bg-gradient-to-b ${card.gradient}
-                                                ${card.isMatched ? 'mem-matched-pulse border-emerald-400' : ''}
-                                            `}>
-                                                <div className="w-full h-full rounded-xl flex flex-col items-center justify-center relative overflow-hidden">
-                                                    {/* Specular Glint */}
-                                                    <div className="absolute top-0 right-0 left-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-t-xl" />
-
-                                                    {/* Vector Symbol */}
-                                                    <div className="drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] filter hover:scale-110 transition-transform">
-                                                        <MemoryCardIcon id={card.id} size={38} className="text-white" />
+                                                {/* Card Back Face: Luxury Obsidian Foil */}
+                                                <div className="mem-face glass-card border border-white/15 overflow-hidden flex items-center justify-center p-1 shadow-lg hover:border-emerald-400/50 transition-all bg-gradient-to-br from-[#0c1b33] via-[#081224] to-[#040914]">
+                                                    <div className="w-full h-full rounded-xl border border-amber-400/20 flex flex-col items-center justify-center relative overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-black/60">
+                                                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent rotate-45 pointer-events-none" />
+                                                        <div className="w-5 h-5 rotate-45 border-2 border-amber-400/60 bg-amber-400/20 shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
                                                     </div>
-
-                                                    {/* Arabic Title */}
-                                                    <span className="text-[9px] font-black mt-1 text-white/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] tracking-tight text-center px-0.5 line-clamp-1">
-                                                        {card.title}
-                                                    </span>
-
-                                                    {/* Matched Star Badge */}
-                                                    {card.isMatched && (
-                                                        <div className="absolute top-1 right-1 p-0.5 bg-emerald-500 text-black font-black rounded-full shadow-md animate-pop-in">
-                                                            <Check size={8} strokeWidth={3} />
-                                                        </div>
-                                                    )}
                                                 </div>
-                                            </div>
 
+                                                {/* Card Front Face: High-Fidelity Visual Shape (No text) */}
+                                                <div className={`mem-face mem-back-face glass-card overflow-hidden flex flex-col items-center justify-center p-1 shadow-2xl border-2 transition-all
+                                                    ${card.border} bg-gradient-to-b ${card.gradient}
+                                                `}>
+                                                    <div className="w-full h-full rounded-xl flex items-center justify-center relative overflow-hidden">
+                                                        {/* Specular Glint */}
+                                                        <div className="absolute top-0 right-0 left-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-t-xl" />
+
+                                                        {/* Pure Vector Symbol - No Text */}
+                                                        <div className="drop-shadow-[0_4px_14px_rgba(0,0,0,0.7)] filter hover:scale-110 transition-transform">
+                                                            <MemoryCardIcon id={card.cardId} size={46} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -502,8 +497,8 @@ export default function MemoryGame({ setView }) {
                 onLeave={() => { connRef.current?.close(); setView('hub'); }}
             />
 
-            {/* Emotes Overlay */}
-            {gameState === 'playing' && <EmotesOverlay conn={connRef.current} />}
+            {/* Emotes & Chat Overlay */}
+            {gameState === 'playing' && <EmotesOverlay conn={connRef.current} oppProfile={oppProfile} showStandaloneButton={false} />}
         </>
     );
 }

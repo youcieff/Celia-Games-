@@ -10,6 +10,9 @@ import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Wifi from 'lucide-react/dist/esm/icons/wifi';
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
+import useProfile from '../../hooks/useProfile';
+import { AvatarDisplay } from '../../components/icons/AvatarIcons';
+import EmotesOverlay, { ChatTriggerButton } from '../../components/EmotesOverlay';
 import { IconCodeGame, IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
 export default function CodeGame({ setView }) {
@@ -22,6 +25,10 @@ export default function CodeGame({ setView }) {
     const codeLengthRef = useRef(4); // shared with both players
 
     // ── ui state ────────────────────────────────────────────────────
+    const [myProfile] = useProfile();
+    const [oppProfile, setOppProfile] = useState(null);
+    const opp = oppProfile || { nickname: 'الخصم', avatar: 'alien' };
+
     const [gameState, setGameState] = useState('lobby');
     // lobby | length-select | setting-secret | waiting-start | playing | won | lost
     const [codeLength, setCodeLength] = useState(4);
@@ -33,9 +40,10 @@ export default function CodeGame({ setView }) {
     const oppConfirmedRef = useRef([]);
     const [oppConfirmed, setOppConfirmed] = useState([]);
 
-    const handleGameStart = (conn, hostMode) => {
+    const handleGameStart = (conn, hostMode, oppProf) => {
         connRef.current = conn;
         isHostRef.current = hostMode;
+        if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
 
         // Host sets code length, client waits for it
@@ -51,6 +59,9 @@ export default function CodeGame({ setView }) {
 
     // ── network message handler ─────────────────────────────────────
     const onData = (msg) => {
+        if (msg.type === 'global_ready' && msg.profile) {
+            setOppProfile(msg.profile);
+        }
         switch (msg.type) {
             case 'code_length': {
                 const len = msg.length;
@@ -206,7 +217,12 @@ export default function CodeGame({ setView }) {
                         )}
                     </div>
 
-                    <GlobalMuteButton className="w-10 h-10 !rounded-2xl shrink-0" />
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        {['setting-secret', 'waiting-start', 'playing', 'won', 'lost'].includes(gameState) && (
+                            <ChatTriggerButton onClick={() => window.dispatchEvent(new CustomEvent('toggle-game-chat'))} />
+                        )}
+                        <GlobalMuteButton className="w-10 h-10 !rounded-2xl shrink-0" />
+                    </div>
                 </header>
 
                 {/* ── Lobby ── */}
@@ -277,21 +293,27 @@ export default function CodeGame({ setView }) {
                         )}
 
                         {gameState === 'playing' && (
-                            <div className={`glass-card rounded-2xl py-3 px-4 transition-all border border-white/10 ${isMyTurn ? 'animate-pulse-glow' : ''}`}>
-                                <p className="font-black text-xs flex items-center gap-1.5" style={{ color: isMyTurn ? 'var(--accent)' : 'inherit' }}>
+                            <div className={`glass-card rounded-2xl py-2.5 px-4 transition-all border border-white/10 ${isMyTurn ? 'animate-pulse-glow' : ''}`}>
+                                <div className="font-black text-xs flex items-center justify-between gap-2" style={{ color: isMyTurn ? 'var(--accent)' : 'inherit' }}>
                                     {isMyTurn ? (
-                                        <>
-                                            <IconTarget size={14} className="shrink-0" />
-                                            <span>الخطوة 2 — خمّن كود الخصم!</span>
-                                        </>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden border border-white/20 shrink-0">
+                                                <AvatarDisplay avatarId={myProfile.avatar} size={18} />
+                                            </div>
+                                            <span>دورك تخمّن كود {opp.nickname || 'الخصم'}!</span>
+                                            <IconTarget size={14} className="shrink-0 text-[var(--accent)]" />
+                                        </div>
                                     ) : (
-                                        <>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden border border-white/20 shrink-0">
+                                                <AvatarDisplay avatarId={opp.avatar} size={18} />
+                                            </div>
+                                            <span className="opacity-80">دور {opp.nickname || 'الخصم'} يخمن كودك...</span>
                                             <IconHourglass size={14} className="opacity-60 shrink-0" />
-                                            <span className="opacity-75">الخصم يقوم بتخمين كودك...</span>
-                                        </>
+                                        </div>
                                     )}
-                                </p>
-                                {isMyTurn && <p className="text-[10px] opacity-50 mt-0.5">ادخل {codeLength} أرقام ثم اضغط زر التأكيد</p>}
+                                </div>
+                                {isMyTurn && <p className="text-[10px] opacity-50 mt-1">ادخل {codeLength} أرقام ثم اضغط زر التأكيد</p>}
                             </div>
                         )}
 
@@ -359,6 +381,9 @@ export default function CodeGame({ setView }) {
                     </div>
                 )}
             </div>
+            {['setting-secret', 'waiting-start', 'playing', 'won', 'lost'].includes(gameState) && (
+                <EmotesOverlay conn={connRef.current} oppProfile={opp} showStandaloneButton={false} />
+            )}
         </>
     );
 }

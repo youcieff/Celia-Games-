@@ -613,8 +613,8 @@ export default function SeaBattleGame({ setView }) {
                 onLeave={() => { connRef.current?.close(); setView('hub'); }}
             />
 
-            {/* Emotes Overlay */}
-            {gameState === 'playing' && <EmotesOverlay conn={connRef.current} />}
+            {/* Emotes & Chat Overlay */}
+            {gameState === 'playing' && <EmotesOverlay conn={connRef.current} oppProfile={oppProfile} showStandaloneButton={false} />}
 
             {/* Match Replay Modal */}
             <MatchRecapModal
