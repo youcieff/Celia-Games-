@@ -389,7 +389,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                         onClick={() => {
                             setIsConnecting(true);
                             setTimeout(() => {
-                                onGameStart(createAIConn(gameIdPrefix), true);
+                                onGameStart(createAIConn(gameIdPrefix), true, { nickname: 'الذكاء الاصطناعي', avatar: 'robot' });
                             }, 600);
                         }}
                         disabled={isConnecting}

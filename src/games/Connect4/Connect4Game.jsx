@@ -5,6 +5,8 @@ import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Wifi from 'lucide-react/dist/esm/icons/wifi';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
+import useProfile from '../../hooks/useProfile';
+import { AvatarDisplay } from '../../components/icons/AvatarIcons';
 import { IconConnect4, IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
 const ROWS = 6;
@@ -62,6 +64,9 @@ export default function Connect4Game({ setView }) {
     const connRef = useRef(null);
     const isHostRef = useRef(false);
 
+    const [myProfile] = useProfile();
+    const [oppProfile, setOppProfile] = useState(null);
+
     const [gameState, setGameState] = useState('lobby');
 
     const [board, setBoard] = useState(Array.from({ length: ROWS }, () => Array(COLS).fill(null)));
@@ -90,15 +95,18 @@ export default function Connect4Game({ setView }) {
     const isMyTurn = isHost ? hostTurn : !hostTurn;
     const winData = checkWin(board);
 
-    const handleGameStart = (conn, hostMode) => {
+    const handleGameStart = (conn, hostMode, oppProf) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
+        if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
         setGameState(hostMode ? 'setup' : 'waiting-start');
     };
 
     const onData = (msg) => {
-        if (msg.type === 'start') {
+        if (msg.type === 'global_ready' && msg.profile) {
+            setOppProfile(msg.profile);
+        } else if (msg.type === 'start') {
             setClientConfig(msg.config);
             setHostTurn(msg.config.hostPlaysFirst);
             setGameState('playing');
@@ -166,6 +174,8 @@ export default function Connect4Game({ setView }) {
         return COLORS.find(c => c.id === id) || COLORS[0];
     };
     const myColorObj = COLORS.find(c => c.id === myColorId);
+    const oppColorObj = COLORS.find(c => c.id === oppColorId) || COLORS[1];
+    const opp = oppProfile || { nickname: 'الخصم', avatar: 'alien' };
 
     return (
         <>
@@ -256,17 +266,27 @@ export default function Connect4Game({ setView }) {
                         {/* Status */}
                         <div className="mb-5 w-full px-4 text-center">
                             {!winData ? (
-                                <div className={`glass-card rounded-2xl py-2.5 px-6 inline-flex items-center gap-2 transition-all border border-white/10 ${isMyTurn ? 'animate-pulse-glow' : ''}`}
+                                <div className={`glass-card rounded-2xl py-2 px-5 inline-flex items-center gap-2.5 transition-all border border-white/10 ${isMyTurn ? 'animate-pulse-glow' : ''}`}
                                     style={{ boxShadow: isMyTurn ? `0 0 15px ${myColorObj?.glow}` : 'none' }}>
                                     {isMyTurn ? (
                                         <>
+                                            <div className="w-7 h-7 rounded-xl bg-white/10 flex items-center justify-center overflow-hidden shrink-0 border border-white/20">
+                                                <AvatarDisplay avatarId={myProfile.avatar} size={20} />
+                                            </div>
+                                            <span className="font-black text-sm">
+                                                دورك تلعب {myProfile.nickname ? `(${myProfile.nickname})` : ''}!
+                                            </span>
                                             <IconTarget size={14} className="text-[var(--accent)] shrink-0" />
-                                            <span className="font-black text-sm">دورك تلعب!</span>
                                         </>
                                     ) : (
                                         <>
+                                            <div className="w-7 h-7 rounded-xl bg-white/10 flex items-center justify-center overflow-hidden shrink-0 border border-white/20">
+                                                <AvatarDisplay avatarId={opp.avatar} size={20} />
+                                            </div>
+                                            <span className="font-black text-sm opacity-90">
+                                                دور {opp.nickname || 'الخصم'}...
+                                            </span>
                                             <IconHourglass size={14} className="opacity-60 shrink-0" />
-                                            <span className="font-black text-sm opacity-70">دور الخصم...</span>
                                         </>
                                     )}
                                 </div>
@@ -331,15 +351,78 @@ export default function Connect4Game({ setView }) {
                             </div>
                         </div>
 
-                        {/* Turn indicators inside players view */}
-                        <div className="flex justify-between w-[95%] mt-6 px-2 opacity-70">
-                            <div className="flex flex-col items-center">
-                                <div className="w-8 h-8 rounded-full mb-1 shadow-lg" style={{ backgroundColor: myColorObj?.hex }} />
-                                <span className="text-xs font-bold">أنت</span>
+                        {/* Players duel cards view */}
+                        <div className="grid grid-cols-2 gap-3 w-[95%] mt-6 px-1">
+                            {/* My Card */}
+                            <div
+                                className={`glass-card p-2.5 rounded-2xl flex items-center gap-2.5 transition-all duration-300 relative overflow-hidden border ${
+                                    isMyTurn
+                                        ? 'border-2 border-[var(--accent)] bg-[var(--accent-soft)] shadow-lg'
+                                        : 'border-white/10 opacity-75'
+                                }`}
+                                style={isMyTurn ? { boxShadow: `0 0 20px ${myColorObj?.glow || 'var(--accent-glow)'}` } : {}}
+                            >
+                                <div className="relative shrink-0">
+                                    <div
+                                        className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden border-2"
+                                        style={{ borderColor: myColorObj?.hex }}
+                                    >
+                                        <AvatarDisplay avatarId={myProfile.avatar} size={26} />
+                                    </div>
+                                    <span
+                                        className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border border-black/50 shadow-sm"
+                                        style={{ backgroundColor: myColorObj?.hex }}
+                                    />
+                                </div>
+                                <div className="flex flex-col min-w-0 flex-1 text-right">
+                                    <span className="text-xs font-black truncate">{myProfile.nickname || 'أنت'}</span>
+                                    <span className={`text-[10px] font-bold leading-tight mt-0.5 flex items-center gap-1 ${isMyTurn ? 'text-[var(--accent)] font-black' : 'opacity-40'}`}>
+                                        {isMyTurn ? (
+                                            <>
+                                                <IconTarget size={11} className="shrink-0" />
+                                                <span>دورك الآن</span>
+                                            </>
+                                        ) : (
+                                            <span>في الانتظار</span>
+                                        )}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="flex flex-col items-center">
-                                <div className="w-8 h-8 rounded-full mb-1 shadow-lg border border-white/20" style={{ backgroundColor: getColorObj(isHost ? 'opp' : 'host').hex }} />
-                                <span className="text-xs font-bold">الخصم</span>
+
+                            {/* Opponent Card */}
+                            <div
+                                className={`glass-card p-2.5 rounded-2xl flex items-center gap-2.5 transition-all duration-300 relative overflow-hidden border ${
+                                    !isMyTurn
+                                        ? 'border-2 border-sky-400 bg-sky-500/10 shadow-lg'
+                                        : 'border-white/10 opacity-75'
+                                }`}
+                                style={!isMyTurn ? { boxShadow: `0 0 20px ${oppColorObj?.glow || 'rgba(56,189,248,0.3)'}` } : {}}
+                            >
+                                <div className="relative shrink-0">
+                                    <div
+                                        className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden border-2"
+                                        style={{ borderColor: oppColorObj?.hex }}
+                                    >
+                                        <AvatarDisplay avatarId={opp.avatar} size={26} />
+                                    </div>
+                                    <span
+                                        className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border border-black/50 shadow-sm"
+                                        style={{ backgroundColor: oppColorObj?.hex }}
+                                    />
+                                </div>
+                                <div className="flex flex-col min-w-0 flex-1 text-right">
+                                    <span className="text-xs font-black truncate">{opp.nickname || 'الخصم'}</span>
+                                    <span className={`text-[10px] font-bold leading-tight mt-0.5 flex items-center gap-1 ${!isMyTurn ? 'text-sky-400 font-black' : 'opacity-40'}`}>
+                                        {!isMyTurn ? (
+                                            <>
+                                                <IconHourglass size={11} className="shrink-0" />
+                                                <span>يفكر الآن...</span>
+                                            </>
+                                        ) : (
+                                            <span>مستعد</span>
+                                        )}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 

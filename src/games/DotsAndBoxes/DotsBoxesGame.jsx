@@ -4,6 +4,8 @@ import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Wifi from 'lucide-react/dist/esm/icons/wifi';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
+import useProfile from '../../hooks/useProfile';
+import { AvatarDisplay } from '../../components/icons/AvatarIcons';
 import { IconDotsBoxes, IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
 const ROWS = 4; // number of boxes vertically
@@ -20,6 +22,9 @@ const COLORS = [
 export default function DotsBoxesGame({ setView }) {
     const connRef = useRef(null);
     const isHostRef = useRef(false);
+
+    const [myProfile] = useProfile();
+    const [oppProfile, setOppProfile] = useState(null);
 
     const [gameState, setGameState] = useState('lobby');
 
@@ -48,6 +53,7 @@ export default function DotsBoxesGame({ setView }) {
     const isHost = isHostRef.current;
     const myColorId = isHost ? hostColor : (clientConfig?.oppColor || 'red');
     const isMyTurn = isHost ? hostTurn : !hostTurn;
+    const opp = oppProfile || { nickname: 'الخصم', avatar: 'alien' };
 
     const totalPossible = ROWS * COLS;
     const currentTotal = scores.host + scores.opp;
@@ -60,15 +66,18 @@ export default function DotsBoxesGame({ setView }) {
         else overallWinner = isHost ? 'opp' : 'me';
     }
 
-    const handleGameStart = (conn, hostMode) => {
+    const handleGameStart = (conn, hostMode, oppProf) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
+        if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
         setGameState(hostMode ? 'setup' : 'waiting-start');
     };
 
     const onData = (msg) => {
-        if (msg.type === 'start') {
+        if (msg.type === 'global_ready' && msg.profile) {
+            setOppProfile(msg.profile);
+        } else if (msg.type === 'start') {
             setClientConfig(msg.config);
             setGameState('playing');
             setHostTurn(true);
@@ -270,21 +279,26 @@ export default function DotsBoxesGame({ setView }) {
                     <div className="flex-1 flex flex-col items-center pb-6 px-3">
 
                         {/* Status Information Duel Bar */}
-                        <div className="w-full max-w-[370px] flex justify-between items-center glass-card rounded-2xl p-3.5 mb-4 border border-white/10">
+                        <div className="w-full max-w-[370px] flex justify-between items-center glass-card rounded-2xl p-3 mb-4 border border-white/10 gap-2">
                             {/* My Score */}
-                            <div className="flex flex-col items-center min-w-[50px]">
-                                <span className="text-[11px] font-bold opacity-60">أنت</span>
-                                <span className="text-2xl font-black drop-shadow-md font-mono" style={{ color: myColorObj?.hex }}>
-                                    {isHost ? scores.host : scores.opp}
-                                </span>
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden border-2 shrink-0" style={{ borderColor: myColorObj?.hex }}>
+                                    <AvatarDisplay avatarId={myProfile.avatar} size={22} />
+                                </div>
+                                <div className="flex flex-col text-right min-w-0">
+                                    <span className="text-[10px] font-black truncate max-w-[55px]">{myProfile.nickname || 'أنت'}</span>
+                                    <span className="text-xl font-black drop-shadow-md font-mono leading-none" style={{ color: myColorObj?.hex }}>
+                                        {isHost ? scores.host : scores.opp}
+                                    </span>
+                                </div>
                             </div>
 
                             {/* Turn indicator */}
-                            <div className="flex flex-col items-center justify-center">
+                            <div className="flex flex-col items-center justify-center shrink-0">
                                 {!isGameOver ? (
                                     <span
-                                        className={`text-xs font-black px-4 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${
-                                            isMyTurn ? 'bg-white/20 text-white shadow-md' : 'opacity-50 text-white/80'
+                                        className={`text-xs font-black px-3 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${
+                                            isMyTurn ? 'bg-white/20 text-white shadow-md' : 'opacity-70 text-white/90'
                                         }`}
                                         style={isMyTurn ? { backgroundColor: myColorObj?.hex, boxShadow: `0 0 16px ${myColorObj?.glow}` } : {}}
                                     >
@@ -295,13 +309,15 @@ export default function DotsBoxesGame({ setView }) {
                                             </>
                                         ) : (
                                             <>
-                                                <IconHourglass size={13} className="shrink-0" />
-                                                <span>دور الخصم...</span>
+                                                <div className="w-4 h-4 rounded-full overflow-hidden shrink-0 flex items-center justify-center">
+                                                    <AvatarDisplay avatarId={opp.avatar} size={14} />
+                                                </div>
+                                                <span className="truncate max-w-[80px]">دور {opp.nickname || 'الخصم'}...</span>
                                             </>
                                         )}
                                     </span>
                                 ) : (
-                                    <span className="text-xs font-black px-4 py-1.5 bg-white/20 rounded-full animate-pulse-glow text-white flex items-center gap-1.5">
+                                    <span className="text-xs font-black px-3.5 py-1.5 bg-white/20 rounded-full animate-pulse-glow text-white flex items-center gap-1.5">
                                         <IconTrophy size={14} className="text-amber-400" />
                                         <span>
                                             {overallWinner === 'draw' ? 'تعادل رائع!' : overallWinner === 'me' ? 'أنت الفائز البطل!' : 'انتهت اللعبة!'}
@@ -311,11 +327,16 @@ export default function DotsBoxesGame({ setView }) {
                             </div>
 
                             {/* Opp Score */}
-                            <div className="flex flex-col items-center min-w-[50px]">
-                                <span className="text-[11px] font-bold opacity-60">الخصم</span>
-                                <span className="text-2xl font-black opacity-80 font-mono" style={{ color: getColorObj(isHost ? 'opp' : 'host').hex }}>
-                                    {isHost ? scores.opp : scores.host}
-                                </span>
+                            <div className="flex items-center gap-2 flex-row-reverse">
+                                <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden border-2 shrink-0" style={{ borderColor: getColorObj(isHost ? 'opp' : 'host').hex }}>
+                                    <AvatarDisplay avatarId={opp.avatar} size={22} />
+                                </div>
+                                <div className="flex flex-col text-left min-w-0">
+                                    <span className="text-[10px] font-black truncate max-w-[55px]">{opp.nickname || 'الخصم'}</span>
+                                    <span className="text-xl font-black opacity-80 font-mono leading-none" style={{ color: getColorObj(isHost ? 'opp' : 'host').hex }}>
+                                        {isHost ? scores.opp : scores.host}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 

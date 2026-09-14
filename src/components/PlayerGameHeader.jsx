@@ -129,7 +129,7 @@ export default function PlayerGameHeader({
                             {!isMyTurn ? (
                                 <>
                                     <IconHourglass size={11} className="shrink-0" />
-                                    <span>دور الخصم</span>
+                                    <span>دور {opp.nickname || 'الخصم'}</span>
                                 </>
                             ) : (
                                 <span>مستعد</span>

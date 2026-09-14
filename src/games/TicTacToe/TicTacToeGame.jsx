@@ -9,6 +9,7 @@ import PlayerGameHeader from '../../components/PlayerGameHeader';
 import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
 import MatchRecapModal from '../../components/MatchRecapModal';
 import useProfile from '../../hooks/useProfile';
+import { AvatarDisplay } from '../../components/icons/AvatarIcons';
 import { IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
 // Helper to check winning states
@@ -280,16 +281,22 @@ export default function TicTacToeGame({ setView }) {
                         {/* Status Bar */}
                         <div className="text-center mb-6">
                             {!winData ? (
-                                <div className={`glass-card rounded-2xl py-2 px-6 inline-flex items-center gap-2 transition-all border border-white/10 ${isMyTurn ? 'animate-pulse-glow' : ''}`}>
+                                <div className={`glass-card rounded-2xl py-2 px-5 inline-flex items-center gap-2 transition-all border border-white/10 ${isMyTurn ? 'animate-pulse-glow' : ''}`}>
                                     {isMyTurn ? (
                                         <>
-                                            <IconTarget size={14} className="text-[var(--accent)] shrink-0" />
+                                            <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center overflow-hidden shrink-0 border border-white/20">
+                                                <AvatarDisplay avatarId={myProfile.avatar} size={15} />
+                                            </div>
                                             <span className="font-black text-xs">دورك تلعب بـ ({mySymbol})!</span>
+                                            <IconTarget size={14} className="text-[var(--accent)] shrink-0" />
                                         </>
                                     ) : (
                                         <>
+                                            <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center overflow-hidden shrink-0 border border-white/20">
+                                                <AvatarDisplay avatarId={oppProfile?.avatar || 'alien'} size={15} />
+                                            </div>
+                                            <span className="font-black text-xs opacity-90">دور {oppProfile?.nickname || 'الخصم'}...</span>
                                             <IconHourglass size={14} className="opacity-60 shrink-0" />
-                                            <span className="font-black text-xs opacity-75">انتظر دور الخصم...</span>
                                         </>
                                     )}
                                 </div>

@@ -413,7 +413,7 @@ export default function MemoryGame({ setView }) {
                             {!isGameOver ? (
                                 <div className={`glass-card rounded-2xl py-2 px-6 inline-block transition-all ${isMyTurn ? 'border-2 border-emerald-400/60 bg-emerald-500/10 animate-pulse' : 'border border-white/5'}`}>
                                     <p className={`font-black text-xs ${isMyTurn ? 'text-emerald-400' : 'opacity-70'}`}>
-                                        {isMyTurn ? 'دورك، اقلب كرتين متطابقين!' : 'دور الخصم يقلب الكروت...'}
+                                        {isMyTurn ? 'دورك، اقلب كرتين متطابقين!' : `دور ${oppProfile?.nickname || 'الخصم'} يقلب الكروت...`}
                                     </p>
                                 </div>
                             ) : (

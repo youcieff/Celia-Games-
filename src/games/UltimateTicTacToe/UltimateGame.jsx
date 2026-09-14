@@ -5,6 +5,8 @@ import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Wifi from 'lucide-react/dist/esm/icons/wifi';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
+import useProfile from '../../hooks/useProfile';
+import { AvatarDisplay } from '../../components/icons/AvatarIcons';
 import { IconBigXOGame, IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
 // Helper to check winning states on a 3x3 array (Classic XO)
@@ -30,6 +32,9 @@ export default function UltimateGame({ setView }) {
     const connRef = useRef(null);
     const isHostRef = useRef(false);
 
+    const [myProfile] = useProfile();
+    const [oppProfile, setOppProfile] = useState(null);
+
     const [gameState, setGameState] = useState('lobby');
 
     // ── Ultimate Tic-Tac-Toe Rules State (Free Play initially, then restricted) ──
@@ -51,16 +56,20 @@ export default function UltimateGame({ setView }) {
     const mySymbol = isHost ? hostSymbol : (hostSymbol === 'X' ? 'O' : 'X');
     const isMyTurn = (mySymbol === 'X' && xIsNext) || (mySymbol === 'O' && !xIsNext);
     const overallWinner = checkWin(bigBoard);
+    const opp = oppProfile || { nickname: 'الخصم', avatar: 'alien' };
 
-    const handleGameStart = (conn, hostMode) => {
+    const handleGameStart = (conn, hostMode, oppProf) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
+        if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
         setGameState(hostMode ? 'choosing-symbol' : 'waiting-start');
     };
 
     const onData = (msg) => {
-        if (msg.type === 'play') {
+        if (msg.type === 'global_ready' && msg.profile) {
+            setOppProfile(msg.profile);
+        } else if (msg.type === 'play') {
             applyMove(msg.boardIdx, msg.cellIdx, msg.symbol);
         } else if (msg.type === 'start') {
             setHostSymbol(msg.hostSymbol);
@@ -220,20 +229,48 @@ export default function UltimateGame({ setView }) {
                 {gameState === 'playing' && (
                     <div className="flex-1 flex flex-col items-center pb-6">
 
+                        {/* Players duel bar */}
+                        <div className="grid grid-cols-2 gap-2.5 w-[95%] max-w-[370px] mb-3">
+                            <div className={`glass-card p-2 rounded-xl flex items-center gap-2 border transition-all ${isMyTurn ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-white/10 opacity-70'}`}>
+                                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden border border-white/10 shrink-0">
+                                    <AvatarDisplay avatarId={myProfile.avatar} size={22} />
+                                </div>
+                                <div className="flex flex-col min-w-0 flex-1 text-right">
+                                    <span className="text-[11px] font-black truncate">{myProfile.nickname || 'أنت'}</span>
+                                    <span className="text-[10px] font-bold text-emerald-400 font-mono">({mySymbol})</span>
+                                </div>
+                            </div>
+                            <div className={`glass-card p-2 rounded-xl flex items-center gap-2 border transition-all ${!isMyTurn ? 'border-sky-400 bg-sky-500/10' : 'border-white/10 opacity-70'}`}>
+                                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden border border-white/10 shrink-0">
+                                    <AvatarDisplay avatarId={opp.avatar} size={22} />
+                                </div>
+                                <div className="flex flex-col min-w-0 flex-1 text-right">
+                                    <span className="text-[11px] font-black truncate">{opp.nickname || 'الخصم'}</span>
+                                    <span className="text-[10px] font-bold text-pink-400 font-mono">({mySymbol === 'X' ? 'O' : 'X'})</span>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Status */}
                         <div className="mb-4 w-full px-4 text-center">
                             {!overallWinner ? (
-                                <div className={`glass-card rounded-2xl py-2 px-6 inline-flex flex-col items-center transition-all border border-white/10 ${isMyTurn ? 'animate-pulse-glow' : ''}`}>
-                                    <p className="font-black text-xs text-center flex items-center gap-1.5" style={{ color: isMyTurn ? 'var(--accent)' : 'inherit' }}>
+                                <div className={`glass-card rounded-2xl py-2 px-5 inline-flex flex-col items-center transition-all border border-white/10 ${isMyTurn ? 'animate-pulse-glow' : ''}`}>
+                                    <p className="font-black text-xs text-center flex items-center gap-2" style={{ color: isMyTurn ? 'var(--accent)' : 'inherit' }}>
                                         {isMyTurn ? (
                                             <>
-                                                <IconTarget size={13} className="shrink-0" />
+                                                <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center overflow-hidden shrink-0 border border-white/20">
+                                                    <AvatarDisplay avatarId={myProfile.avatar} size={15} />
+                                                </div>
                                                 <span>دورك تلعب بـ ({mySymbol})!</span>
+                                                <IconTarget size={13} className="shrink-0" />
                                             </>
                                         ) : (
                                             <>
+                                                <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center overflow-hidden shrink-0 border border-white/20">
+                                                    <AvatarDisplay avatarId={opp.avatar} size={15} />
+                                                </div>
+                                                <span className="opacity-90">دور {opp.nickname || 'الخصم'}...</span>
                                                 <IconHourglass size={13} className="opacity-60 shrink-0" />
-                                                <span className="opacity-70">دور الخصم...</span>
                                             </>
                                         )}
                                     </p>
