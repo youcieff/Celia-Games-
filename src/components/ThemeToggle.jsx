@@ -11,21 +11,14 @@ export default function ThemeToggle() {
     return (
         <button
             onClick={toggleTheme}
-            className="theme-button h-11 px-3.5 rounded-2xl flex items-center gap-1.5 font-black text-xs transition-all duration-300 shadow-md select-none shrink-0 border border-white/10"
+            className="theme-button w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-md select-none shrink-0 border border-white/15"
             title={isGirly ? 'التبديل إلى مود ولادي' : 'التبديل إلى مود بناتي'}
             aria-label="تبديل الثيم"
         >
-            {isGirly ? (
-                <>
-                    <Heart size={14} className="fill-current animate-pulse-slow shrink-0" />
-                    <span className="whitespace-nowrap leading-none">بناتي</span>
-                </>
-            ) : (
-                <>
-                    <Shield size={14} className="fill-current shrink-0" />
-                    <span className="whitespace-nowrap leading-none">ولادي</span>
-                </>
-            )}
+            {isGirly
+                ? <Heart size={16} className="fill-current animate-pulse-slow" />
+                : <Shield size={16} className="fill-current" />
+            }
         </button>
     );
 }

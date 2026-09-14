@@ -24,13 +24,13 @@ export default function Logo({ size = 'large' }) {
                     className="w-full h-full object-cover scale-[1.05]"
                 />
             </div>
-            <span
-                className={`gradient-text ${
-                    isSmall ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'
-                } leading-none font-black tracking-tight drop-shadow-sm whitespace-nowrap`}
-            >
-                ألعاب سيليا
-            </span>
+            {!isSmall && (
+                <span
+                    className="gradient-text text-sm sm:text-base leading-none font-black tracking-tight drop-shadow-sm whitespace-nowrap"
+                >
+                    ألعاب سيليا
+                </span>
+            )}
         </div>
     );
 }

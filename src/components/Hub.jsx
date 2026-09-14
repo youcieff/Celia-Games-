@@ -149,33 +149,33 @@ export default function Hub({ setView }) {
             <div className="min-h-dvh flex flex-col items-center px-4 safe-area-pt">
 
                 {/* ── Header ── */}
-                <header className="w-full max-w-md flex justify-between items-center py-3 mb-4">
-                    <Logo />
-                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <header className="w-full max-w-md flex items-center gap-2 py-3 mb-5">
+                    {/* Logo image only */}
+                    <Logo size="small" />
+
+                    {/* Center title */}
+                    <div className="flex-1 flex flex-col items-center">
+                        <p className="text-[9px] font-black tracking-[0.22em] uppercase opacity-25 leading-none mb-1">اختار وابدأ</p>
+                        <h1 className="text-base font-black leading-none tracking-tight">
+                            ألعاب <span className="gradient-text">سيليا</span>
+                        </h1>
+                    </div>
+
+                    {/* Right: 3 icon buttons */}
+                    <div className="flex items-center gap-1.5 shrink-0">
                         <ProfileWidget />
                         <ThemeToggle />
                         <GlobalMuteButton />
                     </div>
                 </header>
 
-                {/* ── Hero section ── */}
-                <div className="w-full max-w-md mb-5">
-                    <div className="hub-hero">
-                        {/* Small decorative label */}
-                        <p className="text-[10px] font-black tracking-[0.2em] uppercase opacity-30 mb-2">
-                            اختار وابدأ
-                        </p>
-                        <h1 className="hub-hero-title">
-                            ألعاب&nbsp;
-                            <span className="gradient-text">سيليا</span>
-                        </h1>
-                        {/* Live game count */}
-                        <div className="hub-hero-stats">
-                            <span className="hub-stat-dot" />
-                            <span>{GAMES.filter(g => g.online).length} ألعاب أونلاين</span>
-                            <span className="opacity-20 mx-1">·</span>
-                            <span>{GAMES.length} لعبة إجمالاً</span>
-                        </div>
+                {/* ── Stats strip ── */}
+                <div className="w-full max-w-md mb-4">
+                    <div className="hub-hero-stats">
+                        <span className="hub-stat-dot" />
+                        <span>{GAMES.filter(g => g.online).length} ألعاب أونلاين</span>
+                        <span className="opacity-20 mx-1">·</span>
+                        <span>{GAMES.length} لعبة إجمالاً</span>
                     </div>
                 </div>
 

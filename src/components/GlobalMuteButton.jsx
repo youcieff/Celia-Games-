@@ -26,7 +26,7 @@ export default function GlobalMuteButton({ className = '' }) {
     return (
         <button
             onClick={handleToggleMute}
-            className={`glass-card w-11 h-11 flex items-center justify-center rounded-2xl hover:scale-105 active:scale-95 transition-all select-none shrink-0 border border-white/10 ${
+            className={`glass-card w-10 h-10 flex items-center justify-center rounded-2xl hover:scale-105 active:scale-95 transition-all select-none shrink-0 border border-white/10 ${
                 muted ? 'border-rose-500/30 text-rose-400 bg-rose-500/10 shadow-[0_0_10px_rgba(244,63,94,0.2)]' : 'text-emerald-400 hover:text-emerald-300'
             } ${className}`}
             title={muted ? 'تفعيل الصوت' : 'كتم الصوت'}

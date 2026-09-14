@@ -27,17 +27,13 @@ export default function ProfileWidget() {
     return (
         <>
             <div
-                className="glass-card h-11 px-3 rounded-2xl flex items-center gap-2 cursor-pointer hover:bg-white/10 transition-all select-none shrink-0 border border-white/10 shadow-sm group"
+                className="glass-card w-10 h-10 rounded-2xl flex items-center justify-center cursor-pointer hover:bg-white/10 transition-all select-none shrink-0 border border-white/10 shadow-sm overflow-hidden"
                 onClick={handleOpen}
+                title="تعديل الملف الشخصي"
             >
-                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 overflow-hidden bg-white/5 border border-white/10">
-                    <AvatarDisplay avatarId={profile.avatar} size={24} />
-                </div>
-                <span className="font-black text-xs tracking-wide opacity-90 max-w-[70px] sm:max-w-[85px] truncate whitespace-nowrap">
-                    {profile.nickname}
-                </span>
-                <IconEdit size={13} className="opacity-40 group-hover:opacity-80 transition-opacity shrink-0" />
+                <AvatarDisplay avatarId={profile.avatar} size={28} />
             </div>
+
 
             {isOpen && (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
