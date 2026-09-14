@@ -6,9 +6,9 @@ export default function Logo({ size = 'large' }) {
     const { theme } = useTheme();
     const isSmall = size === 'small';
 
-    const imageStyle = theme === 'dark'
-        ? { filter: 'drop-shadow(0 0 10px rgba(56, 189, 248, 0.4))' }
-        : { filter: 'drop-shadow(0 0 6px rgba(0, 0, 0, 0.25))' };
+    const imageStyle = theme === 'girly'
+        ? { filter: 'drop-shadow(0 0 10px rgba(255, 61, 138, 0.45))' }
+        : { filter: 'drop-shadow(0 0 10px rgba(46, 107, 255, 0.45))' };
 
     return (
         <div className="flex items-center gap-2.5 font-black tracking-tight select-none shrink-0">

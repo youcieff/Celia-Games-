@@ -4,88 +4,79 @@ import Logo from './Logo';
 import ProfileWidget from './ProfileWidget';
 import GlobalMuteButton from './GlobalMuteButton';
 import { playSound, playHaptic } from '../lib/audioEngine';
+import { GameIcon, IconPhone, IconWifi, IconHeart } from './icons/GameIcons';
 
 /* ─── game catalogue ─────────────────────────────────────────────────────── */
 const GAMES = [
     {
         id: 'code-game',
-        emoji: '🔐',
         title: 'خمن الكود',
-        desc: 'كود سري وردود فعل ملونة',
+        desc: 'كود سري وردود فعل دقيقة',
         badge: 'أونلاين',
-        accent: '#00e5a0',
+        accentVar: 'var(--game-1-accent)',
     },
     {
-        id: 'word-game',          // special — has sub-modes
-        emoji: '🧠',
+        id: 'word-game',
         title: 'خمن الكلمة',
         desc: 'حرف حرف لحد ما تخمنها',
-        badge: null,              // handled separately
-        accent: '#818cf8',
+        badge: null,
+        accentVar: 'var(--game-2-accent)',
     },
     {
         id: 'xo-game',
-        emoji: '✖️⭕',
         title: 'إكس أو',
-        desc: 'الكلاسيك',
+        desc: 'الكلاسيك السريع',
         badge: 'أونلاين',
-        accent: '#f472b6',
+        accentVar: 'var(--game-3-accent)',
     },
     {
         id: 'big-xo-game',
-        emoji: '🎯',
         title: 'Big XO',
-        desc: '٩ إكس أو في واحدة',
+        desc: '٩ إكس أو في شبكة واحدة',
         badge: 'أونلاين',
-        accent: '#a78bfa',
+        accentVar: 'var(--game-4-accent)',
     },
     {
         id: 'connect-4',
-        emoji: '🟡',
         title: 'Connect 4',
-        desc: 'رص ٤ في صف',
+        desc: 'رص ٤ في صف رأسي أو أفقي',
         badge: 'أونلاين',
-        accent: '#fbbf24',
+        accentVar: 'var(--game-5-accent)',
     },
     {
         id: 'memory-game',
-        emoji: '🃏',
         title: 'Memory Match',
-        desc: 'تطابق الورق',
+        desc: 'تطابق الورق وقوة الذاكرة',
         badge: 'أونلاين',
-        accent: '#34d399',
+        accentVar: 'var(--game-6-accent)',
     },
     {
         id: 'dots-boxes',
-        emoji: '⬜',
         title: 'Dots & Boxes',
-        desc: 'أكمل المربع',
+        desc: 'قفل المربعات واكسب النقاط',
         badge: 'أونلاين',
-        accent: '#60a5fa',
+        accentVar: 'var(--game-7-accent)',
     },
     {
         id: 'sea-battle',
-        emoji: '🚢',
         title: 'Sea Battle',
-        desc: 'حرب السفن',
+        desc: 'حرب السفن الاستراتيجية',
         badge: 'أونلاين',
-        accent: '#38bdf8',
+        accentVar: 'var(--game-8-accent)',
     },
     {
         id: 'guess-time',
-        emoji: '⏱️',
         title: 'خمن الوقت',
-        desc: 'وقّف الساعة في اللحظة',
+        desc: 'وقّف الساعة في اللحظة المضبوطة',
         badge: 'أونلاين',
-        accent: '#fb923c',
+        accentVar: 'var(--game-9-accent)',
     },
     {
         id: 'bus-complete',
-        emoji: '🚌',
         title: 'أتوبيس كومبليت',
-        desc: 'اسم حيوان نبات جماد بلد',
+        desc: 'اسم حيوان نبات جماد بلاد',
         badge: 'أونلاين',
-        accent: '#4ade80',
+        accentVar: 'var(--game-10-accent)',
     },
 ];
 
@@ -95,17 +86,21 @@ function WordGameSelector({ onSelect }) {
         <div className="grid grid-cols-2 gap-2 mt-3">
             <button
                 onClick={() => onSelect('word-game-local')}
-                className="glass-card rounded-2xl py-3 px-4 flex flex-col items-center gap-1 transition-all hover:border-[var(--primary-color)] active:scale-95"
+                className="glass-card rounded-2xl py-3 px-4 flex flex-col items-center gap-1.5 transition-all hover:border-[var(--accent)] active:scale-95 group"
             >
-                <span className="text-2xl">📱</span>
+                <div className="w-10 h-10 rounded-xl bg-[var(--accent-soft)] flex items-center justify-center text-[var(--accent)] group-hover:scale-110 transition-transform">
+                    <IconPhone size={22} />
+                </div>
                 <span className="text-sm font-black">أوفلاين</span>
                 <span className="text-[10px] opacity-40 font-medium">جهاز واحد</span>
             </button>
             <button
                 onClick={() => onSelect('word-game-online')}
-                className="glass-card rounded-2xl py-3 px-4 flex flex-col items-center gap-1 transition-all hover:border-[var(--primary-color)] active:scale-95"
+                className="glass-card rounded-2xl py-3 px-4 flex flex-col items-center gap-1.5 transition-all hover:border-[var(--accent)] active:scale-95 group"
             >
-                <span className="text-2xl">🌐</span>
+                <div className="w-10 h-10 rounded-xl bg-[var(--accent-soft)] flex items-center justify-center text-[var(--accent)] group-hover:scale-110 transition-transform">
+                    <IconWifi size={22} />
+                </div>
                 <span className="text-sm font-black">أونلاين</span>
                 <span className="text-[10px] opacity-40 font-medium">جهازين</span>
             </button>
@@ -166,22 +161,24 @@ export default function Hub({ setView }) {
                         <div key={game.id}>
                             <button
                                 onClick={() => handleCardClick(game)}
-                                className="game-card"
-                                style={{ '--card-accent': game.accent }}
+                                className="game-card group"
+                                style={{ '--card-accent': game.accentVar }}
                             >
                                 {/* shimmer layer */}
                                 <span className="game-card-shimmer" />
 
                                 {/* icon */}
                                 <div
-                                    className="game-card-icon flex items-center justify-center"
+                                    className="game-card-icon flex items-center justify-center radial-glow"
                                     style={{ 
-                                        boxShadow: `0 0 20px ${game.accent}55`,
-                                        fontSize: game.id === 'xo-game' ? '1.1rem' : '1.5rem',
-                                        letterSpacing: game.id === 'xo-game' ? '-2px' : 'normal'
+                                        boxShadow: `0 0 20px color-mix(in srgb, ${game.accentVar} 30%, transparent)`,
                                     }}
                                 >
-                                    {game.emoji}
+                                    <GameIcon 
+                                        gameId={game.id} 
+                                        size={26} 
+                                        className="text-[var(--card-accent)] transition-transform duration-300 group-hover:scale-110" 
+                                    />
                                 </div>
 
                                 {/* text */}
@@ -195,9 +192,9 @@ export default function Hub({ setView }) {
                                     <span
                                         className="game-card-badge"
                                         style={{
-                                            color: game.accent,
-                                            borderColor: `${game.accent}55`,
-                                            background: `${game.accent}14`,
+                                            color: game.accentVar,
+                                            borderColor: `color-mix(in srgb, ${game.accentVar} 35%, transparent)`,
+                                            background: `color-mix(in srgb, ${game.accentVar} 12%, transparent)`,
                                         }}
                                     >
                                         {game.badge}
@@ -222,8 +219,9 @@ export default function Hub({ setView }) {
 
                 </main>
 
-                <footer className="py-5 text-[11px] font-bold opacity-20 tracking-widest">
-                    ألعاب سيليا — صُنع بكل ❤️
+                <footer className="py-5 text-[11px] font-bold opacity-30 tracking-widest flex items-center gap-1.5">
+                    <span>ألعاب سيليا — صُنع بكل</span>
+                    <IconHeart size={14} filled className="text-rose-500 animate-pulse-slow" />
                 </footer>
             </div>
         </>

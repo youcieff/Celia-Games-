@@ -13,7 +13,7 @@ export default class MemoryAI {
 
         setTimeout(() => this.conn._sendToPlayer({
             type: 'global_ready',
-            profile: { nickname: 'الذكاء الاصطناعي 🤖', avatar: '🤖' }
+            profile: { nickname: 'الذكاء الاصطناعي', avatar: 'robot' }
         }), 600);
     }
 
@@ -131,6 +131,12 @@ export default class MemoryAI {
         }
 
         if (first === null || second === null || first === second) return;
+
+        const firstCard = this.deck[first];
+        const firstCardId = firstCard?.cardId || firstCard?.id;
+        if (firstCardId) {
+            this.memory[first] = firstCardId;
+        }
 
         // Memorize second card as well
         const secondCard = this.deck[second];

@@ -23,9 +23,9 @@ export default function SecretSetup({ onStart }) {
 
     return (
         <div className="glass-card rounded-3xl p-6 w-full max-w-sm">
-            <h2 className="text-2xl font-black mb-1 text-center">اللاعب الأول 🤫</h2>
+            <h2 className="text-2xl font-black mb-1 text-center">اللاعب الأول</h2>
             <p className="opacity-50 text-sm text-center mb-6">اكتب الكلمة السرية ثم سلّم الموبايل</p>
-            <p className="opacity-40 text-[11px] text-center mb-4">✅ تقبل كلمات عربي وإنجليزي</p>
+            <p className="opacity-40 text-[11px] text-center mb-4">تقبل كلمات عربي وإنجليزي</p>
 
             <div className="space-y-4">
                 <div className="relative">
@@ -61,9 +61,10 @@ export default function SecretSetup({ onStart }) {
 
             <button
                 onClick={handleStart}
-                className="glow-button w-full h-14 rounded-2xl text-lg font-black flex items-center justify-center gap-2 mt-6"
+                className="glow-button w-full h-14 rounded-2xl font-black text-lg flex items-center justify-center gap-2 mt-6"
             >
-                <Play size={22} /> ابدأ اللعبة
+                <Play size={20} />
+                بدء التحدي
             </button>
         </div>
     );

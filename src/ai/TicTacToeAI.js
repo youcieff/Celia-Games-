@@ -21,18 +21,25 @@ export default class TicTacToeAI {
             this.isAiTurn = (this.aiSymbol === 'X' && msg.xIsNext) || (this.aiSymbol === 'O' && !msg.xIsNext);
             
             if (this.isAiTurn) {
-                this.makeMove();
+                this.scheduleMove(600);
             }
         } else if (msg.type === 'play') {
             // Player made a move
             this.board[msg.index] = msg.symbol;
             this.isAiTurn = true; // It's our turn now
-            this.makeMove();
+            this.scheduleMove(500 + Math.random() * 300);
         } else if (msg.type === 'restart') {
+            if (this.moveTimer) clearTimeout(this.moveTimer);
             this.board = Array(9).fill(null);
-            // In TicTacToe, on restart, Host gets to reconsider their role and sends a new 'start' message.
-            // AI just waits.
+            this.isAiTurn = false;
         }
+    }
+
+    scheduleMove(delay = 500) {
+        if (this.moveTimer) clearTimeout(this.moveTimer);
+        this.moveTimer = setTimeout(() => {
+            this.makeMove();
+        }, delay);
     }
 
     makeMove() {
@@ -125,5 +132,7 @@ export default class TicTacToeAI {
         return null;
     }
 
-    close() {}
+    close() {
+        if (this.moveTimer) clearTimeout(this.moveTimer);
+    }
 }

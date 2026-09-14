@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import Copy from 'lucide-react/dist/esm/icons/copy';
 import Plus from 'lucide-react/dist/esm/icons/plus';
-import LinkIcon from 'lucide-react/dist/esm/icons/link';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
+import Check from 'lucide-react/dist/esm/icons/check';
+import { IconCopy, IconJoin } from '../../components/icons/GameIcons';
 
 export default function P2PLobby({ myId, onJoin, isConnecting }) {
     const [joinId, setJoinId] = useState('');
@@ -27,8 +27,8 @@ export default function P2PLobby({ myId, onJoin, isConnecting }) {
                 {myId ? (
                     <div className="flex items-center gap-2 glass-card rounded-2xl p-3 mb-2">
                         <span className="font-mono text-2xl tracking-widest font-black flex-1">{myId}</span>
-                        <button onClick={handleCopy} className="opacity-60 hover:opacity-100 transition-opacity p-2">
-                            <Copy size={20} className={copied ? "text-emerald-400" : ""} />
+                        <button onClick={handleCopy} className="opacity-60 hover:opacity-100 transition-opacity p-2" title="نسخ الكود">
+                            {copied ? <Check size={20} className="text-emerald-400" /> : <IconCopy size={20} />}
                         </button>
                     </div>
                 ) : (
@@ -38,7 +38,7 @@ export default function P2PLobby({ myId, onJoin, isConnecting }) {
                 )}
 
                 {copied && (
-                    <p className="text-xs text-emerald-400 font-bold animate-pop-in">✓ تم النسخ!</p>
+                    <p className="text-xs text-emerald-400 font-bold animate-pop-in">تم النسخ بنجاح</p>
                 )}
             </div>
 
@@ -51,7 +51,7 @@ export default function P2PLobby({ myId, onJoin, isConnecting }) {
             {/* Join Room */}
             <div className="glass-card rounded-3xl p-6 w-full text-center">
                 <h2 className="text-xl font-black mb-1 flex items-center justify-center gap-2">
-                    <LinkIcon size={20} /> دخول لغرفة
+                    <IconJoin size={20} /> دخول لغرفة
                 </h2>
                 <p className="opacity-50 text-xs mb-4">اكتب كود الغرفة اللي اتعملت</p>
 
@@ -70,7 +70,12 @@ export default function P2PLobby({ myId, onJoin, isConnecting }) {
                     disabled={!joinId || isConnecting}
                     className="glow-button w-full h-14 rounded-2xl font-black text-lg flex items-center justify-center gap-2 disabled:opacity-40"
                 >
-                    {isConnecting ? <Loader2 className="animate-spin" size={22} /> : '🚀 انضمام الآن'}
+                    {isConnecting ? <Loader2 className="animate-spin" size={22} /> : (
+                        <>
+                            <IconJoin size={20} />
+                            انضمام الآن
+                        </>
+                    )}
                 </button>
             </div>
         </div>

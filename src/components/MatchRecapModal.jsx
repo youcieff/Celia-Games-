@@ -4,7 +4,7 @@ import Pause from 'lucide-react/dist/esm/icons/pause';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import FastForward from 'lucide-react/dist/esm/icons/fast-forward';
 import X from 'lucide-react/dist/esm/icons/x';
-import Trophy from 'lucide-react/dist/esm/icons/trophy';
+import Film from 'lucide-react/dist/esm/icons/film';
 import Flame from 'lucide-react/dist/esm/icons/flame';
 import { playSound, playHaptic } from '../lib/audioEngine';
 
@@ -85,7 +85,9 @@ export default function MatchRecapModal({
                 {/* Header */}
                 <div className="flex items-center justify-between pb-2 border-b border-white/10">
                     <div className="flex items-center gap-2">
-                        <span className="text-2xl">🎥</span>
+                        <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                            <Film size={18} />
+                        </div>
                         <div>
                             <h3 className="text-base font-black gradient-text">ملخص الجولة السريع</h3>
                             <p className="text-[10px] opacity-60 font-bold">إعادة عرض حركات المعركة خطوة بخطوة</p>
@@ -120,7 +122,9 @@ export default function MatchRecapModal({
                                             ${isLatest ? 'ring-2 ring-yellow-400 scale-110 z-10' : ''}
                                             `}
                                         >
-                                            {shot?.result === 'hit' && '💥'}
+                                            {shot?.result === 'hit' && (
+                                                <span className="w-2 h-2 rounded-full bg-rose-200 shadow-[0_0_6px_#f43f5e]" />
+                                            )}
                                             {shot?.result === 'miss' && <span className="w-1.5 h-1.5 rounded-full bg-white/60" />}
                                         </div>
                                     );
@@ -164,11 +168,15 @@ export default function MatchRecapModal({
                             الحركة: {currentStep} / {totalMoves}
                         </span>
                         {movesUpToNow.length > 0 && (
-                            <span className="text-yellow-400 font-mono text-[11px]">
+                            <span className="text-yellow-400 font-mono text-[11px] flex items-center gap-1">
                                 {movesUpToNow[movesUpToNow.length - 1].shooter === 'me'
                                     ? (myProfile?.nickname || 'أنت')
                                     : (oppProfile?.nickname || 'الخصم')}
-                                {movesUpToNow[movesUpToNow.length - 1].result === 'hit' ? ' 🔥 ضربة مباشرة!' : ''}
+                                {movesUpToNow[movesUpToNow.length - 1].result === 'hit' && (
+                                    <span className="text-rose-400 flex items-center gap-1">
+                                        <Flame size={12} /> ضربة مباشرة!
+                                    </span>
+                                )}
                             </span>
                         )}
                     </div>
@@ -236,9 +244,10 @@ export default function MatchRecapModal({
                                 onClose();
                                 onRestart();
                             }}
-                            className="glow-button flex-1 py-3 rounded-xl font-black text-xs"
+                            className="glow-button flex-1 py-3 rounded-xl font-black text-xs flex items-center justify-center gap-1.5"
                         >
-                            العب تاني 🎮
+                            <RotateCcw size={14} />
+                            العب تاني
                         </button>
                     )}
                 </div>

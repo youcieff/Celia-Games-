@@ -15,7 +15,7 @@ export default class SeaBattleAI {
         setTimeout(() => {
             this.conn._sendToPlayer({
                 type: 'global_ready',
-                profile: { nickname: 'الذكاء الاصطناعي 🤖', avatar: '🤖' }
+                profile: { nickname: 'الذكاء الاصطناعي', avatar: 'robot' }
             });
         }, 600);
     }

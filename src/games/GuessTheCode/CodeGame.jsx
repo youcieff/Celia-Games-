@@ -10,6 +10,7 @@ import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Wifi from 'lucide-react/dist/esm/icons/wifi';
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
+import { IconCodeGame, IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
 export default function CodeGame({ setView }) {
     // ── stable refs (no stale closures) ──────────────────────────────
@@ -184,37 +185,29 @@ export default function CodeGame({ setView }) {
 
             <div className="min-h-dvh max-w-md mx-auto px-4 flex flex-col safe-area-pt overflow-x-hidden overflow-y-auto">
 
-                {/* ── Navbar ── */}
-                <div className="flex justify-between items-center py-4 relative">
-                    <div className="flex items-center gap-2 z-10">
-                        <Logo size="small" />
-                        <button
-                            onClick={() => { connRef.current?.close(); setView('hub'); }}
-                            className="glass-card w-11 h-11 flex items-center justify-center rounded-2xl hover:scale-105 transition-transform"
-                        >
-                            <ArrowRight size={20} />
-                        </button>
-                        <GlobalMuteButton />
-                    </div>
+                {/* ── Clean 3-Column Top Bar ── */}
+                <header className="px-2 py-3 flex items-center justify-between gap-2 w-full z-20">
+                    <button
+                        onClick={() => { connRef.current?.close(); setView('hub'); }}
+                        className="glass-card w-10 h-10 flex items-center justify-center rounded-2xl hover:scale-105 active:scale-95 transition-all text-white/80 shrink-0"
+                        title="الرجوع للرئيسية"
+                    >
+                        <ArrowRight size={18} />
+                    </button>
 
-                    <div className="flex items-center gap-2 glass-card px-3 py-1.5 rounded-2xl text-xs font-bold text-center">
-                        {gameState !== 'lobby' ? (
-                            <div className="flex items-center gap-3">
-                                <span className="flex flex-col items-end">
-                                    <span className="text-[12px] font-black gradient-text leading-none mb-1">خمن الكود 🔐</span>
-                                    <span className="text-[9px] opacity-70 leading-none">{codeLength} أرقام</span>
-                                </span>
-                                <div className="w-px h-5 bg-white/20"></div>
-                                <span className="flex flex-col items-center justify-center text-emerald-400">
-                                    <Wifi size={12} />
-                                    <span className="text-[8px] mt-0.5 font-black">متصل</span>
-                                </span>
-                            </div>
-                        ) : (
-                            <span className="text-[11px] font-black gradient-text">خمن الكود 🔐</span>
+                    <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
+                        <IconCodeGame size={18} className="text-[var(--accent)]" />
+                        <span className="text-xs font-black gradient-text">خمن الكود</span>
+                        {gameState !== 'lobby' && (
+                            <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold mr-1">
+                                <Wifi size={11} />
+                                <span>{codeLength} أرقام</span>
+                            </span>
                         )}
                     </div>
-                </div>
+
+                    <GlobalMuteButton className="w-10 h-10 !rounded-2xl shrink-0" />
+                </header>
 
                 {/* ── Lobby ── */}
                 {gameState === 'lobby' && (
@@ -224,20 +217,21 @@ export default function CodeGame({ setView }) {
                 )}
 
                 {/* ── Host: Choose Code Length ── */}
+                {/* ── Host: Choose Code Length ── */}
                 {gameState === 'length-select' && (
-                    <div className="flex-1 flex flex-col items-center justify-center -mt-10">
-                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pop-in">
-                            <h2 className="text-2xl font-black mb-2">🔐 طول الكود</h2>
-                            <p className="opacity-60 text-sm mb-8 font-bold">اختار كام رقم في الكود السري؟</p>
-                            <div className="grid grid-cols-2 gap-4">
+                    <div className="flex-1 flex flex-col items-center justify-center -mt-6">
+                        <div className="glass-card rounded-3xl p-7 w-full max-w-sm text-center animate-pop-in border border-white/10 shadow-2xl">
+                            <h2 className="text-xl font-black mb-2 gradient-text">طول الكود</h2>
+                            <p className="opacity-60 text-xs mb-6 font-bold">اختار كم رقم في الكود السري؟</p>
+                            <div className="grid grid-cols-2 gap-3">
                                 {[3, 4].map(len => (
                                     <button
                                         key={len}
                                         onClick={() => handleSelectLength(len)}
-                                        className="glass-card glass-card-hover rounded-2xl py-8 flex flex-col items-center gap-2 border border-transparent hover:border-[var(--primary-color)]/50 transition-all"
+                                        className="glass-card glass-card-hover rounded-2xl py-6 flex flex-col items-center gap-1.5 border border-white/10 hover:border-[var(--accent)] transition-all"
                                     >
-                                        <span className="text-5xl font-black gradient-text">{len}</span>
-                                        <span className="text-sm font-bold opacity-70">{len === 3 ? 'سهل 😊' : 'صعب 💀'}</span>
+                                        <span className="text-4xl font-black gradient-text">{len}</span>
+                                        <span className="text-xs font-bold opacity-70">{len === 3 ? 'مستوى سهل' : 'مستوى تحدي'}</span>
                                     </button>
                                 ))}
                             </div>
@@ -247,10 +241,11 @@ export default function CodeGame({ setView }) {
 
                 {/* ── Client: Waiting for host to choose length ── */}
                 {gameState === 'waiting-length' && (
-                    <div className="flex-1 flex items-center justify-center -mt-10">
-                        <div className="glass-card rounded-3xl p-10 text-center animate-pulse-glow">
-                            <h2 className="text-2xl font-black mb-2">⏳ في الانتظار...</h2>
-                            <p className="opacity-60 font-bold text-sm">الخصم بيختار طول الكود السري</p>
+                    <div className="flex-1 flex items-center justify-center -mt-6">
+                        <div className="glass-card rounded-3xl p-8 text-center animate-pulse-glow border border-white/10">
+                            <IconHourglass size={36} className="text-[var(--accent)] mx-auto mb-3" />
+                            <h2 className="text-xl font-black mb-2 gradient-text">في الانتظار...</h2>
+                            <p className="opacity-60 font-bold text-xs">الخصم يقوم باختيار طول الكود السري</p>
                         </div>
                     </div>
                 )}
@@ -261,38 +256,52 @@ export default function CodeGame({ setView }) {
 
                         {/* Status card */}
                         {gameState === 'setting-secret' && (
-                            <div className="glass-card rounded-2xl p-4">
-                                <p className="font-black text-base mb-1" style={{ color: 'var(--primary-color)' }}>
-                                    🔐 الخطوة 1 — ضع كودك السري
+                            <div className="glass-card rounded-2xl p-4 border border-white/10">
+                                <p className="font-black text-sm mb-1 text-[var(--accent)] flex items-center gap-1.5">
+                                    <Lock size={15} />
+                                    <span>الخطوة 1 — ضع كودك السري</span>
                                 </p>
-                                <p className="text-xs opacity-60 leading-relaxed">
-                                    اختر {codeLength} أرقام سرية — الطرف التاني هيحاول يخمنها.<br />
-                                    <span className="text-yellow-400 font-bold">بعد الضغط ✅ مش هتشوفه تاني!</span>
+                                <p className="text-xs opacity-65 leading-relaxed">
+                                    اختر {codeLength} أرقام سرية — سيحاول الطرف الآخر تخمينها.<br />
+                                    <span className="text-amber-400 font-bold text-[11px]">بعد الضغط على زر التأكيد لن يظهر لك ثانية!</span>
                                 </p>
                             </div>
                         )}
 
                         {gameState === 'waiting-start' && (
-                            <div className="glass-card rounded-2xl p-5 text-center animate-pulse-glow">
-                                <CheckCircle2 className="mx-auto mb-2 text-emerald-400" size={36} />
-                                <p className="font-black text-base mb-1">✅ كودك السري جاهز!</p>
-                                <p className="text-xs opacity-60">في انتظار الخصم يضع كوده...</p>
+                            <div className="glass-card rounded-2xl p-5 text-center animate-pulse-glow border border-white/10">
+                                <CheckCircle2 className="mx-auto mb-2 text-emerald-400" size={32} />
+                                <p className="font-black text-sm mb-1">كودك السري جاهز!</p>
+                                <p className="text-xs opacity-60">في انتظار الخصم لتحديد كوده...</p>
                             </div>
                         )}
 
                         {gameState === 'playing' && (
-                            <div className={`glass-card rounded-2xl py-3 px-4 transition-all ${isMyTurn ? 'animate-pulse-glow' : ''}`}>
-                                <p className="font-black text-sm" style={{ color: isMyTurn ? 'var(--primary-color)' : 'inherit' }}>
-                                    {isMyTurn ? '🎯 الخطوة 2 — خمّن كود الخصم!' : '⏳ الخصم بيخمن كودك...'}
+                            <div className={`glass-card rounded-2xl py-3 px-4 transition-all border border-white/10 ${isMyTurn ? 'animate-pulse-glow' : ''}`}>
+                                <p className="font-black text-xs flex items-center gap-1.5" style={{ color: isMyTurn ? 'var(--accent)' : 'inherit' }}>
+                                    {isMyTurn ? (
+                                        <>
+                                            <IconTarget size={14} className="shrink-0" />
+                                            <span>الخطوة 2 — خمّن كود الخصم!</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <IconHourglass size={14} className="opacity-60 shrink-0" />
+                                            <span className="opacity-75">الخصم يقوم بتخمين كودك...</span>
+                                        </>
+                                    )}
                                 </p>
-                                {isMyTurn && <p className="text-[11px] opacity-50 mt-0.5">ادخل {codeLength} أرقام واضغط ✅</p>}
+                                {isMyTurn && <p className="text-[10px] opacity-50 mt-0.5">ادخل {codeLength} أرقام ثم اضغط زر التأكيد</p>}
                             </div>
                         )}
 
                         {(gameState === 'won' || gameState === 'lost') && (
-                            <div className="glass-card rounded-2xl py-3 px-4 text-center animate-pop-in">
-                                <p className={`font-black text-2xl ${gameState === 'won' ? 'text-emerald-400' : 'text-red-400'}`}>
-                                    {gameState === 'won' ? '🎉 كسبت التحدي!' : '💔 خسرت التحدي!'}
+                            <div className="glass-card rounded-2xl py-3.5 px-4 text-center animate-pop-in border border-white/10 shadow-2xl">
+                                <p className={`font-black text-xl flex items-center justify-center gap-2 ${gameState === 'won' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                    <IconTrophy size={20} className={gameState === 'won' ? 'text-amber-400' : 'text-rose-400'} />
+                                    <span>
+                                        {gameState === 'won' ? 'أنت الفائز البطل!' : 'انتهت اللعبة!'}
+                                    </span>
                                 </p>
                             </div>
                         )}

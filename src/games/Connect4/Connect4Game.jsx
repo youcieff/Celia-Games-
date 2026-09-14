@@ -5,6 +5,7 @@ import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Wifi from 'lucide-react/dist/esm/icons/wifi';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
+import { IconConnect4, IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
 const ROWS = 6;
 const COLS = 7;
@@ -171,34 +172,29 @@ export default function Connect4Game({ setView }) {
             <div className="animated-bg"><div className="bg-orb-3" /></div>
             <div className="min-h-dvh max-w-lg mx-auto flex flex-col safe-area-pt overflow-hidden overflow-y-auto">
 
-                {/* Nav */}
-                <div className="px-4 flex justify-between items-center py-4 mb-2 relative">
-                    <div className="flex items-center gap-2 z-10">
-                        <Logo size="small" />
-                        <button onClick={() => { connRef.current?.close(); setView('hub'); }} className="glass-card w-11 h-11 flex items-center justify-center rounded-2xl hover:scale-105 transition-transform"><ArrowRight size={20} /></button>
-                        <GlobalMuteButton />
-                    </div>
+                {/* Clean 3-Column Top Bar */}
+                <header className="px-4 py-3 flex items-center justify-between gap-2 w-full z-20">
+                    <button
+                        onClick={() => { connRef.current?.close(); setView('hub'); }}
+                        className="glass-card w-10 h-10 flex items-center justify-center rounded-2xl hover:scale-105 active:scale-95 transition-all text-white/80 shrink-0"
+                        title="الرجوع للرئيسية"
+                    >
+                        <ArrowRight size={18} />
+                    </button>
 
-                    <div className="flex items-center gap-2 glass-card px-3 py-1.5 rounded-[1.25rem] text-xs font-bold text-center z-10">
-                        {gameState !== 'lobby' ? (
-                            <div className="flex items-center gap-3">
-                                <span className="flex flex-col items-end">
-                                    <span className="text-[12px] font-black gradient-text leading-none mb-1">أربعة بالصف 🔴</span>
-                                    <span className="text-[9px] opacity-70 leading-none">أنت
-                                        <span className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-middle" style={{ backgroundColor: myColorObj?.hex }}></span>
-                                    </span>
-                                </span>
-                                <div className="w-px h-5 bg-white/20"></div>
-                                <span className="flex flex-col items-center justify-center text-emerald-400">
-                                    <Wifi size={12} />
-                                    <span className="text-[8px] mt-0.5 font-black">متصل</span>
-                                </span>
-                            </div>
-                        ) : (
-                            <span className="text-[11px] font-black gradient-text">أربعة بالصف 🔴</span>
+                    <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
+                        <IconConnect4 size={18} className="text-[var(--accent)]" />
+                        <span className="text-xs font-black gradient-text">Connect 4</span>
+                        {gameState !== 'lobby' && (
+                            <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold mr-1">
+                                <Wifi size={11} />
+                                <span>متصل</span>
+                            </span>
                         )}
                     </div>
-                </div>
+
+                    <GlobalMuteButton className="w-10 h-10 !rounded-2xl shrink-0" />
+                </header>
 
                 {/* Lobby */}
                 {gameState === 'lobby' && <div className="flex-1 flex pb-16 safe-area-pb px-4"><P2PConnectionManager gameIdPrefix="celia-c4" onGameStart={handleGameStart} /></div>}
@@ -206,27 +202,27 @@ export default function Connect4Game({ setView }) {
                 {/* Setup Screen (Host) */}
                 {gameState === 'setup' && (
                     <div className="flex-1 flex flex-col items-center justify-center -mt-10 px-4">
-                        <div className="glass-card rounded-3xl p-6 w-full max-w-sm">
-                            <h2 className="text-2xl font-black mb-6 text-center">🎨 اختار الألوان</h2>
+                        <div className="glass-card rounded-3xl p-6 w-full max-w-sm border border-white/10 shadow-2xl">
+                            <h2 className="text-xl font-black mb-6 text-center gradient-text">اختار الألوان</h2>
 
-                            <div className="mb-6">
-                                <p className="text-sm font-bold opacity-70 mb-2">لونك أنت:</p>
+                            <div className="mb-5">
+                                <p className="text-xs font-bold opacity-70 mb-2.5">لونك أنت:</p>
                                 <div className="flex gap-3 justify-center">
                                     {COLORS.map(c => (
                                         <button key={'h' + c.id} onClick={() => { setHostColor(c.id); if (c.id === oppColor) setOppColor(COLORS.find(x => x.id !== c.id).id); }}
-                                            className={`w-10 h-10 rounded-full transition-transform ${hostColor === c.id ? 'scale-125 ring-2 ring-white shadow-lg' : 'opacity-40 hover:opacity-100'}`}
+                                            className={`w-10 h-10 rounded-full transition-transform ${hostColor === c.id ? 'scale-120 ring-2 ring-white shadow-lg' : 'opacity-40 hover:opacity-100'}`}
                                             style={{ backgroundColor: c.hex, boxShadow: hostColor === c.id ? `0 0 15px ${c.glow}` : 'none' }}
                                         />
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="mb-8">
-                                <p className="text-sm font-bold opacity-70 mb-2">لون الخصم:</p>
+                            <div className="mb-7">
+                                <p className="text-xs font-bold opacity-70 mb-2.5">لون الخصم:</p>
                                 <div className="flex gap-3 justify-center">
                                     {COLORS.map(c => (
                                         <button key={'o' + c.id} disabled={c.id === hostColor} onClick={() => setOppColor(c.id)}
-                                            className={`w-10 h-10 rounded-full transition-transform ${oppColor === c.id ? 'scale-125 ring-2 ring-white shadow-lg' : 'opacity-40 hover:opacity-100 disabled:opacity-10 disabled:cursor-not-allowed'}`}
+                                            className={`w-10 h-10 rounded-full transition-transform ${oppColor === c.id ? 'scale-120 ring-2 ring-white shadow-lg' : 'opacity-40 hover:opacity-100 disabled:opacity-10 disabled:cursor-not-allowed'}`}
                                             style={{ backgroundColor: c.hex, boxShadow: oppColor === c.id ? `0 0 15px ${c.glow}` : 'none' }}
                                         />
                                     ))}
@@ -234,21 +230,21 @@ export default function Connect4Game({ setView }) {
                             </div>
 
                             <div className="flex gap-2 mb-6 bg-black/20 p-1 rounded-xl">
-                                <button onClick={() => setHostPlaysFirst(true)} className={`flex-1 py-3 text-sm font-bold rounded-lg transition-colors ${hostPlaysFirst ? 'bg-white/20' : 'opacity-40'}`}>أنا أبدأ</button>
-                                <button onClick={() => setHostPlaysFirst(false)} className={`flex-1 py-3 text-sm font-bold rounded-lg transition-colors ${!hostPlaysFirst ? 'bg-white/20' : 'opacity-40'}`}>الخصم يبدأ</button>
+                                <button onClick={() => setHostPlaysFirst(true)} className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-colors ${hostPlaysFirst ? 'bg-white/20' : 'opacity-40'}`}>أنا أبدأ</button>
+                                <button onClick={() => setHostPlaysFirst(false)} className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-colors ${!hostPlaysFirst ? 'bg-white/20' : 'opacity-40'}`}>الخصم يبدأ</button>
                             </div>
 
-                            <button onClick={handleStartGame} className="glow-button w-full h-14 rounded-2xl text-lg font-black flex items-center justify-center">🎮 ابدأ المستطيل الأخضر</button>
+                            <button onClick={handleStartGame} className="glow-button w-full h-12 rounded-2xl text-base font-black flex items-center justify-center">ابدأ اللعبة</button>
                         </div>
                     </div>
                 )}
 
                 {/* Waiting Screen (Client) */}
                 {gameState === 'waiting-start' && (
-                    <div className="flex-1 flex items-center justify-center -mt-10 px-4">
-                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pulse-glow">
-                            <h2 className="text-2xl font-black mb-2">في الانتظار... ⏳</h2>
-                            <p className="opacity-60 text-sm font-bold">الطرف التاني بيختار الألوان</p>
+                    <div className="flex-1 flex items-center justify-center -mt-6 px-4">
+                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pulse-glow border border-white/10">
+                            <h2 className="text-xl font-black mb-2 gradient-text">في الانتظار...</h2>
+                            <p className="opacity-60 text-xs font-bold">الطرف الآخر يقوم باختيار الألوان</p>
                         </div>
                     </div>
                 )}
@@ -258,22 +254,33 @@ export default function Connect4Game({ setView }) {
                     <div className="flex-1 flex flex-col items-center pb-6">
 
                         {/* Status */}
-                        <div className="mb-6 w-full px-4 text-center">
+                        <div className="mb-5 w-full px-4 text-center">
                             {!winData ? (
-                                <div className={`glass-card rounded-2xl py-3 px-6 inline-block transition-all ${isMyTurn ? 'animate-pulse-glow' : ''}`}
+                                <div className={`glass-card rounded-2xl py-2.5 px-6 inline-flex items-center gap-2 transition-all border border-white/10 ${isMyTurn ? 'animate-pulse-glow' : ''}`}
                                     style={{ boxShadow: isMyTurn ? `0 0 15px ${myColorObj?.glow}` : 'none' }}>
-                                    <p className="font-black text-base">
-                                        {isMyTurn ? '🎯 دورك تلعب ع الرص!' : '⏳ دور الطرف التاني...'}
-                                    </p>
+                                    {isMyTurn ? (
+                                        <>
+                                            <IconTarget size={14} className="text-[var(--accent)] shrink-0" />
+                                            <span className="font-black text-sm">دورك تلعب!</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <IconHourglass size={14} className="opacity-60 shrink-0" />
+                                            <span className="font-black text-sm opacity-70">دور الخصم...</span>
+                                        </>
+                                    )}
                                 </div>
                             ) : (
-                                <div className="glass-card rounded-2xl py-4 px-8 text-center animate-pop-in">
-                                    <p className="font-black text-2xl mb-1">
-                                        {winData.winner === 'draw' ? '⚖️ تعادل!' :
-                                            (winData.winner === (isHost ? 'host' : 'opp')) ? '🎉 أنت البطل!' : '💔 خسرت التحدي!'}
+                                <div className="glass-card rounded-2xl py-4 px-8 text-center animate-pop-in border border-white/10 shadow-2xl">
+                                    <p className="font-black text-xl mb-1 flex items-center justify-center gap-2">
+                                        <IconTrophy size={20} className="text-amber-400" />
+                                        <span>
+                                            {winData.winner === 'draw' ? 'تعادل رائع!' :
+                                                (winData.winner === (isHost ? 'host' : 'opp')) ? 'أنت الفائز البطل!' : 'انتهت اللعبة!'}
+                                        </span>
                                     </p>
-                                    <button onClick={handleRestart} className="mt-4 glow-button bg-white/10 w-full h-12 rounded-xl text-sm font-black flex items-center justify-center gap-2">
-                                        <RotateCcw size={18} /> العبوا تاني
+                                    <button onClick={handleRestart} className="mt-3 glow-button w-full h-11 rounded-xl text-sm font-black flex items-center justify-center gap-2">
+                                        <RotateCcw size={16} /> العبوا من جديد
                                     </button>
                                 </div>
                             )}

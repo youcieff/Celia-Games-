@@ -4,7 +4,7 @@ const STORAGE_KEY = 'celia_games_profile';
 
 const DEFAULT_PROFILE = {
     nickname: 'لاعب عظيم',
-    avatar: '😎',
+    avatar: 'cool',
 };
 
 export default function useProfile() {

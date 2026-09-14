@@ -307,8 +307,8 @@ export default function GuessTimeGame({ setView }) {
 
                 {gameState !== 'lobby' ? (
                     <PlayerGameHeader
-                        title="خمن الوقت ⏱️"
-                        gameEmoji="⏱️"
+                        title="خمن الوقت"
+                        gameEmoji=""
                         isMyTurn={isMyTurn}
                         oppProfile={oppProfile}
                         myScore={scores.me}
@@ -420,7 +420,9 @@ export default function GuessTimeGame({ setView }) {
                 {gameState === 'waiting-settings' && (
                     <div className="flex-1 flex items-center justify-center animate-fade-in">
                         <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center border border-white/10">
-                            <div className="text-5xl mb-4 animate-pulse">⚙️</div>
+                            <div className="w-16 h-16 rounded-full bg-white/10 text-emerald-400 mx-auto flex items-center justify-center mb-4 animate-spin">
+                                <Timer size={36} />
+                            </div>
                             <h2 className="text-2xl font-black mb-2">في الانتظار...</h2>
                             <p className="opacity-60 text-sm font-bold">المضيف بيختار إعدادات اللعبة</p>
                         </div>
@@ -451,7 +453,7 @@ export default function GuessTimeGame({ setView }) {
                                     {formatTime(elapsed)}
                                 </span>
                             ) : (
-                                <span className="text-2xl opacity-40 font-black">❓ ❓ . ❓ ❓</span>
+                                <span className="text-3xl opacity-40 font-black tracking-widest font-mono">--.--</span>
                             )}
                         </div>
 
@@ -463,7 +465,7 @@ export default function GuessTimeGame({ setView }) {
                                 className={`w-48 h-48 rounded-full font-black text-xl transition-all select-none ${isHolding ? 'scale-95 shadow-[0_0_60px_rgba(52,211,153,0.4)] border-emerald-400' : 'hover:scale-105 border-white/20'}`}
                                 style={{ background: isHolding ? 'radial-gradient(circle, #10b981, #064e3b)' : 'rgba(255,255,255,0.05)', borderWidth: 3 }}
                             >
-                                {isHolding ? '🛑 اترك!' : '▶ امسك!'}
+                                {isHolding ? 'اترك الآن!' : 'امسك الشاشة!'}
                             </button>
                         ) : (
                             <div className="glass-card rounded-3xl px-8 py-5 text-center animate-pop-in">
@@ -500,7 +502,7 @@ export default function GuessTimeGame({ setView }) {
                                             boxShadow: isHolding ? '0 0 40px rgba(244,63,94,0.5)' : '0 0 40px rgba(16,185,129,0.3)'
                                         }}
                                     >
-                                        {isHolding ? '🛑 وقّف' : '▶ ابدأ'}
+                                        {isHolding ? 'وقّف الساعة' : 'ابدأ الحساب'}
                                     </button>
                                 ) : (
                                     <div className="glass-card rounded-3xl px-8 py-5 text-center animate-pop-in">
@@ -562,7 +564,15 @@ export default function GuessTimeGame({ setView }) {
                             return (
                                 <>
                                     <div className={`glass-card rounded-3xl p-6 w-full max-w-sm text-center border shadow-2xl animate-pop-in ${winner === 'me' ? 'border-emerald-400/50' : winner === 'opp' ? 'border-rose-400/50' : 'border-amber-400/50'}`}>
-                                        <div className="text-5xl mb-2">{winner === 'me' ? '🎉' : winner === 'opp' ? '💔' : '⚖️'}</div>
+                                        <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-3 bg-white/10">
+                                            {winner === 'me' ? (
+                                                <IconTrophy size={36} className="text-yellow-400" />
+                                            ) : winner === 'opp' ? (
+                                                <Timer size={36} className="text-rose-400" />
+                                            ) : (
+                                                <Timer size={36} className="text-amber-400" />
+                                            )}
+                                        </div>
                                         <h2 className={`text-3xl font-black ${winner === 'me' ? 'text-emerald-400' : winner === 'opp' ? 'text-rose-400' : 'text-amber-400'}`}>
                                             {winner === 'me' ? 'كسبت!' : winner === 'opp' ? 'خسرت!' : 'تعادل!'}
                                         </h2>
@@ -602,7 +612,13 @@ export default function GuessTimeGame({ setView }) {
                             return (
                                 <>
                                     <div className={`glass-card rounded-3xl p-6 w-full max-w-sm text-center border shadow-2xl animate-pop-in ${iWon ? 'border-emerald-400/50' : 'border-rose-400/50'}`}>
-                                        <div className="text-5xl mb-2">{iWon ? '🎉' : '💔'}</div>
+                                        <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-3 bg-white/10">
+                                            {iWon ? (
+                                                <IconTrophy size={36} className="text-yellow-400" />
+                                            ) : (
+                                                <Timer size={36} className="text-rose-400" />
+                                            )}
+                                        </div>
                                         <h2 className={`text-3xl font-black ${iWon ? 'text-emerald-400' : 'text-rose-400'}`}>
                                             {iWon ? 'كسبت!' : 'خسرت!'}
                                         </h2>

@@ -8,6 +8,7 @@ import Logo from '../../components/Logo';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
+import { IconWordGame, IconEdit, IconTrophy, IconHourglass } from '../../components/icons/GameIcons';
 
 export default function WordGame({ setView, mode }) {
     const isOnline = mode === 'online';
@@ -131,31 +132,31 @@ export default function WordGame({ setView, mode }) {
         <>
             <div className="animated-bg"><div className="bg-orb-3"></div></div>
             <div className="min-h-dvh max-w-md mx-auto px-4 flex flex-col safe-area-pt overflow-x-hidden overflow-y-auto">
-                {/* Nav */}
-                <div className="flex justify-between items-center py-4 relative">
-                    <div className="flex items-center gap-2 z-10">
-                        <Logo size="small" />
-                        <button
-                            onClick={() => { if (connRef.current) connRef.current.close(); setView('hub'); }}
-                            className="glass-card w-11 h-11 flex items-center justify-center rounded-2xl hover:scale-105 transition-transform"
-                        >
-                            <ArrowRight size={20} />
-                        </button>
-                        <GlobalMuteButton />
-                    </div>
+                {/* Clean 3-Column Top Bar */}
+                <header className="px-2 py-3 flex items-center justify-between gap-2 w-full z-20">
+                    <button
+                        onClick={() => { if (connRef.current) connRef.current.close(); setView('hub'); }}
+                        className="glass-card w-10 h-10 flex items-center justify-center rounded-2xl hover:scale-105 active:scale-95 transition-all text-white/80 shrink-0"
+                        title="الرجوع للرئيسية"
+                    >
+                        <ArrowRight size={18} />
+                    </button>
 
-                    <div className="glass-card px-3 py-1.5 rounded-full text-xs font-bold text-center leading-tight">
-                        <span className="block">خمن الكلمة</span>
+                    <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
+                        <IconWordGame size={18} className="text-[var(--accent)]" />
+                        <span className="text-xs font-black gradient-text">خمن الكلمة</span>
                         {isOnline && !['lobby', 'role-select', 'role-waiting'].includes(gameState) && (
-                            <span style={{ color: 'var(--primary-color)', fontSize: '10px' }}>
+                            <span className="text-[10px] text-[var(--accent)] font-bold">
                                 {isMyTurnToWrite ? '(الكاتب)' : '(المخمن)'}
                             </span>
                         )}
                         {!isOnline && !['role-select', 'waiting-offline'].includes(gameState) && (
-                            <span style={{ color: 'var(--accent-color)', fontSize: '10px' }}>موبايل واحد</span>
+                            <span className="text-[10px] opacity-60 font-bold">موبايل واحد</span>
                         )}
                     </div>
-                </div>
+
+                    <GlobalMuteButton className="w-10 h-10 !rounded-2xl shrink-0" />
+                </header>
 
                 {/* Lobby */}
                 {isOnline && gameState === 'lobby' && (
@@ -166,30 +167,32 @@ export default function WordGame({ setView, mode }) {
 
                 {/* Role Selection */}
                 {gameState === 'role-select' && (
-                    <div className="flex-1 flex items-center justify-center">
-                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pop-in">
-                            <div className="text-5xl mb-3">✍️</div>
-                            <h2 className="text-2xl font-black mb-2">مين يكتب؟</h2>
-                            <p className="opacity-60 text-sm mb-8 font-bold">
+                    <div className="flex-1 flex items-center justify-center -mt-6">
+                        <div className="glass-card rounded-3xl p-7 w-full max-w-sm text-center animate-pop-in border border-white/10 shadow-2xl">
+                            <div className="w-12 h-12 rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)] mx-auto flex items-center justify-center mb-3">
+                                <IconEdit size={24} />
+                            </div>
+                            <h2 className="text-xl font-black mb-2 gradient-text">مين يكتب؟</h2>
+                            <p className="opacity-60 text-xs mb-6 font-bold">
                                 {isOnline ? 'اختار مين هيفكر في كلمة ومين هيخمن' : 'اختار مين هيكتب الكلمة السرية'}
                             </p>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-3">
                                 <button
                                     onClick={() => isOnline ? handleOnlineRoleSelect(true) : handleOfflineRoleSelect(true)}
-                                    className="glass-card glass-card-hover rounded-2xl py-6 flex flex-col items-center gap-2 border border-transparent hover:border-[var(--primary-color)] transition-all"
+                                    className="glass-card glass-card-hover rounded-2xl py-5 flex flex-col items-center gap-2 border border-white/10 hover:border-[var(--accent)] transition-all"
                                 >
-                                    <span className="text-4xl">✍️</span>
-                                    <span className="text-sm font-black gradient-text">
+                                    <IconEdit size={26} className="text-[var(--accent)]" />
+                                    <span className="text-xs font-black gradient-text">
                                         {isOnline ? 'أنا (الهوست) أكتب' : 'اللاعب الأول يكتب'}
                                     </span>
                                 </button>
                                 <button
                                     onClick={() => isOnline ? handleOnlineRoleSelect(false) : handleOfflineRoleSelect(false)}
-                                    className="glass-card glass-card-hover rounded-2xl py-6 flex flex-col items-center gap-2 border border-transparent hover:border-[var(--primary-color)] transition-all"
+                                    className="glass-card glass-card-hover rounded-2xl py-5 flex flex-col items-center gap-2 border border-white/10 hover:border-[var(--accent)] transition-all"
                                 >
-                                    <span className="text-4xl">🔍</span>
-                                    <span className="text-sm font-black gradient-text">
-                                        {isOnline ? 'الضيف يكتب' : 'اللاعب التاني يكتب'}
+                                    <IconWordGame size={26} className="text-[var(--accent)]" />
+                                    <span className="text-xs font-black gradient-text">
+                                        {isOnline ? 'الطرف الآخر يكتب' : 'اللاعب الثاني يكتب'}
                                     </span>
                                 </button>
                             </div>
@@ -199,27 +202,26 @@ export default function WordGame({ setView, mode }) {
 
                 {/* Guest waiting for host to assign roles */}
                 {isOnline && gameState === 'role-waiting' && (
-                    <div className="flex-1 flex items-center justify-center">
-                        <div className="glass-card rounded-3xl p-10 text-center animate-pulse-glow">
-                            <div className="text-5xl mb-4">⏳</div>
-                            <h2 className="text-2xl font-black mb-3">الهوست بيختار الأدوار...</h2>
-                            <p className="opacity-60 font-bold">انتظر لحظة!</p>
+                    <div className="flex-1 flex items-center justify-center -mt-6">
+                        <div className="glass-card rounded-3xl p-8 text-center animate-pulse-glow border border-white/10">
+                            <IconHourglass size={36} className="text-[var(--accent)] mx-auto mb-3" />
+                            <h2 className="text-xl font-black mb-2 gradient-text">الهوست يحدد الأدوار...</h2>
+                            <p className="opacity-60 text-xs font-bold">لحظات قليلة ونبدأ!</p>
                         </div>
                     </div>
                 )}
 
                 {/* Offline waiting screen */}
                 {!isOnline && gameState === 'waiting-offline' && (
-                    <div className="flex-1 flex items-center justify-center">
-                        <div className="glass-card rounded-3xl p-10 text-center animate-pop-in">
-                            <div className="text-5xl mb-4">🤫</div>
-                            <h2 className="text-2xl font-black mb-3">اللاعب التاني يكتب الكلمة</h2>
-                            <p className="opacity-60 mb-6 font-bold">اللى هيخمن يبعد شوية من الشاشة!</p>
+                    <div className="flex-1 flex items-center justify-center -mt-6">
+                        <div className="glass-card rounded-3xl p-8 text-center animate-pop-in border border-white/10">
+                            <h2 className="text-xl font-black mb-2 gradient-text">اللاعب الثاني يكتب الكلمة</h2>
+                            <p className="opacity-60 text-xs mb-6 font-bold">الطرف المخمن يبعد عن الشاشة قليلاً</p>
                             <button
                                 onClick={() => { setIsMyTurnToWrite(true); setGameState('setup'); }}
-                                className="glow-button w-full h-14 rounded-2xl text-lg font-black"
+                                className="glow-button w-full h-12 rounded-2xl text-base font-black"
                             >
-                                جاهز ✅
+                                جاهز للبدء
                             </button>
                         </div>
                     </div>
@@ -227,10 +229,11 @@ export default function WordGame({ setView, mode }) {
 
                 {/* Waiting (Online) */}
                 {isOnline && gameState === 'waiting' && (
-                    <div className="flex-1 flex items-center justify-center">
-                        <div className="glass-card rounded-3xl p-10 text-center animate-pulse-glow">
-                            <h2 className="text-2xl font-black mb-3">في الانتظار... ⏳</h2>
-                            <p className="opacity-60">اللاعب التاني بيكتب الكلمة السرية.</p>
+                    <div className="flex-1 flex items-center justify-center -mt-6">
+                        <div className="glass-card rounded-3xl p-8 text-center animate-pulse-glow border border-white/10">
+                            <IconHourglass size={36} className="text-[var(--accent)] mx-auto mb-3" />
+                            <h2 className="text-xl font-black mb-2 gradient-text">في الانتظار...</h2>
+                            <p className="opacity-60 text-xs">الطرف الآخر يقوم بكتابة الكلمة السرية.</p>
                         </div>
                     </div>
                 )}
@@ -254,7 +257,7 @@ export default function WordGame({ setView, mode }) {
                                     disabled={isOnline && isMyTurnToWrite}
                                     className="glow-button px-6 py-3 rounded-full text-sm font-black disabled:opacity-40 animate-pulse-glow"
                                 >
-                                    {(isOnline && isMyTurnToWrite) ? 'الطرف التاني يقدر يفتح التلميح دلوقتي' : '💡 محتاج تلميح؟'}
+                                    {(isOnline && isMyTurnToWrite) ? 'الطرف التاني يقدر يفتح التلميح دلوقتي' : 'محتاج تلميح؟'}
                                 </button>
                             )}
                             {isHintRevealed && hint && (
@@ -303,14 +306,17 @@ export default function WordGame({ setView, mode }) {
 
                         {(gameState === 'won' || gameState === 'lost') && (
                             <div className="flex-1 flex items-center justify-center pb-10">
-                                <div className="glass-card rounded-3xl p-8 text-center w-full animate-pop-in"
+                                <div className="glass-card rounded-3xl p-8 text-center w-full animate-pop-in border border-white/10 shadow-2xl"
                                     style={{ boxShadow: gameState === 'won' ? '0 0 40px rgba(52,211,153,0.25)' : '0 0 40px rgba(239,68,68,0.2)' }}>
-                                    <h2 className={`text-5xl font-black mb-3 ${gameState === 'won' ? 'text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.8)]' : 'text-rose-400 drop-shadow-[0_0_20px_rgba(239,68,68,0.6)]'}`}>
-                                        {gameState === 'won' ? '🎉 كسبت!' : '💔 خسرت!'}
+                                    <div className="flex items-center justify-center gap-2 mb-3">
+                                        <IconTrophy size={32} className={gameState === 'won' ? 'text-amber-400' : 'text-rose-400'} />
+                                    </div>
+                                    <h2 className={`text-2xl font-black mb-3 ${gameState === 'won' ? 'text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.8)]' : 'text-rose-400 drop-shadow-[0_0_20px_rgba(239,68,68,0.6)]'}`}>
+                                        {gameState === 'won' ? 'أنت الفائز البطل!' : 'انتهت اللعبة!'}
                                     </h2>
-                                    <p className="opacity-60 mb-6 font-bold text-sm">الكلمة كانت: <span style={{ color: 'var(--primary-color)' }} className="text-base font-black">{secretWord}</span></p>
-                                    <button onClick={handleRestartAction} className="glow-button w-full h-14 rounded-2xl text-lg font-black flex items-center justify-center gap-2">
-                                        <RotateCcw size={20} /> العبوا دور جديد
+                                    <p className="opacity-60 mb-6 font-bold text-sm">الكلمة كانت: <span style={{ color: 'var(--accent)' }} className="text-base font-black">{secretWord}</span></p>
+                                    <button onClick={handleRestartAction} className="glow-button w-full h-12 rounded-2xl text-base font-black flex items-center justify-center gap-2">
+                                        <RotateCcw size={18} /> العبوا دور جديد
                                     </button>
                                 </div>
                             </div>

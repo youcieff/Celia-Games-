@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../lib/firebase';
 import { ref, set, onValue, push, onChildAdded, remove, get, onDisconnect } from 'firebase/database';
-import Copy from 'lucide-react/dist/esm/icons/copy';
 import Plus from 'lucide-react/dist/esm/icons/plus';
-import LinkIcon from 'lucide-react/dist/esm/icons/link';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import Play from 'lucide-react/dist/esm/icons/play';
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
-import Bot from 'lucide-react/dist/esm/icons/bot';
+import Check from 'lucide-react/dist/esm/icons/check';
+import Users from 'lucide-react/dist/esm/icons/users';
 import createAIConn from '../ai/createAIConn';
+import { IconCopy, IconShare, IconJoin, IconChip, IconHourglass } from './icons/GameIcons';
 
 const genId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
@@ -174,7 +174,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
 
     const handleReadyClick = () => {
         setMyReady(true);
-        let prof = { nickname: 'لاعب عظيم', avatar: '😎' };
+        let prof = { nickname: 'لاعب عظيم', avatar: 'cool' };
         try {
             const stored = localStorage.getItem('celia_games_profile');
             if (stored) prof = JSON.parse(stored);
@@ -197,7 +197,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
     useEffect(() => {
         let interval;
         if (myReady && !oppReady) {
-            let prof = { nickname: 'لاعب عظيم', avatar: '😎' };
+            let prof = { nickname: 'لاعب عظيم', avatar: 'cool' };
             try {
                 const stored = localStorage.getItem('celia_games_profile');
                 if (stored) prof = JSON.parse(stored);
@@ -220,8 +220,8 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
         return (
             <div className="flex flex-col items-center justify-center w-full max-w-sm mx-auto h-full px-4 mb-10">
                 <div className="glass-card rounded-3xl p-8 w-full text-center">
-                    <div className="w-16 h-16 bg-emerald-500/20 rounded-full mx-auto flex items-center justify-center mb-4 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                        <span className="text-3xl">🤝</span>
+                    <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full mx-auto flex items-center justify-center mb-4 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                        <Users size={30} />
                     </div>
                     <h2 className="text-2xl font-black mb-2 text-emerald-400">تم الاتصال بنجاح!</h2>
                     <p className="opacity-60 text-sm font-bold mb-8">هل أنت جاهز لبدء اللعب؟</p>
@@ -232,7 +232,14 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                         className={`w-full h-14 rounded-2xl text-lg font-black flex items-center justify-center gap-2 transition-all duration-300
                                    ${myReady ? 'bg-white/10 text-emerald-400 ring-2 ring-emerald-400 scale-[0.98]' : 'glow-button'}`}
                     >
-                        {myReady ? 'في انتظار الخصم... ⏳' : <><Play size={20} /> بدء اللعب الآن</>}
+                        {myReady ? (
+                            <span className="flex items-center gap-2">
+                                <IconHourglass size={18} className="animate-spin text-emerald-400" />
+                                في انتظار الخصم...
+                            </span>
+                        ) : (
+                            <><Play size={20} /> بدء اللعب الآن</>
+                        )}
                     </button>
 
                     <div className="mt-8 flex justify-between px-2 text-xs font-bold bg-black/20 py-3 rounded-full">
@@ -259,12 +266,12 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
 
                 <div className="flex items-center gap-2 glass-card rounded-2xl p-3 mb-2">
                     <span className="font-mono text-2xl tracking-widest font-black flex-1">{myId}</span>
-                    <button onClick={handleCopy} className="opacity-60 hover:opacity-100 transition-opacity p-2">
-                        <Copy size={20} className={copied ? "text-emerald-400" : ""} />
+                    <button onClick={handleCopy} className="opacity-60 hover:opacity-100 transition-opacity p-2" title="نسخ كود الغرفة">
+                        {copied ? <Check size={20} className="text-emerald-400" /> : <IconCopy size={20} />}
                     </button>
                 </div>
 
-                {copied && <p className="text-xs text-emerald-400 font-bold animate-pop-in">✓ تم النسخ!</p>}
+                {copied && <p className="text-xs text-emerald-400 font-bold animate-pop-in">تم النسخ بنجاح</p>}
             </div>
 
             <div className="flex items-center gap-4 w-full">
@@ -276,7 +283,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
             {/* Join Room */}
             <div className="glass-card rounded-3xl p-6 w-full text-center">
                 <h2 className="text-xl font-black mb-1 flex items-center justify-center gap-2">
-                    <LinkIcon size={20} /> دخول لغرفة
+                    <IconJoin size={20} /> دخول لغرفة
                 </h2>
                 <p className="opacity-50 text-xs mb-4">اكتب كود الغرفة اللي ظهرت للخصم</p>
 
@@ -315,11 +322,16 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                     disabled={!joinId || isConnecting}
                     className="glow-button w-full h-14 rounded-2xl font-black text-lg flex items-center justify-center gap-2 disabled:opacity-40"
                 >
-                    {isConnecting ? <Loader2 className="animate-spin" size={22} /> : '🚀 انضمام الآن'}
+                    {isConnecting ? <Loader2 className="animate-spin" size={22} /> : (
+                        <>
+                            <IconJoin size={20} />
+                            انضمام الآن
+                        </>
+                    )}
                 </button>
             </div>
 
-            {/* Play vs AI — available for all games */}
+            {/* Play vs AI */}
             {gameIdPrefix && (
                 <>
                     <div className="flex items-center gap-4 w-full">
@@ -333,13 +345,13 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                             onClick={() => {
                                 setIsConnecting(true);
                                 setTimeout(() => {
-                                    onGameStart(createAIConn(gameIdPrefix), true); // player is host against AI
+                                    onGameStart(createAIConn(gameIdPrefix), true);
                                 }, 800);
                             }}
                             disabled={isConnecting}
-                            className="bg-white/10 w-full h-14 rounded-2xl font-black text-lg flex items-center justify-center gap-2 mb-2 hover:bg-emerald-400 hover:text-black transition-colors"
+                            className="bg-white/10 w-full h-14 rounded-2xl font-black text-lg flex items-center justify-center gap-2.5 mb-2 hover:bg-emerald-400 hover:text-black transition-colors"
                         >
-                            <Bot size={22} /> العب ضد الذكاء الاصطناعي
+                            <IconChip size={22} /> العب ضد الذكاء الاصطناعي
                         </button>
                         <p className="opacity-50 text-[10px] font-bold">متوسط الصعوبة • لا يحتاج إنترنت</p>
                     </div>

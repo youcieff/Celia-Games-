@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import P2PConnectionManager from '../../components/P2PConnectionManager';
-import Logo from '../../components/Logo';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Wifi from 'lucide-react/dist/esm/icons/wifi';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
+import { IconDotsBoxes, IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
 const ROWS = 4; // number of boxes vertically
 const COLS = 4; // number of boxes horizontally
@@ -143,7 +143,6 @@ export default function DotsBoxesGame({ setView }) {
     };
 
     const handleLineClick = (lineType, r, c) => {
-        // Read strictly from synchronous stateRef to avoid rapid double-click race conditions
         const cur = stateRef.current;
         const curIsMyTurn = isHost ? cur.hostTurn : !cur.hostTurn;
 
@@ -178,101 +177,104 @@ export default function DotsBoxesGame({ setView }) {
     };
     const myColorObj = COLORS.find(c => c.id === myColorId);
 
-    // Render Grid Helpers
-    const DOT_SIZE = 12; // px
-
     return (
         <>
             <div className="animated-bg"><div className="bg-orb-3" /></div>
             <div className="min-h-dvh max-w-lg mx-auto flex flex-col safe-area-pt overflow-hidden overflow-y-auto">
 
-                {/* Nav */}
-                <div className="px-4 flex justify-between items-center py-4 mb-2 relative">
-                    <div className="flex items-center gap-2 z-10">
-                        <Logo size="small" />
-                        <button onClick={() => { connRef.current?.close(); setView('hub'); }} className="glass-card w-11 h-11 flex items-center justify-center rounded-2xl hover:scale-105 transition-transform"><ArrowRight size={20} /></button>
-                        <GlobalMuteButton />
-                    </div>
+                {/* Clean 3-Column Top Bar — Back | Title Badge | Mute */}
+                <header className="px-4 py-3 flex items-center justify-between gap-2 w-full z-20">
+                    <button
+                        onClick={() => { connRef.current?.close(); setView('hub'); }}
+                        className="glass-card w-10 h-10 flex items-center justify-center rounded-2xl hover:scale-105 active:scale-95 transition-all text-white/80 shrink-0"
+                        title="الرجوع للرئيسية"
+                    >
+                        <ArrowRight size={18} />
+                    </button>
 
-                    <div className="flex items-center gap-2 glass-card px-3 py-1.5 rounded-[1.25rem] text-xs font-bold text-center z-10">
-                        {gameState !== 'lobby' ? (
-                            <div className="flex items-center gap-3">
-                                <span className="flex flex-col items-end">
-                                    <span className="text-[12px] font-black gradient-text leading-none mb-1">نقاط ومربعات 🟦</span>
-                                    <span className="text-[9px] opacity-70 leading-none">أنت
-                                        <span className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-middle" style={{ backgroundColor: myColorObj?.hex }}></span>
-                                    </span>
-                                </span>
-                                <div className="w-px h-5 bg-white/20"></div>
-                                <span className="flex flex-col items-center justify-center text-emerald-400">
-                                    <Wifi size={12} />
-                                    <span className="text-[8px] mt-0.5 font-black">متصل</span>
-                                </span>
-                            </div>
-                        ) : (
-                            <span className="text-[11px] font-black gradient-text">نقاط ومربعات 🟦</span>
+                    <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
+                        <IconDotsBoxes size={18} className="text-[var(--accent)]" />
+                        <span className="text-xs font-black gradient-text">نقاط ومربعات</span>
+                        {gameState !== 'lobby' && (
+                            <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold mr-1">
+                                <Wifi size={11} />
+                                <span>متصل</span>
+                            </span>
                         )}
                     </div>
-                </div>
+
+                    <GlobalMuteButton className="w-10 h-10 !rounded-2xl shrink-0" />
+                </header>
 
                 {/* Lobby */}
-                {gameState === 'lobby' && <div className="flex-1 flex pb-16 safe-area-pb px-4"><P2PConnectionManager gameIdPrefix="celia-db" onGameStart={handleGameStart} /></div>}
+                {gameState === 'lobby' && (
+                    <div className="flex-1 flex pb-16 safe-area-pb px-4">
+                        <P2PConnectionManager gameIdPrefix="celia-db" onGameStart={handleGameStart} />
+                    </div>
+                )}
 
                 {/* Setup Screen (Host) */}
                 {gameState === 'setup' && (
-                    <div className="flex-1 flex flex-col items-center justify-center -mt-10 px-4">
-                        <div className="glass-card rounded-3xl p-6 w-full max-w-sm">
-                            <h2 className="text-2xl font-black mb-6 text-center">🎨 الألوان المفضلة</h2>
+                    <div className="flex-1 flex flex-col items-center justify-center -mt-6 px-4">
+                        <div className="glass-card rounded-3xl p-6 w-full max-w-sm border border-white/10 shadow-2xl">
+                            <h2 className="text-xl font-black mb-6 text-center gradient-text">الألوان المفضلة</h2>
 
-                            <div className="mb-6">
-                                <p className="text-sm font-bold opacity-70 mb-2">لونك أنت:</p>
+                            <div className="mb-5">
+                                <p className="text-xs font-bold opacity-70 mb-2.5">لونك أنت:</p>
                                 <div className="flex gap-3 justify-center">
                                     {COLORS.map(c => (
-                                        <button key={'h' + c.id} onClick={() => { setHostColor(c.id); if (c.id === oppColor) setOppColor(COLORS.find(x => x.id !== c.id).id); }}
-                                            className={`w-10 h-10 rounded-full transition-transform ${hostColor === c.id ? 'scale-125 ring-2 ring-white shadow-lg' : 'opacity-40 hover:opacity-100'}`}
+                                        <button
+                                            key={'h' + c.id}
+                                            onClick={() => { setHostColor(c.id); if (c.id === oppColor) setOppColor(COLORS.find(x => x.id !== c.id).id); }}
+                                            className={`w-10 h-10 rounded-full transition-transform ${hostColor === c.id ? 'scale-120 ring-2 ring-white shadow-lg' : 'opacity-40 hover:opacity-100'}`}
                                             style={{ backgroundColor: c.hex, boxShadow: hostColor === c.id ? `0 0 15px ${c.glow}` : 'none' }}
                                         />
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="mb-8">
-                                <p className="text-sm font-bold opacity-70 mb-2">لون الخصم:</p>
+                            <div className="mb-7">
+                                <p className="text-xs font-bold opacity-70 mb-2.5">لون الخصم:</p>
                                 <div className="flex gap-3 justify-center">
                                     {COLORS.map(c => (
-                                        <button key={'o' + c.id} disabled={c.id === hostColor} onClick={() => setOppColor(c.id)}
-                                            className={`w-10 h-10 rounded-full transition-transform ${oppColor === c.id ? 'scale-125 ring-2 ring-white shadow-lg' : 'opacity-40 hover:opacity-100 disabled:opacity-10 disabled:cursor-not-allowed'}`}
+                                        <button
+                                            key={'o' + c.id}
+                                            disabled={c.id === hostColor}
+                                            onClick={() => setOppColor(c.id)}
+                                            className={`w-10 h-10 rounded-full transition-transform ${oppColor === c.id ? 'scale-120 ring-2 ring-white shadow-lg' : 'opacity-40 hover:opacity-100 disabled:opacity-10 disabled:cursor-not-allowed'}`}
                                             style={{ backgroundColor: c.hex, boxShadow: oppColor === c.id ? `0 0 15px ${c.glow}` : 'none' }}
                                         />
                                     ))}
                                 </div>
                             </div>
 
-                            <button onClick={handleStartGame} className="glow-button w-full h-14 rounded-2xl text-lg font-black flex items-center justify-center">🕹️ ابدأ التحدي</button>
+                            <button onClick={handleStartGame} className="glow-button w-full h-12 rounded-2xl text-base font-black flex items-center justify-center">
+                                ابدأ التحدي
+                            </button>
                         </div>
                     </div>
                 )}
 
                 {/* Waiting Screen (Client) */}
                 {gameState === 'waiting-start' && (
-                    <div className="flex-1 flex items-center justify-center -mt-10 px-4">
-                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pulse-glow">
-                            <h2 className="text-2xl font-black mb-2">في الانتظار... ⏳</h2>
-                            <p className="opacity-60 text-sm font-bold">الطرف التاني بيظبط الإعدادات</p>
+                    <div className="flex-1 flex items-center justify-center -mt-6 px-4">
+                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pulse-glow border border-white/10">
+                            <h2 className="text-xl font-black mb-2 gradient-text">في الانتظار...</h2>
+                            <p className="opacity-60 text-xs font-bold">الطرف الآخر يقوم بضبط الإعدادات</p>
                         </div>
                     </div>
                 )}
 
                 {/* Game Screen */}
                 {gameState === 'playing' && (
-                    <div className="flex-1 flex flex-col items-center pb-6">
+                    <div className="flex-1 flex flex-col items-center pb-6 px-3">
 
-                        {/* Status Information */}
-                        <div className="w-[95%] flex justify-between items-center glass-card rounded-3xl p-4 mb-6">
+                        {/* Status Information Duel Bar */}
+                        <div className="w-full max-w-[370px] flex justify-between items-center glass-card rounded-2xl p-3.5 mb-4 border border-white/10">
                             {/* My Score */}
-                            <div className="flex flex-col items-center">
-                                <span className="text-xs font-bold opacity-60">أنت</span>
-                                <span className="text-2xl font-black drop-shadow-md" style={{ color: myColorObj?.hex }}>
+                            <div className="flex flex-col items-center min-w-[50px]">
+                                <span className="text-[11px] font-bold opacity-60">أنت</span>
+                                <span className="text-2xl font-black drop-shadow-md font-mono" style={{ color: myColorObj?.hex }}>
                                     {isHost ? scores.host : scores.opp}
                                 </span>
                             </div>
@@ -280,61 +282,84 @@ export default function DotsBoxesGame({ setView }) {
                             {/* Turn indicator */}
                             <div className="flex flex-col items-center justify-center">
                                 {!isGameOver ? (
-                                    <span className={`text-sm font-black px-5 py-2 rounded-full transition-all ${isMyTurn ? 'bg-white/20 text-white shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'opacity-40'}`}
-                                        style={isMyTurn ? { backgroundColor: myColorObj?.hex, boxShadow: `0 0 15px ${myColorObj?.glow}` } : {}}>
-                                        {isMyTurn ? '🎯 دورك تلعب ضلعة!' : '⏳ دور الخصم...'}
+                                    <span
+                                        className={`text-xs font-black px-4 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${
+                                            isMyTurn ? 'bg-white/20 text-white shadow-md' : 'opacity-50 text-white/80'
+                                        }`}
+                                        style={isMyTurn ? { backgroundColor: myColorObj?.hex, boxShadow: `0 0 16px ${myColorObj?.glow}` } : {}}
+                                    >
+                                        {isMyTurn ? (
+                                            <>
+                                                <IconTarget size={13} className="shrink-0" />
+                                                <span>دورك الآن</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <IconHourglass size={13} className="shrink-0" />
+                                                <span>دور الخصم...</span>
+                                            </>
+                                        )}
                                     </span>
                                 ) : (
-                                    <span className="text-sm font-black px-4 py-2 bg-white/20 rounded-full animate-pulse-glow text-white">
-                                        {overallWinner === 'draw' ? '⚖️ تعادل' : overallWinner === 'me' ? '🎉 أنت البطل!' : '💔 خسرت!'}
+                                    <span className="text-xs font-black px-4 py-1.5 bg-white/20 rounded-full animate-pulse-glow text-white flex items-center gap-1.5">
+                                        <IconTrophy size={14} className="text-amber-400" />
+                                        <span>
+                                            {overallWinner === 'draw' ? 'تعادل رائع!' : overallWinner === 'me' ? 'أنت الفائز البطل!' : 'انتهت اللعبة!'}
+                                        </span>
                                     </span>
                                 )}
                             </div>
 
                             {/* Opp Score */}
-                            <div className="flex flex-col items-center">
-                                <span className="text-xs font-bold opacity-60">الخصم</span>
-                                <span className="text-2xl font-black opacity-80" style={{ color: getColorObj(isHost ? 'opp' : 'host').hex }}>
+                            <div className="flex flex-col items-center min-w-[50px]">
+                                <span className="text-[11px] font-bold opacity-60">الخصم</span>
+                                <span className="text-2xl font-black opacity-80 font-mono" style={{ color: getColorObj(isHost ? 'opp' : 'host').hex }}>
                                     {isHost ? scores.opp : scores.host}
-                                </span>
+                                0</span>
                             </div>
                         </div>
 
-                        {/* Grid Arena Card */}
-                        <div className="w-full max-w-[370px] px-2 flex justify-center">
-                            <div className="w-full aspect-square relative glass-card p-6 sm:p-7 rounded-[2.25rem] border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.5)] touch-none select-none flex items-center justify-center">
+                        {/* Grid Arena Card — Clean & Clear Mobile Structure */}
+                        <div className="w-full max-w-[370px] flex justify-center">
+                            <div className="w-full aspect-square relative glass-card p-5 sm:p-6 rounded-3xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.5)] touch-none select-none flex items-center justify-center bg-black/40">
 
                                 {/* Inner play field */}
                                 <div className="w-full h-full relative">
 
-                                    {/* 1. Draw Visible Boxes (Structure & Captures) */}
+                                    {/* 1. Boxes (captures & subtle guide background) */}
                                     {boxes.map((rowArr, r) =>
                                         rowArr.map((boxHolder, c) => {
                                             const bColor = boxHolder ? getColorObj(boxHolder) : null;
                                             return (
-                                                <div key={`box-${r}-${c}`}
-                                                    className="absolute pointer-events-none flex items-center justify-center p-1 sm:p-1.5"
+                                                <div
+                                                    key={`box-${r}-${c}`}
+                                                    className="absolute pointer-events-none flex items-center justify-center p-1"
                                                     style={{
                                                         top: `${(r / ROWS) * 100}%`,
                                                         left: `${(c / COLS) * 100}%`,
                                                         width: `${100 / COLS}%`,
                                                         height: `${100 / ROWS}%`,
-                                                    }}>
-                                                    <div className={`w-full h-full rounded-xl sm:rounded-2xl transition-all duration-500 flex items-center justify-center ${
-                                                        boxHolder
-                                                            ? 'animate-pop-in scale-100 shadow-lg border-2'
-                                                            : 'border border-dashed border-white/15 bg-white/[0.02]'
-                                                    }`}
+                                                    }}
+                                                >
+                                                    <div
+                                                        className={`w-full h-full rounded-xl transition-all duration-500 flex items-center justify-center ${
+                                                            boxHolder
+                                                                ? 'animate-pop-in scale-100 shadow-lg border-2'
+                                                                : 'border border-dashed border-white/10 bg-white/[0.02]'
+                                                        }`}
                                                         style={{
-                                                            backgroundColor: bColor ? `${bColor.hex}33` : 'rgba(255,255,255,0.02)',
-                                                            borderColor: bColor ? bColor.hex : 'rgba(255,255,255,0.12)',
+                                                            backgroundColor: bColor ? `${bColor.hex}33` : 'rgba(255,255,255,0.015)',
+                                                            borderColor: bColor ? bColor.hex : 'rgba(255,255,255,0.08)',
                                                             boxShadow: bColor ? `inset 0 0 16px ${bColor.glow}, 0 0 12px ${bColor.glow}` : 'none'
                                                         }}
                                                     >
                                                         {boxHolder && (
-                                                            <span className="text-xl sm:text-2xl font-black drop-shadow-md animate-scale-in" style={{ color: bColor.hex }}>
-                                                                {boxHolder === 'host' ? (isHost ? '👑' : '🤖') : (isHost ? '🤖' : '👑')}
-                                                            </span>
+                                                            <div
+                                                                className="w-8 h-8 rounded-full flex items-center justify-center animate-scale-in"
+                                                                style={{ backgroundColor: `${bColor.hex}40`, color: bColor.hex }}
+                                                            >
+                                                                <IconTrophy size={16} />
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>
@@ -342,29 +367,31 @@ export default function DotsBoxesGame({ setView }) {
                                         })
                                     )}
 
-                                    {/* 2. Draw Horizontal Lines (Clickable with generous tap targets) */}
+                                    {/* 2. Horizontal Lines (Clickable) */}
                                     {hLines.map((rowArr, r) =>
                                         rowArr.map((lineHolder, c) => {
                                             const lColor = lineHolder ? getColorObj(lineHolder) : null;
                                             const canClick = isMyTurn && !lineHolder && !isGameOver;
 
                                             return (
-                                                <div key={`hline-${r}-${c}`}
+                                                <div
+                                                    key={`hline-${r}-${c}`}
                                                     onClick={() => handleLineClick('h', r, c)}
-                                                    className={`absolute flex items-center justify-center -translate-y-1/2 z-10 
-                                                        ${canClick ? 'cursor-pointer group' : ''}`}
+                                                    className={`absolute flex items-center justify-center -translate-y-1/2 z-10 ${canClick ? 'cursor-pointer group' : ''}`}
                                                     style={{
                                                         top: `${(r / ROWS) * 100}%`,
                                                         left: `${(c / COLS) * 100}%`,
                                                         width: `${100 / COLS}%`,
-                                                        height: '36px', // generous tap target
-                                                    }}>
-                                                    <div className={`w-[80%] h-[6px] rounded-full transition-all duration-300
-                                                        ${lineHolder
-                                                            ? 'scale-100 opacity-100'
-                                                            : canClick
-                                                                ? 'bg-white/25 group-hover:bg-white/70 group-active:scale-105 group-hover:shadow-[0_0_8px_rgba(255,255,255,0.6)]'
-                                                                : 'bg-white/10'
+                                                        height: '40px', // generous tap target
+                                                    }}
+                                                >
+                                                    <div
+                                                        className={`w-[82%] h-[6px] rounded-full transition-all duration-300 ${
+                                                            lineHolder
+                                                                ? 'scale-100 opacity-100'
+                                                                : canClick
+                                                                    ? 'bg-white/20 group-hover:bg-white/70 group-active:scale-105 group-hover:shadow-[0_0_8px_rgba(255,255,255,0.6)]'
+                                                                    : 'bg-white/10'
                                                         }`}
                                                         style={lineHolder ? { backgroundColor: lColor.hex, boxShadow: `0 0 12px ${lColor.glow}, 0 0 4px ${lColor.hex}` } : {}}
                                                     />
@@ -373,29 +400,31 @@ export default function DotsBoxesGame({ setView }) {
                                         })
                                     )}
 
-                                    {/* 3. Draw Vertical Lines (Clickable with generous tap targets) */}
+                                    {/* 3. Vertical Lines (Clickable) */}
                                     {vLines.map((rowArr, r) =>
                                         rowArr.map((lineHolder, c) => {
                                             const lColor = lineHolder ? getColorObj(lineHolder) : null;
                                             const canClick = isMyTurn && !lineHolder && !isGameOver;
 
                                             return (
-                                                <div key={`vline-${r}-${c}`}
+                                                <div
+                                                    key={`vline-${r}-${c}`}
                                                     onClick={() => handleLineClick('v', r, c)}
-                                                    className={`absolute flex items-center justify-center -translate-x-1/2 z-10
-                                                        ${canClick ? 'cursor-pointer group' : ''}`}
+                                                    className={`absolute flex items-center justify-center -translate-x-1/2 z-10 ${canClick ? 'cursor-pointer group' : ''}`}
                                                     style={{
                                                         top: `${(r / ROWS) * 100}%`,
                                                         left: `${(c / COLS) * 100}%`,
-                                                        width: '36px', // generous tap target
+                                                        width: '40px', // generous tap target
                                                         height: `${100 / ROWS}%`,
-                                                    }}>
-                                                    <div className={`w-[6px] h-[80%] rounded-full transition-all duration-300
-                                                        ${lineHolder
-                                                            ? 'scale-100 opacity-100'
-                                                            : canClick
-                                                                ? 'bg-white/25 group-hover:bg-white/70 group-active:scale-105 group-hover:shadow-[0_0_8px_rgba(255,255,255,0.6)]'
-                                                                : 'bg-white/10'
+                                                    }}
+                                                >
+                                                    <div
+                                                        className={`w-[6px] h-[82%] rounded-full transition-all duration-300 ${
+                                                            lineHolder
+                                                                ? 'scale-100 opacity-100'
+                                                                : canClick
+                                                                    ? 'bg-white/20 group-hover:bg-white/70 group-active:scale-105 group-hover:shadow-[0_0_8px_rgba(255,255,255,0.6)]'
+                                                                    : 'bg-white/10'
                                                         }`}
                                                         style={lineHolder ? { backgroundColor: lColor.hex, boxShadow: `0 0 12px ${lColor.glow}, 0 0 4px ${lColor.hex}` } : {}}
                                                     />
@@ -404,10 +433,12 @@ export default function DotsBoxesGame({ setView }) {
                                         })
                                     )}
 
-                                    {/* 4. Draw Intersection Dots (Glowing Pearls) */}
+                                    {/* 4. Intersection Dots (Glowing Pearls) */}
                                     {Array.from({ length: ROWS + 1 }).map((_, r) =>
                                         Array.from({ length: COLS + 1 }).map((_, c) => (
-                                            <div key={`dot-${r}-${c}`} className="absolute -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex items-center justify-center"
+                                            <div
+                                                key={`dot-${r}-${c}`}
+                                                className="absolute -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex items-center justify-center"
                                                 style={{
                                                     top: `${(r / ROWS) * 100}%`,
                                                     left: `${(c / COLS) * 100}%`,
@@ -415,7 +446,7 @@ export default function DotsBoxesGame({ setView }) {
                                                     height: '16px',
                                                 }}
                                             >
-                                                <div className="w-3.5 h-3.5 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.9),0_0_4px_rgba(255,255,255,1)] ring-2 ring-[#0a0f1d]" />
+                                                <div className="w-3 h-3 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)] ring-2 ring-[#05070c]" />
                                             </div>
                                         ))
                                     )}
@@ -426,9 +457,9 @@ export default function DotsBoxesGame({ setView }) {
 
                         {/* After Game finishes */}
                         {isGameOver && (
-                            <div className="w-full max-w-[370px] px-2 mt-8 mb-6 animate-pop-in">
-                                <button onClick={handleRestart} className="glow-button w-full h-14 rounded-2xl text-lg font-black flex items-center justify-center gap-2 shadow-xl">
-                                    <RotateCcw size={20} /> العبوا من جديد!
+                            <div className="w-full max-w-[370px] mt-6 mb-4 animate-pop-in">
+                                <button onClick={handleRestart} className="glow-button w-full h-12 rounded-2xl text-base font-black flex items-center justify-center gap-2 shadow-xl">
+                                    <RotateCcw size={18} /> العبوا من جديد!
                                 </button>
                             </div>
                         )}

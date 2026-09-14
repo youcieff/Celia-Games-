@@ -9,6 +9,7 @@ import PlayerGameHeader from '../../components/PlayerGameHeader';
 import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
 import MatchRecapModal from '../../components/MatchRecapModal';
 import useProfile from '../../hooks/useProfile';
+import { IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
 // Helper to check winning states
 const calculateWinner = (squares) => {
@@ -183,8 +184,8 @@ export default function TicTacToeGame({ setView }) {
                 {/* Header with Player Cards */}
                 {gameState !== 'lobby' ? (
                     <PlayerGameHeader
-                        title="إكس أو 🎮"
-                        gameEmoji="🎮"
+                        title="إكس أو"
+                        gameId="xo-game"
                         isMyTurn={isMyTurn}
                         oppProfile={oppProfile}
                         myScore={scores.me}
@@ -214,7 +215,7 @@ export default function TicTacToeGame({ setView }) {
                 {gameState === 'choosing-symbol' && (
                     <div className="flex-1 flex flex-col items-center justify-center -mt-6 px-4 animate-fade-in">
                         <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center border border-white/10 shadow-2xl">
-                            <h2 className="text-2xl font-black mb-1">🎮 اختار تلعب بإيه؟</h2>
+                            <h2 className="text-xl font-black mb-1 gradient-text">اختار تلعب بإيه؟</h2>
                             <p className="opacity-60 text-xs mb-6 font-bold">المرحلة 1 من 2</p>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -239,7 +240,7 @@ export default function TicTacToeGame({ setView }) {
                 {gameState === 'choosing-starts' && (
                     <div className="flex-1 flex flex-col items-center justify-center -mt-6 px-4 animate-fade-in">
                         <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center border border-white/10 shadow-2xl">
-                            <h2 className="text-2xl font-black mb-1">مين هيبدأ الدور؟</h2>
+                            <h2 className="text-xl font-black mb-1 gradient-text">مين هيبدأ الدور؟</h2>
                             <p className="opacity-60 text-xs mb-6 font-bold">المرحلة 2 من 2</p>
 
                             <div className="flex flex-col gap-3">
@@ -247,13 +248,13 @@ export default function TicTacToeGame({ setView }) {
                                     onClick={() => handleChooseStarts(true)}
                                     className="glass-card rounded-2xl py-4 font-black flex items-center justify-center gap-2 border border-transparent hover:border-emerald-400/50 hover:scale-105 active:scale-95 transition-all"
                                 >
-                                    أبدأ أنا الأول 🙋‍♂️
+                                    أبدأ أنا الأول
                                 </button>
                                 <button
                                     onClick={() => handleChooseStarts(false)}
                                     className="glass-card rounded-2xl py-4 font-black flex items-center justify-center gap-2 border border-transparent hover:border-emerald-400/50 hover:scale-105 active:scale-95 transition-all"
                                 >
-                                    الخصم يبدأ 🤝
+                                    الخصم يبدأ
                                 </button>
                             </div>
                         </div>
@@ -264,9 +265,9 @@ export default function TicTacToeGame({ setView }) {
                 {gameState === 'waiting-start' && (
                     <div className="flex-1 flex items-center justify-center -mt-6 px-4 animate-fade-in">
                         <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center border border-emerald-400/30">
-                            <h2 className="text-2xl font-black mb-2">في الانتظار... ⏳</h2>
-                            <p className="opacity-60 text-sm font-bold">
-                                {oppProfile?.nickname || 'المضيف'} بيظبط إعدادات اللعبة الآن
+                            <h2 className="text-xl font-black mb-2 gradient-text">في الانتظار...</h2>
+                            <p className="opacity-60 text-xs font-bold">
+                                {oppProfile?.nickname || 'المضيف'} يقوم بضبط إعدادات الجولة
                             </p>
                         </div>
                     </div>
@@ -279,15 +280,26 @@ export default function TicTacToeGame({ setView }) {
                         {/* Status Bar */}
                         <div className="text-center mb-6">
                             {!winData ? (
-                                <div className={`glass-card rounded-2xl py-2.5 px-6 inline-block transition-all ${isMyTurn ? 'border-2 border-emerald-400/60 bg-emerald-500/10 animate-pulse' : 'border border-white/5'}`}>
-                                    <p className={`font-black text-sm ${isMyTurn ? 'text-emerald-400' : 'opacity-70'}`}>
-                                        {isMyTurn ? `🎯 دورك تلعب بـ (${mySymbol})!` : '⏳ انتظر دور الخصم...'}
-                                    </p>
+                                <div className={`glass-card rounded-2xl py-2 px-6 inline-flex items-center gap-2 transition-all border border-white/10 ${isMyTurn ? 'animate-pulse-glow' : ''}`}>
+                                    {isMyTurn ? (
+                                        <>
+                                            <IconTarget size={14} className="text-[var(--accent)] shrink-0" />
+                                            <span className="font-black text-xs">دورك تلعب بـ ({mySymbol})!</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <IconHourglass size={14} className="opacity-60 shrink-0" />
+                                            <span className="font-black text-xs opacity-75">انتظر دور الخصم...</span>
+                                        </>
+                                    )}
                                 </div>
                             ) : (
-                                <div className="glass-card rounded-2xl py-3 px-6 text-center animate-pop-in">
-                                    <p className={`font-black text-2xl mb-1 ${winData.winner === mySymbol ? 'text-emerald-400' : (winData.winner === 'draw' ? 'text-amber-400' : 'text-rose-400')}`}>
-                                        {winData.winner === 'draw' ? '⚖️ تعادل ممتاز!' : winData.winner === mySymbol ? '🎉 كسبت التحدي!' : '💔 خسرت التحدي!'}
+                                <div className="glass-card rounded-2xl py-3 px-6 text-center animate-pop-in border border-white/10 shadow-2xl">
+                                    <p className={`font-black text-xl mb-1 flex items-center justify-center gap-2 ${winData.winner === mySymbol ? 'text-emerald-400' : (winData.winner === 'draw' ? 'text-amber-400' : 'text-rose-400')}`}>
+                                        <IconTrophy size={20} className={winData.winner === mySymbol ? 'text-amber-400' : 'text-rose-400'} />
+                                        <span>
+                                            {winData.winner === 'draw' ? 'تعادل رائع!' : winData.winner === mySymbol ? 'أنت الفائز البطل!' : 'انتهت اللعبة!'}
+                                        </span>
                                     </p>
                                 </div>
                             )}

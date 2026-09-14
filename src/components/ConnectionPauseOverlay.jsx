@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import WifiOff from 'lucide-react/dist/esm/icons/wifi-off';
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 import Home from 'lucide-react/dist/esm/icons/home';
+import Zap from 'lucide-react/dist/esm/icons/zap';
 import { playSound } from '../lib/audioEngine';
 
 export default function ConnectionPauseOverlay({ conn, onLeave }) {
@@ -73,7 +74,7 @@ export default function ConnectionPauseOverlay({ conn, onLeave }) {
                 {isReconnected ? (
                     <div className="animate-pop-in">
                         <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3 shadow-[0_0_20px_rgba(52,211,153,0.4)]">
-                            <span className="text-3xl">⚡</span>
+                            <Zap size={30} />
                         </div>
                         <h3 className="text-xl font-black text-emerald-400 mb-1">عادت الإشارة!</h3>
                         <p className="text-xs font-bold opacity-70">تم استعادة الاتصال واستئناف اللعبة تلقائياً...</p>

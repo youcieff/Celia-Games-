@@ -5,12 +5,16 @@ import Target from 'lucide-react/dist/esm/icons/target';
 import Anchor from 'lucide-react/dist/esm/icons/anchor';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Film from 'lucide-react/dist/esm/icons/film';
+import Swords from 'lucide-react/dist/esm/icons/swords';
+import Compass from 'lucide-react/dist/esm/icons/compass';
+import Flame from 'lucide-react/dist/esm/icons/flame';
 import { playSound, playHaptic } from '../../lib/audioEngine';
 import EmotesOverlay from '../../components/EmotesOverlay';
 import PlayerGameHeader from '../../components/PlayerGameHeader';
 import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
 import MatchRecapModal from '../../components/MatchRecapModal';
 import useProfile from '../../hooks/useProfile';
+import { IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
 const SIZE = 8;
 const TOTAL_HEALTH = 11;
@@ -350,7 +354,7 @@ export default function SeaBattleGame({ setView }) {
 
                             return (
                                 <div key={c} className={`flex-1 rounded-[2px] overflow-hidden flex items-center justify-center ${cellClass}`}>
-                                    {status === 'hit' && <span className="text-[8px] leading-none animate-pulse">🔥</span>}
+                                    {status === 'hit' && <Flame size={10} className="text-white animate-pulse" />}
                                 </div>
                             );
                         })}
@@ -373,8 +377,8 @@ export default function SeaBattleGame({ setView }) {
                 {/* Player Cards Header during playing & finished */}
                 {gameState !== 'lobby' && (
                     <PlayerGameHeader
-                        title="حرب السفن ⚓"
-                        gameEmoji="⚓"
+                        title="Sea Battle"
+                        gameId="sea-battle"
                         isMyTurn={isMyTurn}
                         oppProfile={oppProfile}
                         myScore={hitsOnOpp}
@@ -406,11 +410,11 @@ export default function SeaBattleGame({ setView }) {
                 {/* Ship Setup Screen */}
                 {gameState === 'setup' && (
                     <div className="flex-1 flex flex-col items-center px-4 pb-4 animate-fade-in">
-                        <h2 className="text-xl font-black mb-1">🚢 توزيع الأسطول البحري</h2>
+                        <h2 className="text-xl font-black mb-1 gradient-text">توزيع الأسطول البحري</h2>
                         <p className="opacity-60 text-[11px] font-bold mb-3">
                             {placedShips.length < TOTAL_HEALTH
                                 ? `اضغط أو اسحب لتحديد ${TOTAL_HEALTH - placedShips.length} مربعات للأسطول`
-                                : 'تمام! الأسطول جاهز كلياً ✅'}
+                                : 'الأسطول جاهز كلياً للبدء'}
                         </p>
 
                         {/* Setup Grid Preview */}
@@ -451,7 +455,7 @@ export default function SeaBattleGame({ setView }) {
                                                 ${isShip ? 'bg-emerald-500 shadow-[0_0_12px_rgba(52,211,153,0.8)] scale-[0.96] border border-emerald-300' : 'bg-emerald-400/10 hover:bg-emerald-400/20'}
                                             `}
                                         >
-                                            {isShip && <span className="text-[10px] pointer-events-none">⚓</span>}
+                                            {isShip && <Anchor size={12} className="text-white pointer-events-none" />}
                                         </div>
                                     );
                                 })
@@ -469,9 +473,10 @@ export default function SeaBattleGame({ setView }) {
                             <button
                                 onClick={handleReady}
                                 disabled={placedShips.length < TOTAL_HEALTH}
-                                className="glow-button flex-[2] h-14 rounded-2xl text-sm font-black flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                className="glow-button flex-[2] h-14 rounded-2xl text-sm font-black flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-all gap-2"
                             >
-                                ⚔️ جاهز للمعركة ({placedShips.length}/{TOTAL_HEALTH})
+                                <Swords size={18} />
+                                جاهز للمعركة ({placedShips.length}/{TOTAL_HEALTH})
                             </button>
                         </div>
                     </div>
@@ -481,10 +486,13 @@ export default function SeaBattleGame({ setView }) {
                 {gameState === 'waiting-ready' && (
                     <div className="flex-1 flex items-center justify-center px-4 animate-fade-in">
                         <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center border border-emerald-400/30 shadow-[0_0_30px_rgba(52,211,153,0.15)]">
-                            <div className="w-16 h-16 bg-emerald-500/20 rounded-full mx-auto flex items-center justify-center mb-3 animate-spin">
-                                <span className="text-3xl">🧭</span>
+                            <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full mx-auto flex items-center justify-center mb-3 animate-spin">
+                                <Compass size={32} />
                             </div>
-                            <h2 className="text-xl font-black mb-1">في الانتظار... ⏳</h2>
+                            <h2 className="text-xl font-black mb-1 flex items-center justify-center gap-2">
+                                في الانتظار...
+                                <IconHourglass size={18} className="animate-spin text-emerald-400" />
+                            </h2>
                             <p className="opacity-60 text-xs font-bold mb-4">
                                 {oppProfile?.nickname || 'الخصم'} بيوزع أسطوله البحري الآن!
                             </p>
@@ -499,11 +507,21 @@ export default function SeaBattleGame({ setView }) {
 
                         {/* Status Bar */}
                         {!overallWinner && (
-                            <div className={`mb-2 w-[95%] text-center px-4 py-2.5 rounded-2xl text-sm font-black transition-all ${isMyTurn
+                            <div className={`mb-2 w-[95%] text-center px-4 py-2 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${isMyTurn
                                 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-400/40 shadow-[0_0_15px_rgba(52,211,153,0.2)] animate-pulse'
                                 : 'glass-card text-white/50 border border-white/5'
                                 }`}>
-                                {isMyTurn ? '🎯 دورك، اضرب رادار الخصم!' : '⏳ انتظر ضربة الخصم...'}
+                                {isMyTurn ? (
+                                    <>
+                                        <IconTarget size={14} className="shrink-0" />
+                                        <span>دورك، اضرب رادار الخصم!</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <IconHourglass size={14} className="shrink-0" />
+                                        <span>انتظر ضربة الخصم...</span>
+                                    </>
+                                )}
                             </div>
                         )}
 
@@ -513,12 +531,12 @@ export default function SeaBattleGame({ setView }) {
 
                                 {/* Victory / Defeat Overlay */}
                                 {overallWinner && (
-                                    <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/75 rounded-3xl backdrop-blur-md animate-pop-in p-4">
-                                        <div className="text-center flex flex-col items-center gap-3">
-                                            <div className="text-4xl animate-bounce">
-                                                {overallWinner === 'me' ? '👑' : '💥'}
+                                    <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/75 rounded-3xl backdrop-blur-md animate-pop-in p-4 border border-white/10 shadow-2xl">
+                                        <div className="text-center flex flex-col items-center gap-2.5">
+                                            <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center animate-bounce">
+                                                <IconTrophy size={32} className={overallWinner === 'me' ? 'text-amber-400' : 'text-rose-400'} />
                                             </div>
-                                            <div className={`text-3xl font-black ${overallWinner === 'me' ? 'text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.8)]' : 'text-rose-500 drop-shadow-[0_0_20px_rgba(243,33,33,0.8)]'}`}>
+                                            <div className={`text-2xl font-black ${overallWinner === 'me' ? 'text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.8)]' : 'text-rose-500 drop-shadow-[0_0_20px_rgba(243,33,33,0.8)]'}`}>
                                                 {overallWinner === 'me' ? 'انتصار ساحق!' : 'أغرقوا أسطولنا!'}
                                             </div>
                                             <p className="text-xs font-bold opacity-75">
@@ -561,15 +579,15 @@ export default function SeaBattleGame({ setView }) {
                                                 `}
                                             >
                                                 {val === 'hit' && (
-                                                    <div className="w-[85%] h-[85%] rounded-full bg-rose-600 shadow-[0_0_12px_rgba(225,29,72,1)] flex items-center justify-center animate-pop-in text-[10px]">
-                                                        💥
+                                                    <div className="w-[85%] h-[85%] rounded-full bg-rose-600 shadow-[0_0_12px_rgba(225,29,72,1)] flex items-center justify-center animate-pop-in">
+                                                        <span className="w-2 h-2 rounded-full bg-white shadow-[0_0_6px_#fff]" />
                                                     </div>
                                                 )}
                                                 {val === 'miss' && (
                                                     <div className="w-[45%] h-[45%] rounded-full bg-white/50 shadow-[0_0_6px_rgba(255,255,255,0.4)] animate-pop-in" />
                                                 )}
                                                 {val === 'pending' && (
-                                                    <span className="text-[10px] animate-spin">🎯</span>
+                                                    <IconTarget size={14} className="animate-spin text-amber-400" />
                                                 )}
                                             </div>
                                         );

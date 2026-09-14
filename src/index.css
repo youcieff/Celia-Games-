@@ -8,42 +8,94 @@
    ROOT DESIGN TOKENS
    ================================================ */
 :root {
-  --gradient-1: #ec4899;
-  --gradient-2: #a855f7;
-  --gradient-3: #f472b6;
-  --glass-bg: rgba(255, 255, 255, 0.06);
-  --glass-border: rgba(255, 255, 255, 0.12);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  /* Base palette — always dark */
+  --bg-base:        #0A0508;
+  --bg-mid:         #2B0B24;
+
+  /* Single accent per theme — the ONE color that defines everything */
+  --accent:         #FF3D8A;
+  --accent-glow:    rgba(255, 61, 138, 0.4);
+  --accent-soft:    rgba(255, 61, 138, 0.12);
+  --accent-border:  rgba(255, 61, 138, 0.25);
+
+  /* Derived semantic tokens */
+  --primary-color:  var(--accent);
+  --primary-glow:   var(--accent-glow);
+  --text-color:     #fdf4ff;
+
+  /* Glass system */
+  --glass-bg:       rgba(255, 255, 255, 0.04);
+  --glass-border:   rgba(255, 255, 255, 0.09);
+  --glass-shadow:   0 8px 32px rgba(0, 0, 0, 0.45);
+
+  /* Theme transition — smooth for all color-bearing props */
+  --theme-transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Gradient stops for each game (accent variants within theme palette) */
+  --game-1-accent: var(--accent);
+  --game-2-accent: var(--accent);
+  --game-3-accent: var(--accent);
+  --game-4-accent: var(--accent);
+  --game-5-accent: var(--accent);
+  --game-6-accent: var(--accent);
+  --game-7-accent: var(--accent);
+  --game-8-accent: var(--accent);
+  --game-9-accent: var(--accent);
+  --game-10-accent: var(--accent);
 }
 
+/* ── GIRLY THEME: Black → Deep Magenta ── */
 [data-theme='girly'] {
-  --gradient-1: #f472b6;
-  --gradient-2: #c084fc;
-  --gradient-3: #e879f9;
-  --bg-dark-1: #100018;
-  --bg-dark-2: #1e0030;
-  --bg-dark-3: #0d0015;
-  --primary-color: #f472b6;
-  --primary-glow: rgba(244, 114, 182, 0.35);
-  --accent-color: #e879f9;
-  --text-color: #fdf4ff;
-  --glass-bg: rgba(244, 114, 182, 0.06);
-  --glass-border: rgba(244, 114, 182, 0.18);
+  --bg-base:        #0A0508;
+  --bg-mid:         #220A1E;
+
+  --accent:         #FF3D8A;
+  --accent-glow:    rgba(255, 61, 138, 0.4);
+  --accent-soft:    rgba(255, 61, 138, 0.12);
+  --accent-border:  rgba(255, 61, 138, 0.28);
+
+  --text-color:     #fdf0f8;
+  --glass-bg:       rgba(255, 61, 138, 0.04);
+  --glass-border:   rgba(255, 61, 138, 0.12);
+
+  /* Per-game accent variants — all warm, within pink/rose/magenta/lilac */
+  --game-1-accent:  #FF3D8A;   /* خمن الكود — hot pink */
+  --game-2-accent:  #E040D0;   /* خمن الكلمة — magenta */
+  --game-3-accent:  #FF6BAE;   /* إكس أو — rose */
+  --game-4-accent:  #C44DFF;   /* Big XO — purple-pink */
+  --game-5-accent:  #FF3D8A;   /* Connect 4 — hot pink */
+  --game-6-accent:  #FF85B8;   /* Memory — soft pink */
+  --game-7-accent:  #D43FFF;   /* Dots & Boxes — violet */
+  --game-8-accent:  #FF5FA8;   /* Sea Battle — blush */
+  --game-9-accent:  #FF3D8A;   /* خمن الوقت */
+  --game-10-accent: #E040D0;   /* أتوبيس */
 }
 
+/* ── MASCULINE THEME: Black → Deep Navy ── */
 [data-theme='masculine'] {
-  --gradient-1: #00e5a0;
-  --gradient-2: #0ea5e9;
-  --gradient-3: #6366f1;
-  --bg-dark-1: #010c18;
-  --bg-dark-2: #071525;
-  --bg-dark-3: #030d1c;
-  --primary-color: #00e5a0;
-  --primary-glow: rgba(0, 229, 160, 0.3);
-  --accent-color: #0ea5e9;
-  --text-color: #e8f8f5;
-  --glass-bg: rgba(0, 229, 160, 0.04);
-  --glass-border: rgba(0, 229, 160, 0.15);
+  --bg-base:        #05070C;
+  --bg-mid:         #0B1B3A;
+
+  --accent:         #2E6BFF;
+  --accent-glow:    rgba(46, 107, 255, 0.4);
+  --accent-soft:    rgba(46, 107, 255, 0.12);
+  --accent-border:  rgba(46, 107, 255, 0.28);
+
+  --text-color:     #eef4ff;
+  --glass-bg:       rgba(46, 107, 255, 0.04);
+  --glass-border:   rgba(46, 107, 255, 0.12);
+
+  /* Per-game accent variants — all cool, within blue/cyan/teal/indigo */
+  --game-1-accent:  #00E5B0;   /* خمن الكود — teal */
+  --game-2-accent:  #4C8DFF;   /* خمن الكلمة — sky blue */
+  --game-3-accent:  #00D4FF;   /* إكس أو — cyan */
+  --game-4-accent:  #7B5FFF;   /* Big XO — indigo */
+  --game-5-accent:  #FFB800;   /* Connect 4 — amber (exception for fun) */
+  --game-6-accent:  #00E5B0;   /* Memory — teal */
+  --game-7-accent:  #4C8DFF;   /* Dots & Boxes — blue */
+  --game-8-accent:  #00C9FF;   /* Sea Battle — sky */
+  --game-9-accent:  #FF7A2E;   /* خمن الوقت — warm contrast */
+  --game-10-accent: #00D4A0;   /* أتوبيس — mint */
 }
 
 /* ================================================
@@ -59,9 +111,12 @@
 
   body {
     min-height: 100dvh;
-    background-color: var(--bg-dark-1);
+    background: linear-gradient(160deg, var(--bg-base) 0%, var(--bg-mid) 100%);
+    background-attachment: fixed;
     color: var(--text-color);
-    transition: background-color 0.6s ease, color 0.4s ease;
+    transition:
+      background-color var(--theme-transition),
+      color var(--theme-transition);
     overflow-x: hidden;
     overscroll-behavior: none;
   }
@@ -69,6 +124,9 @@
   * {
     -webkit-tap-highlight-color: transparent;
     box-sizing: border-box;
+    /* Propagate theme transitions */
+    transition-property: background-color, border-color, color, box-shadow, filter;
+    transition-duration: 0s; /* override per element */
   }
 
   button {
@@ -84,80 +142,85 @@
 }
 
 /* ================================================
-   ANIMATED BACKGROUND — richer, more dramatic
+   ANIMATED BACKGROUND — deep, layered
    ================================================ */
 .animated-bg {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: var(--bg-dark-1);
+  background: linear-gradient(160deg, var(--bg-base) 0%, var(--bg-mid) 100%);
   overflow: hidden;
+  transition: background var(--theme-transition);
 }
 
-/* top-right orb */
+/* top-right orb — faint accent radial */
 .animated-bg::before {
-  content: '';
-  position: absolute;
-  width: 700px;
-  height: 700px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--gradient-1) 0%, transparent 65%);
-  top: -300px;
-  right: -250px;
-  opacity: 0.18;
-  animation: float-orb-1 9s ease-in-out infinite;
-}
-
-/* bottom-left orb */
-.animated-bg::after {
   content: '';
   position: absolute;
   width: 600px;
   height: 600px;
   border-radius: 50%;
-  background: radial-gradient(circle, var(--gradient-2) 0%, transparent 65%);
-  bottom: -200px;
-  left: -200px;
-  opacity: 0.15;
-  animation: float-orb-2 11s ease-in-out infinite;
+  background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
+  top: -280px;
+  right: -220px;
+  opacity: 0.10;
+  animation: float-orb-1 10s ease-in-out infinite;
+  transition: background var(--theme-transition);
 }
 
-/* centre accent orb */
+/* bottom-left orb — slightly desaturated */
+.animated-bg::after {
+  content: '';
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
+  bottom: -180px;
+  left: -180px;
+  opacity: 0.07;
+  animation: float-orb-2 13s ease-in-out infinite;
+  transition: background var(--theme-transition);
+}
+
+/* centre micro-orb */
 .bg-orb-3 {
   position: absolute;
-  width: 400px;
-  height: 400px;
+  width: 320px;
+  height: 320px;
   border-radius: 50%;
-  background: radial-gradient(circle, var(--gradient-3) 0%, transparent 65%);
+  background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
   top: 40%;
   left: 50%;
   transform: translate(-50%, -50%);
-  opacity: 0.07;
-  animation: float-orb-3 14s ease-in-out infinite;
+  opacity: 0.05;
+  animation: float-orb-3 16s ease-in-out infinite;
+  transition: background var(--theme-transition);
 }
 
 @keyframes float-orb-1 {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  33%  { transform: translate(-40px, 25px) scale(1.06); }
-  66%  { transform: translate(25px, -35px) scale(0.94); }
+  33%  { transform: translate(-30px, 20px) scale(1.05); }
+  66%  { transform: translate(20px, -30px) scale(0.95); }
 }
 @keyframes float-orb-2 {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  40%  { transform: translate(35px, -25px) scale(1.09); }
-  70%  { transform: translate(-25px, 35px) scale(0.91); }
+  40%  { transform: translate(28px, -20px) scale(1.08); }
+  70%  { transform: translate(-20px, 28px) scale(0.92); }
 }
 @keyframes float-orb-3 {
   0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  50%  { transform: translate(-50%, -50%) scale(1.4); }
+  50%  { transform: translate(-50%, -50%) scale(1.35); }
 }
 
-/* subtle noise overlay for texture */
+/* Film-grain noise — very subtle, breaks digital flatness */
 .animated-bg-noise {
   position: absolute;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-  background-size: 200px 200px;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.055'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
   pointer-events: none;
+  opacity: 0.7;
 }
 
 /* ================================================
@@ -165,10 +228,14 @@
    ================================================ */
 .glass-card {
   background: var(--glass-bg);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
   border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition:
+    background var(--theme-transition),
+    border-color var(--theme-transition),
+    box-shadow 0.25s ease;
 }
 
 .glass-card-hover {
@@ -180,12 +247,12 @@
 
 .glass-card-hover:hover {
   transform: translateY(-3px);
-  border-color: var(--primary-color);
-  background: rgba(255,255,255,0.08);
-  box-shadow: 0 16px 48px rgba(0,0,0,0.35),
-              0 0 0 1px var(--primary-color),
-              0 0 30px var(--primary-glow),
-              inset 0 1px 0 rgba(255,255,255,0.12);
+  border-color: var(--accent-border);
+  background: rgba(255,255,255,0.07);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4),
+              0 0 0 1px var(--accent-border),
+              0 0 32px var(--accent-glow),
+              inset 0 1px 0 rgba(255,255,255,0.1);
 }
 
 .glass-card-hover:active {
@@ -200,70 +267,93 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 1.1rem 1.25rem;
+  padding: 1.05rem 1.2rem;
   border-radius: 20px;
   overflow: hidden;
   text-align: right;
   direction: rtl;
-  background: var(--glass-bg);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  background: linear-gradient(135deg, var(--glass-bg) 0%, rgba(255,255,255,0.025) 100%);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  /* Gradient border via box-shadow instead of flat border */
   border: 1px solid var(--glass-border);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.07);
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow 0.22s ease,
-              border-color 0.22s ease;
+  box-shadow:
+    0 4px 24px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
   cursor: pointer;
   width: 100%;
 }
 
+/* Hover: reveal the card's per-game accent color */
 .game-card::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, var(--primary-color) 0%, transparent 60%);
+  background: linear-gradient(135deg, var(--card-accent, var(--accent)) 0%, transparent 55%);
   opacity: 0;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.3s ease;
   pointer-events: none;
 }
 
-.game-card:hover::before { opacity: 0.06; }
+.game-card:hover::before { opacity: 0.08; }
 
 .game-card:hover {
   transform: translateY(-2px);
-  border-color: var(--primary-color);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.35),
-              0 0 0 1px var(--primary-color),
-              0 0 24px var(--primary-glow);
+  border-color: color-mix(in srgb, var(--card-accent, var(--accent)) 40%, transparent);
+  box-shadow:
+    0 12px 40px rgba(0,0,0,0.4),
+    0 0 0 1px color-mix(in srgb, var(--card-accent, var(--accent)) 30%, transparent),
+    0 0 28px color-mix(in srgb, var(--card-accent, var(--accent)) 30%, transparent),
+    inset 0 1px 0 rgba(255,255,255,0.1);
 }
 
 .game-card:active {
-  transform: scale(0.98);
+  transform: scale(0.975);
 }
 
+/* Radial glow behind icon — the "focus point" effect */
 .game-card-icon {
+  position: relative;
   width: 52px;
   height: 52px;
   border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
   flex-shrink: 0;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 0 20px var(--primary-glow);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  /* Soft radial glow using the card accent */
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--card-accent, var(--accent)) 45%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--card-accent, var(--accent)) 15%, transparent);
   transition: box-shadow 0.25s ease;
+  overflow: hidden;
+}
+
+/* Inner radial glow layer inside icon box */
+.game-card-icon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, color-mix(in srgb, var(--card-accent, var(--accent)) 20%, transparent) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .game-card:hover .game-card-icon {
-  box-shadow: 0 0 32px var(--primary-glow);
+  box-shadow:
+    0 0 36px color-mix(in srgb, var(--card-accent, var(--accent)) 60%, transparent),
+    inset 0 0 16px color-mix(in srgb, var(--card-accent, var(--accent)) 20%, transparent);
 }
 
 .game-card-body { flex: 1; min-width: 0; }
 
 .game-card-title {
-  font-size: 1.05rem;
+  font-size: 1.0rem;
   font-weight: 900;
   line-height: 1.2;
   margin-bottom: 3px;
@@ -273,34 +363,36 @@
 }
 
 .game-card-desc {
-  font-size: 0.72rem;
-  opacity: 0.5;
+  font-size: 0.7rem;
+  opacity: 0.45;
   font-weight: 500;
   line-height: 1.3;
 }
 
 .game-card-badge {
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
   padding: 3px 8px;
   border-radius: 999px;
-  background: rgba(0, 229, 160, 0.12);
-  color: var(--primary-color);
-  border: 1px solid var(--primary-color);
   white-space: nowrap;
   flex-shrink: 0;
+  /* Uses card's own accent for badge */
+  color: var(--card-accent, var(--accent));
+  border: 1px solid color-mix(in srgb, var(--card-accent, var(--accent)) 35%, transparent);
+  background: color-mix(in srgb, var(--card-accent, var(--accent)) 12%, transparent);
 }
 
 /* ================================================
    GRADIENT TEXT
    ================================================ */
 .gradient-text {
-  background: linear-gradient(135deg, var(--gradient-1), var(--gradient-2), var(--gradient-3));
+  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 60%, white) 100%);
   background-size: 200% 200%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: gradient-shift 5s ease infinite;
+  animation: gradient-shift 6s ease infinite;
+  transition: background var(--theme-transition);
 }
 
 @keyframes gradient-shift {
@@ -310,31 +402,55 @@
 }
 
 /* ================================================
-   GLOW BUTTON — sleeker
+   GLOW BUTTON
    ================================================ */
 .glow-button {
   position: relative;
-  background: linear-gradient(135deg, var(--gradient-1) 0%, var(--gradient-2) 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 70%, #000) 100%);
   border: none;
   color: white;
   font-weight: 800;
   letter-spacing: 0.01em;
   overflow: hidden;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
-              box-shadow 0.2s ease;
+  transition:
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.2s ease,
+    background var(--theme-transition);
 }
 
+/* Shine layer */
 .glow-button::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+  background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 55%);
   pointer-events: none;
 }
 
+/* Ripple on click */
+.glow-button::before {
+  content: '';
+  position: absolute;
+  inset: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255,255,255,0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.4s ease, height 0.4s ease, opacity 0.4s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.glow-button:active::before {
+  width: 200%;
+  height: 200%;
+  opacity: 0;
+}
+
 .glow-button:not(:disabled):hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 12px 36px var(--primary-glow);
+  transform: translateY(-2px) scale(1.015);
+  box-shadow: 0 12px 36px var(--accent-glow);
 }
 
 .glow-button:active {
@@ -345,15 +461,15 @@
    THEME TOGGLE BUTTON
    ================================================ */
 .theme-button {
-  background: linear-gradient(135deg, var(--gradient-1), var(--gradient-2));
+  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 70%, #000) 100%);
   color: white;
-  transition: all 0.3s ease;
+  transition: all 0.3s ease, background var(--theme-transition);
 }
 
 .theme-button:hover {
-  filter: brightness(1.1);
+  filter: brightness(1.12);
   transform: scale(1.04);
-  box-shadow: 0 8px 24px var(--primary-glow);
+  box-shadow: 0 6px 20px var(--accent-glow);
 }
 
 /* ================================================
@@ -363,14 +479,14 @@
   background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 3px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 3px solid rgba(255, 255, 255, 0.1);
   transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .letter-tile.revealed {
-  background: rgba(255,255,255,0.1);
-  border-bottom-color: var(--primary-color);
-  box-shadow: 0 4px 15px var(--primary-glow);
+  background: rgba(255,255,255,0.08);
+  border-bottom-color: var(--accent);
+  box-shadow: 0 4px 15px var(--accent-glow);
 }
 
 .letter-tile.wrong {
@@ -394,24 +510,24 @@
 }
 
 .key-btn:not(:disabled):hover {
-  border-color: var(--primary-color);
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 0 12px var(--primary-glow);
+  border-color: var(--accent-border);
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 0 14px var(--accent-glow);
   transform: translateY(-2px);
 }
 
 .key-btn:active { transform: scale(0.9); }
-.key-btn:disabled { opacity: 0.18; transform: none; cursor: not-allowed; }
+.key-btn:disabled { opacity: 0.15; transform: none; cursor: not-allowed; }
 
 /* ================================================
    HEART LIVES
    ================================================ */
 .life-icon {
   transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-  filter: drop-shadow(0 0 8px var(--primary-color));
+  filter: drop-shadow(0 0 8px var(--accent));
 }
 .life-icon.lost {
-  opacity: 0.12;
+  opacity: 0.1;
   transform: scale(0.65);
   filter: none;
 }
@@ -427,8 +543,8 @@
   transition: all 0.3s ease;
 }
 .digit-cell.filled {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 20px var(--primary-glow);
+  border-color: var(--accent);
+  box-shadow: 0 0 20px var(--accent-glow);
 }
 
 /* ================================================
@@ -445,11 +561,11 @@
 }
 .numpad-btn:active {
   transform: scale(0.92);
-  background: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.1);
 }
 .numpad-btn:not(:disabled):hover {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 15px var(--primary-glow);
+  border-color: var(--accent-border);
+  box-shadow: 0 0 14px var(--accent-glow);
 }
 
 /* ================================================
@@ -466,7 +582,7 @@
 }
 
 @keyframes slide-in {
-  from { opacity: 0; transform: translateY(-10px) scale(0.95); }
+  from { opacity: 0; transform: translateY(-8px) scale(0.96); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
@@ -474,7 +590,7 @@
    INPUT FIELDS
    ================================================ */
 .glass-input {
-  background: rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.04);
   border: 1.5px solid var(--glass-border);
   color: var(--text-color);
   font-family: 'Tajawal', sans-serif;
@@ -483,21 +599,37 @@
   -webkit-backdrop-filter: blur(10px);
 }
 .glass-input:focus {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 20px var(--primary-glow);
-  background: rgba(255,255,255,0.08);
+  border-color: var(--accent-border);
+  box-shadow: 0 0 20px var(--accent-glow);
+  background: rgba(255,255,255,0.07);
 }
 .glass-input::placeholder {
-  color: rgba(255,255,255,0.28);
+  color: rgba(255,255,255,0.25);
   font-family: 'Tajawal', sans-serif;
+}
+
+/* ================================================
+   RADIAL GLOW UTILITY — for icon backgrounds
+   ================================================ */
+.radial-glow {
+  position: relative;
+}
+.radial-glow::before {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  background: radial-gradient(circle, var(--card-accent, var(--accent)) 0%, transparent 65%);
+  opacity: 0.18;
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* ================================================
    ANIMATIONS
    ================================================ */
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 10px var(--primary-glow); }
-  50%       { box-shadow: 0 0 25px var(--primary-glow), 0 0 50px var(--primary-glow); }
+  0%, 100% { box-shadow: 0 0 8px var(--accent-glow); }
+  50%       { box-shadow: 0 0 22px var(--accent-glow), 0 0 45px var(--accent-glow); }
 }
 
 @keyframes wiggle {
@@ -507,7 +639,7 @@
 
 @keyframes pop-in {
   0%   { transform: scale(0) rotate(-10deg); opacity: 0; }
-  80%  { transform: scale(1.1) rotate(2deg); }
+  80%  { transform: scale(1.08) rotate(2deg); }
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 
@@ -521,11 +653,17 @@
   100% { transform: translateX(100%); }
 }
 
-.animate-pulse-glow  { animation: pulse-glow 2s ease-in-out infinite; }
+@keyframes float-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-pulse-glow  { animation: pulse-glow 2.5s ease-in-out infinite; }
 .animate-wiggle      { animation: wiggle 0.8s ease-in-out; }
-.animate-pop-in      { animation: pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.animate-pop-in      { animation: pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 .animate-pulse-slow  { animation: pulse 3s ease-in-out infinite; }
 .animate-fade-in     { animation: fade-in 0.4s ease forwards; }
+.animate-float-up    { animation: float-up 0.35s ease forwards; }
 
 /* Card shimmer on hover */
 .game-card-shimmer {
@@ -533,23 +671,23 @@
   top: 0; left: -100%;
   width: 60%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
   pointer-events: none;
   transition: none;
 }
 .game-card:hover .game-card-shimmer {
-  animation: shimmer 0.6s ease forwards;
+  animation: shimmer 0.65s ease forwards;
 }
 
 /* ================================================
    DIVIDER
    ================================================ */
 .section-label {
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  opacity: 0.35;
+  opacity: 0.3;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -567,7 +705,7 @@
    ================================================ */
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--primary-color); border-radius: 999px; opacity: 0.4; }
+::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 999px; opacity: 0.4; }
 
 /* ================================================
    SAFE AREA (iOS notch)

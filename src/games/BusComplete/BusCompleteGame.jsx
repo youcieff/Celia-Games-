@@ -6,18 +6,19 @@ import EmotesOverlay from '../../components/EmotesOverlay';
 import Logo from '../../components/Logo';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle';
+import User from 'lucide-react/dist/esm/icons/user';
+import Heart from 'lucide-react/dist/esm/icons/heart';
+import Package from 'lucide-react/dist/esm/icons/package';
+import Feather from 'lucide-react/dist/esm/icons/feather';
+import Leaf from 'lucide-react/dist/esm/icons/leaf';
+import Globe from 'lucide-react/dist/esm/icons/globe';
+import Star from 'lucide-react/dist/esm/icons/star';
 import { playSound, playHaptic } from '../../lib/audioEngine';
 import useProfile from '../../hooks/useProfile';
+import { IconBusComplete } from '../../components/icons/GameIcons';
 
 /**
  * BusCompleteGame (أتوبيس كومبليت)
- *
- * Flow:
- *  - Host picks a random Arabic letter (or guest agrees)
- *  - Both fill 5 categories starting with that letter
- *  - First to finish presses "أتوبيس!" — opponent gets 10s grace period
- *  - Review phase: each answer shown side-by-side, each player scores their own
- *  - Points: unique = 10, duplicate = 5, wrong/empty = 0
  */
 
 const ARABIC_LETTERS = [
@@ -26,13 +27,13 @@ const ARABIC_LETTERS = [
 ];
 
 const CATEGORIES = [
-    { key: 'boy',     label: 'اسم ولد',            emoji: '👦' },
-    { key: 'girl',    label: 'اسم بنت',            emoji: '👧' },
-    { key: 'thing',   label: 'جماد',               emoji: '📦' },
-    { key: 'animal',  label: 'حيوان',              emoji: '🦁' },
-    { key: 'plant',   label: 'نبات أو أكلة أو فاكهة', emoji: '🍎' },
-    { key: 'country', label: 'بلد',                emoji: '🌍' },
-    { key: 'celeb',   label: 'شخصية مشهورة',       emoji: '🌟' },
+    { key: 'boy',     label: 'اسم ولد',            Icon: User },
+    { key: 'girl',    label: 'اسم بنت',            Icon: Heart },
+    { key: 'thing',   label: 'جماد',               Icon: Package },
+    { key: 'animal',  label: 'حيوان',              Icon: Feather },
+    { key: 'plant',   label: 'نبات أو أكلة أو فاكهة', Icon: Leaf },
+    { key: 'country', label: 'بلد',                Icon: Globe },
+    { key: 'celeb',   label: 'شخصية مشهورة',       Icon: Star },
 ];
 
 const EMPTY_ANSWERS = () => Object.fromEntries(CATEGORIES.map(c => [c.key, '']));
@@ -51,8 +52,6 @@ export default function BusCompleteGame({ setView }) {
     const [myAnswers, setMyAnswers] = useState(EMPTY_ANSWERS());
     const [oppAnswers, setOppAnswers] = useState(null);
     const [busCallerName, setBusCallerName] = useState('');
-    const [graceTimer, setGraceTimer] = useState(null);
-    const [graceLeft, setGraceLeft] = useState(10);
     const [inputsLocked, setInputsLocked] = useState(false);
 
     // Scores per round and totals
@@ -61,7 +60,6 @@ export default function BusCompleteGame({ setView }) {
     const [scores, setScores] = useState({ me: 0, opp: 0 });
     const [round, setRound] = useState(1);
 
-    const graceIntervalRef = useRef(null);
     const myAnswersRef = useRef(EMPTY_ANSWERS());
     const inputsLockedRef = useRef(false);
     const oppAnswersRef = useRef(null);
@@ -76,26 +74,16 @@ export default function BusCompleteGame({ setView }) {
     };
 
     const resetRound = () => {
-        clearGrace();
         const empty = EMPTY_ANSWERS();
         setMyAnswers(empty);
         myAnswersRef.current = empty;
         setOppAnswers(null);
         oppAnswersRef.current = null;
         setBusCallerName('');
-        setGraceLeft(10);
         setInputsLocked(false);
         inputsLockedRef.current = false;
         setMyRoundScore(0);
         setOppRoundScore(0);
-    };
-
-    const clearGrace = () => {
-        if (graceIntervalRef.current) {
-            clearInterval(graceIntervalRef.current);
-            graceIntervalRef.current = null;
-        }
-        setGraceTimer(null);
     };
 
     // ── network ───────────────────────────────────────────────────────────
@@ -133,19 +121,32 @@ export default function BusCompleteGame({ setView }) {
                 setTimeout(() => setGameState('playing'), 2500);
                 break;
             case 'bus': {
-                // Opponent called bus. Lock our inputs and start grace.
+                // Opponent called bus. Lock our inputs immediately and send current answers!
                 const callerName = msg.caller;
                 setBusCallerName(callerName);
                 inputsLockedRef.current = true;
                 setInputsLocked(true);
-                startGrace();
+                playSound('lose');
+                playHaptic([40, 40, 80]);
+
+                if (msg.answers) {
+                    oppAnswersRef.current = msg.answers;
+                    setOppAnswers(msg.answers);
+                }
+
+                // Send our current answers immediately so both can review
+                connRef.current?.send({ type: 'answers', answers: myAnswersRef.current });
+
+                if (msg.answers || oppAnswersRef.current) {
+                    setGameState('review');
+                }
                 break;
             }
             case 'answers':
                 oppAnswersRef.current = msg.answers;
                 setOppAnswers(msg.answers);
-                // If we already sent ours, move to review
-                if (myAnswersRef.current && inputsLockedRef.current) {
+                // If inputs are locked (bus called), move to review immediately
+                if (inputsLockedRef.current) {
                     setGameState('review');
                 }
                 break;
@@ -178,37 +179,11 @@ export default function BusCompleteGame({ setView }) {
         setInputsLocked(true);
         const myName = myProfile?.nickname || 'أنت';
         setBusCallerName(myName);
-        connRef.current?.send({ type: 'bus', caller: myName });
-        // Send our answers immediately
+        
+        // Send bus notification with our answers immediately
+        connRef.current?.send({ type: 'bus', caller: myName, answers: myAnswersRef.current });
         connRef.current?.send({ type: 'answers', answers: myAnswersRef.current });
-        // Wait a moment then check if we have opp's answers
-        setTimeout(() => {
-            if (oppAnswersRef.current) {
-                setGameState('review');
-            }
-            // else wait for their answers message
-        }, 500);
-    };
 
-    // Grace period for the opponent
-    const startGrace = () => {
-        let left = 10;
-        setGraceLeft(left);
-        graceIntervalRef.current = setInterval(() => {
-            left--;
-            setGraceLeft(left);
-            if (left <= 0) {
-                clearGrace();
-                finishGrace();
-            }
-        }, 1000);
-    };
-
-    const finishGrace = () => {
-        // Send our current answers regardless
-        connRef.current?.send({ type: 'answers', answers: myAnswersRef.current });
-        inputsLockedRef.current = true;
-        setInputsLocked(true);
         if (oppAnswersRef.current) {
             setGameState('review');
         }
@@ -286,8 +261,8 @@ export default function BusCompleteGame({ setView }) {
                 {/* Header */}
                 {gameState !== 'lobby' ? (
                     <PlayerGameHeader
-                        title="أتوبيس كومبليت 🚌"
-                        gameEmoji="🚌"
+                        title="أتوبيس كومبليت"
+                        gameEmoji=""
                         isMyTurn={gameState === 'playing' && !inputsLocked}
                         oppProfile={oppProfile}
                         myScore={scores.me}
@@ -314,7 +289,9 @@ export default function BusCompleteGame({ setView }) {
                 {gameState === 'waiting-letter' && (
                     <div className="flex-1 flex items-center justify-center animate-fade-in">
                         <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center border border-emerald-400/30">
-                            <div className="text-5xl mb-4 animate-pulse">🚌</div>
+                            <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 mx-auto flex items-center justify-center mb-4">
+                                <IconBusComplete size={36} />
+                            </div>
                             <h2 className="text-2xl font-black mb-2">في الانتظار...</h2>
                             <p className="opacity-60 text-sm font-bold">
                                 {oppProfile?.nickname || 'المضيف'} بيختار الحرف
@@ -334,7 +311,7 @@ export default function BusCompleteGame({ setView }) {
                         >
                             {letter}
                         </div>
-                        <p className="opacity-50 text-sm font-bold animate-pulse">ابدأ الكتابة... 🚀</p>
+                        <p className="opacity-50 text-sm font-bold animate-pulse">ابدأ الكتابة الآن!</p>
                     </div>
                 )}
 
@@ -348,9 +325,9 @@ export default function BusCompleteGame({ setView }) {
                                 <span className="text-xs opacity-60 font-bold">الحرف:</span>
                                 <span className="text-4xl font-black" style={{ color: 'var(--primary-color)' }}>{letter}</span>
                             </div>
-                            {inputsLocked && busCallerName && (
+                            {inputsLocked && (
                                 <div className="glass-card rounded-2xl px-4 py-2 text-xs font-black text-amber-400 animate-pulse">
-                                    ⏳ {graceLeft}s
+                                    جاري التصحيح...
                                 </div>
                             )}
                         </div>
@@ -358,7 +335,7 @@ export default function BusCompleteGame({ setView }) {
                         {busCallerName && (
                             <div className="glass-card rounded-2xl p-3 text-center border border-amber-400/40 animate-pop-in">
                                 <p className="text-amber-400 font-black text-sm">
-                                    🚌 {busCallerName} قال أتوبيس! {inputsLocked && !isHostRef.current ? `(${graceLeft}s)` : ''}
+                                    {busCallerName} قال أتوبيس كومبليت!
                                 </p>
                             </div>
                         )}
@@ -367,8 +344,8 @@ export default function BusCompleteGame({ setView }) {
                         <div className="flex flex-col gap-3">
                             {CATEGORIES.map(cat => (
                                 <div key={cat.key} className="glass-card rounded-2xl p-3 flex items-center gap-3 border border-white/5">
-                                    <div className="w-10 h-10 rounded-xl glass-card flex items-center justify-center shrink-0 text-lg">
-                                        {cat.emoji}
+                                    <div className="w-10 h-10 rounded-xl glass-card flex items-center justify-center shrink-0 text-emerald-400">
+                                        {cat.Icon && <cat.Icon size={18} />}
                                     </div>
                                     <div className="flex-1">
                                         <p className="text-[11px] opacity-50 font-bold mb-1">{cat.label}</p>
@@ -401,7 +378,10 @@ export default function BusCompleteGame({ setView }) {
                                     border: '2px solid rgba(74,222,128,0.4)',
                                 }}
                             >
-                                🚌 أتوبيس كومبليت!
+                                <span className="flex items-center gap-2">
+                                    <IconBusComplete size={22} />
+                                    أتوبيس كومبليت!
+                                </span>
                             </button>
                         )}
 
@@ -437,7 +417,9 @@ export default function BusCompleteGame({ setView }) {
                                 return (
                                     <div key={cat.key} className={`glass-card rounded-2xl p-3 grid grid-cols-3 gap-2 items-center border ${isDup ? 'border-amber-400/40 bg-amber-500/10' : 'border-white/5'}`}>
                                         <div className="flex flex-col items-center gap-1">
-                                            <span className="text-lg">{cat.emoji}</span>
+                                            <div className="text-emerald-400">
+                                                {cat.Icon && <cat.Icon size={18} />}
+                                            </div>
                                             <span className="text-[10px] opacity-60 font-bold">{cat.label}</span>
                                         </div>
                                         <div className="text-center">
@@ -477,7 +459,7 @@ export default function BusCompleteGame({ setView }) {
                             onClick={handleGoToScoreboard}
                             className="glow-button w-full h-14 rounded-2xl text-base font-black"
                         >
-                            السبورة 📊
+                            لوحة النتائج
                         </button>
                     </div>
                 )}
@@ -486,7 +468,7 @@ export default function BusCompleteGame({ setView }) {
                 {gameState === 'scoreboard' && (
                     <div className="flex-1 flex flex-col items-center justify-center animate-fade-in gap-5 px-2">
                         <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center border border-white/10 shadow-2xl">
-                            <h2 className="text-2xl font-black mb-1">السبورة 📊</h2>
+                            <h2 className="text-2xl font-black mb-1">لوحة النتائج</h2>
                             <p className="opacity-60 text-xs mb-6">الجولة {round - 1}</p>
                             <div className="flex gap-6 justify-center mb-6">
                                 <div className={`flex-1 rounded-2xl p-5 ${scores.me > scores.opp ? 'bg-emerald-500/20 border border-emerald-400/40' : 'glass-card'}`}>
@@ -511,7 +493,8 @@ export default function BusCompleteGame({ setView }) {
                                     onClick={handleStartNewRound}
                                     className="glow-button flex-[2] h-14 rounded-2xl font-black flex items-center justify-center gap-2"
                                 >
-                                    🚌 جولة جديدة
+                                    <RotateCcw size={16} />
+                                    جولة جديدة
                                 </button>
                             )}
                             {!isHostRef.current && (

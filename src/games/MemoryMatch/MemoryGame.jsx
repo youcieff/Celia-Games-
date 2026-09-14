@@ -3,86 +3,89 @@ import P2PConnectionManager from '../../components/P2PConnectionManager';
 import Logo from '../../components/Logo';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import Check from 'lucide-react/dist/esm/icons/check';
 import { playSound, playHaptic } from '../../lib/audioEngine';
 import EmotesOverlay from '../../components/EmotesOverlay';
 import PlayerGameHeader from '../../components/PlayerGameHeader';
 import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
 import useProfile from '../../hooks/useProfile';
+import { MemoryCardIcon } from '../../components/icons/MemoryCardIcons';
+import { IconMemoryGame, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
 // Premium realistic themes with rich multi-layered visuals and dynamic changing capability
 export const REALISTIC_THEMES = {
     random: {
-        name: '🎲 تشكيلة متجددة دايماً',
+        name: 'تشكيلة متجددة دايماً',
         desc: 'تتغير الرموز والأشكال تلقائياً في كل جولة'
     },
     gems: {
-        name: '💎 الكنوز والجواهر الملكية',
+        name: 'الكنوز والجواهر الملكية',
         desc: 'ألماس وياقوت وذهب ملكي لامع',
         cards: [
-            { id: 'sapphire', symbol: '💎', title: 'ياقوت أزرق', gradient: 'from-blue-600/40 to-indigo-950/80', border: 'border-blue-400' },
-            { id: 'crown', symbol: '👑', title: 'تاج الملوك', gradient: 'from-amber-500/40 to-yellow-950/80', border: 'border-amber-400' },
-            { id: 'gold', symbol: '✨', title: 'سبيكة ذهب', gradient: 'from-yellow-500/40 to-amber-950/80', border: 'border-yellow-400' },
-            { id: 'ring', symbol: '💍', title: 'خاتم الزمرد', gradient: 'from-emerald-500/40 to-teal-950/80', border: 'border-emerald-400' },
-            { id: 'crystal', symbol: '🔮', title: 'بلورة سحرية', gradient: 'from-purple-600/40 to-fuchsia-950/80', border: 'border-purple-400' },
-            { id: 'trophy', symbol: '🏆', title: 'كأس البطولة', gradient: 'from-amber-600/40 to-orange-950/80', border: 'border-amber-400' },
-            { id: 'star', symbol: '⭐', title: 'نجم أسطوري', gradient: 'from-yellow-400/40 to-amber-950/80', border: 'border-yellow-400' },
-            { id: 'key', symbol: '🗝️', title: 'مفتاح الكنز', gradient: 'from-orange-500/40 to-stone-950/80', border: 'border-orange-400' }
+            { id: 'sapphire', title: 'ياقوت أزرق', gradient: 'from-blue-600/40 to-indigo-950/80', border: 'border-blue-400' },
+            { id: 'crown', title: 'تاج الملوك', gradient: 'from-amber-500/40 to-yellow-950/80', border: 'border-amber-400' },
+            { id: 'gold', title: 'سبيكة ذهب', gradient: 'from-yellow-500/40 to-amber-950/80', border: 'border-yellow-400' },
+            { id: 'ring', title: 'خاتم الزمرد', gradient: 'from-emerald-500/40 to-teal-950/80', border: 'border-emerald-400' },
+            { id: 'crystal', title: 'بلورة سحرية', gradient: 'from-purple-600/40 to-fuchsia-950/80', border: 'border-purple-400' },
+            { id: 'trophy', title: 'كأس البطولة', gradient: 'from-amber-600/40 to-orange-950/80', border: 'border-amber-400' },
+            { id: 'star', title: 'نجم أسطوري', gradient: 'from-yellow-400/40 to-amber-950/80', border: 'border-yellow-400' },
+            { id: 'key', title: 'مفتاح الكنز', gradient: 'from-orange-500/40 to-stone-950/80', border: 'border-orange-400' }
         ]
     },
     cosmos: {
-        name: '🪐 رحلة الفضاء والمجرات',
+        name: 'رحلة الفضاء والمجرات',
         desc: 'كواكب ومركبات فضاء ثلاثية الأبعاد',
         cards: [
-            { id: 'saturn', symbol: '🪐', title: 'كوكب زحل', gradient: 'from-amber-600/40 to-purple-950/80', border: 'border-amber-400' },
-            { id: 'rocket', symbol: '🚀', title: 'صاروخ فضائي', gradient: 'from-rose-600/40 to-orange-950/80', border: 'border-rose-400' },
-            { id: 'astronaut', symbol: '👨‍🚀', title: 'رائد فضاء', gradient: 'from-sky-600/40 to-indigo-950/80', border: 'border-sky-400' },
-            { id: 'galaxy', symbol: '🌌', title: 'مجرة حلزونية', gradient: 'from-purple-700/40 to-pink-950/80', border: 'border-purple-400' },
-            { id: 'comet', symbol: '☄️', title: 'نيزك مشتعل', gradient: 'from-orange-600/40 to-red-950/80', border: 'border-orange-400' },
-            { id: 'ufo', symbol: '🛸', title: 'مركبة فضائية', gradient: 'from-emerald-600/40 to-teal-950/80', border: 'border-emerald-400' },
-            { id: 'moon', symbol: '🌕', title: 'قمر كامل', gradient: 'from-slate-500/40 to-blue-950/80', border: 'border-slate-300' },
-            { id: 'telescope', symbol: '🔭', title: 'مرصد كوني', gradient: 'from-indigo-600/40 to-slate-950/80', border: 'border-indigo-400' }
+            { id: 'saturn', title: 'كوكب زحل', gradient: 'from-amber-600/40 to-purple-950/80', border: 'border-amber-400' },
+            { id: 'rocket', title: 'صاروخ فضائي', gradient: 'from-rose-600/40 to-orange-950/80', border: 'border-rose-400' },
+            { id: 'astronaut', title: 'رائد فضاء', gradient: 'from-sky-600/40 to-indigo-950/80', border: 'border-sky-400' },
+            { id: 'galaxy', title: 'مجرة حلزونية', gradient: 'from-purple-700/40 to-pink-950/80', border: 'border-purple-400' },
+            { id: 'comet', title: 'نيزك مشتعل', gradient: 'from-orange-600/40 to-red-950/80', border: 'border-orange-400' },
+            { id: 'ufo', title: 'مركبة فضائية', gradient: 'from-emerald-600/40 to-teal-950/80', border: 'border-emerald-400' },
+            { id: 'moon', title: 'قمر كامل', gradient: 'from-slate-500/40 to-blue-950/80', border: 'border-slate-300' },
+            { id: 'telescope', title: 'مرصد كوني', gradient: 'from-indigo-600/40 to-slate-950/80', border: 'border-indigo-400' }
         ]
     },
     safari: {
-        name: '🦁 سفاري البرية الملكية',
+        name: 'سفاري البرية الملكية',
         desc: 'حيوانات واقعية بتفاصيل ثلاثية الأبعاد',
         cards: [
-            { id: 'lion', symbol: '🦁', title: 'الأسد الذهبي', gradient: 'from-amber-600/40 to-yellow-950/80', border: 'border-amber-400' },
-            { id: 'tiger', symbol: '🐯', title: 'النمر المفترس', gradient: 'from-orange-600/40 to-amber-950/80', border: 'border-orange-400' },
-            { id: 'eagle', symbol: '🦅', title: 'النسر الملكي', gradient: 'from-stone-600/40 to-amber-950/80', border: 'border-stone-400' },
-            { id: 'wolf', symbol: '🐺', title: 'الذئب الفضي', gradient: 'from-cyan-700/40 to-slate-950/80', border: 'border-cyan-400' },
-            { id: 'dolphin', symbol: '🐬', title: 'دولفين المحيط', gradient: 'from-sky-600/40 to-blue-950/80', border: 'border-sky-400' },
-            { id: 'panda', symbol: '🐼', title: 'الباندا العملاق', gradient: 'from-emerald-700/40 to-stone-950/80', border: 'border-emerald-400' },
-            { id: 'fox', symbol: '🦊', title: 'الثعلب الأحمر', gradient: 'from-red-600/40 to-orange-950/80', border: 'border-red-400' },
-            { id: 'owl', symbol: '🦉', title: 'بومة الحكمة', gradient: 'from-indigo-600/40 to-violet-950/80', border: 'border-indigo-400' }
+            { id: 'lion', title: 'الأسد الذهبي', gradient: 'from-amber-600/40 to-yellow-950/80', border: 'border-amber-400' },
+            { id: 'tiger', title: 'النمر المفترس', gradient: 'from-orange-600/40 to-amber-950/80', border: 'border-orange-400' },
+            { id: 'eagle', title: 'النسر الملكي', gradient: 'from-stone-600/40 to-amber-950/80', border: 'border-stone-400' },
+            { id: 'wolf', title: 'الذئب الفضي', gradient: 'from-cyan-700/40 to-slate-950/80', border: 'border-cyan-400' },
+            { id: 'dolphin', title: 'دولفين المحيط', gradient: 'from-sky-600/40 to-blue-950/80', border: 'border-sky-400' },
+            { id: 'panda', title: 'الباندا العملاق', gradient: 'from-emerald-700/40 to-stone-950/80', border: 'border-emerald-400' },
+            { id: 'fox', title: 'الثعلب الأحمر', gradient: 'from-red-600/40 to-orange-950/80', border: 'border-red-400' },
+            { id: 'owl', title: 'بومة الحكمة', gradient: 'from-indigo-600/40 to-violet-950/80', border: 'border-indigo-400' }
         ]
     },
     gourmet: {
-        name: '🍓 المذاق وفنون الطهي',
+        name: 'المذاق وفنون الطهي',
         desc: 'حلويات وفواكه استوائية شهية وجذابة',
         cards: [
-            { id: 'pizza', symbol: '🍕', title: 'بيتزا إيطالية', gradient: 'from-amber-600/40 to-red-950/80', border: 'border-amber-400' },
-            { id: 'burger', symbol: '🍔', title: 'برجر الشيف', gradient: 'from-orange-600/40 to-yellow-950/80', border: 'border-orange-400' },
-            { id: 'sushi', symbol: '🍣', title: 'سوشي فاخر', gradient: 'from-rose-600/40 to-pink-950/80', border: 'border-rose-400' },
-            { id: 'donut', symbol: '🍩', title: 'دونات الكراميل', gradient: 'from-pink-600/40 to-purple-950/80', border: 'border-pink-400' },
-            { id: 'strawberry', symbol: '🍓', title: 'فراولة طازجة', gradient: 'from-red-600/40 to-rose-950/80', border: 'border-red-400' },
-            { id: 'avocado', symbol: '🥑', title: 'أفوكادو صحي', gradient: 'from-lime-600/40 to-emerald-950/80', border: 'border-lime-400' },
-            { id: 'pancakes', symbol: '🥞', title: 'بان كيك بالعسل', gradient: 'from-amber-500/40 to-yellow-950/80', border: 'border-amber-400' },
-            { id: 'icecream', symbol: '🍦', title: 'آيس كريم مثلج', gradient: 'from-cyan-600/40 to-blue-950/80', border: 'border-cyan-400' }
+            { id: 'pizza', title: 'بيتزا إيطالية', gradient: 'from-amber-600/40 to-red-950/80', border: 'border-amber-400' },
+            { id: 'burger', title: 'برجر الشيف', gradient: 'from-orange-600/40 to-yellow-950/80', border: 'border-orange-400' },
+            { id: 'sushi', title: 'سوشي فاخر', gradient: 'from-rose-600/40 to-pink-950/80', border: 'border-rose-400' },
+            { id: 'donut', title: 'دونات الكراميل', gradient: 'from-pink-600/40 to-purple-950/80', border: 'border-pink-400' },
+            { id: 'strawberry', title: 'فراولة طازجة', gradient: 'from-red-600/40 to-rose-950/80', border: 'border-red-400' },
+            { id: 'avocado', title: 'أفوكادو صحي', gradient: 'from-lime-600/40 to-emerald-950/80', border: 'border-lime-400' },
+            { id: 'pancakes', title: 'بان كيك بالعسل', gradient: 'from-amber-500/40 to-yellow-950/80', border: 'border-amber-400' },
+            { id: 'icecream', title: 'آيس كريم مثلج', gradient: 'from-cyan-600/40 to-blue-950/80', border: 'border-cyan-400' }
         ]
     },
     mythic: {
-        name: '⚡ الأساطير وقوى الطبيعة',
+        name: 'الأساطير وقوى الطبيعة',
         desc: 'دروع وسيوف وسحر المحاربين القدامى',
         cards: [
-            { id: 'lightning', symbol: '⚡', title: 'صاعقة البرق', gradient: 'from-yellow-500/40 to-amber-950/80', border: 'border-yellow-400' },
-            { id: 'shield', symbol: '🛡️', title: 'درع الفايكنج', gradient: 'from-blue-600/40 to-slate-950/80', border: 'border-blue-400' },
-            { id: 'sword', symbol: '⚔️', title: 'السيف الأسطوري', gradient: 'from-rose-600/40 to-stone-950/80', border: 'border-rose-400' },
-            { id: 'bow', symbol: '🏹', title: 'قوس الرماية', gradient: 'from-emerald-600/40 to-teal-950/80', border: 'border-emerald-400' },
-            { id: 'potion', symbol: '🧪', title: 'إكسير القوة', gradient: 'from-purple-600/40 to-indigo-950/80', border: 'border-purple-400' },
-            { id: 'dragon', symbol: '🐲', title: 'التنين المجنح', gradient: 'from-emerald-600/40 to-lime-950/80', border: 'border-emerald-400' },
-            { id: 'axe', symbol: '🪓', title: 'فأس المعركة', gradient: 'from-stone-600/40 to-amber-950/80', border: 'border-stone-400' },
-            { id: 'feather', symbol: '🪶', title: 'ريشة العنقاء', gradient: 'from-orange-600/40 to-red-950/80', border: 'border-orange-400' }
+            { id: 'lightning', title: 'صاعقة البرق', gradient: 'from-yellow-500/40 to-amber-950/80', border: 'border-yellow-400' },
+            { id: 'shield', title: 'درع الفايكنج', gradient: 'from-blue-600/40 to-slate-950/80', border: 'border-blue-400' },
+            { id: 'sword', title: 'السيف الأسطوري', gradient: 'from-rose-600/40 to-stone-950/80', border: 'border-rose-400' },
+            { id: 'bow', title: 'قوس الرماية', gradient: 'from-emerald-600/40 to-teal-950/80', border: 'border-emerald-400' },
+            { id: 'potion', title: 'إكسير القوة', gradient: 'from-purple-600/40 to-indigo-950/80', border: 'border-purple-400' },
+            { id: 'dragon', title: 'التنين المجنح', gradient: 'from-emerald-600/40 to-lime-950/80', border: 'border-emerald-400' },
+            { id: 'axe', title: 'فأس المعركة', gradient: 'from-stone-600/40 to-amber-950/80', border: 'border-stone-400' },
+            { id: 'feather', title: 'ريشة العنقاء', gradient: 'from-orange-600/40 to-red-950/80', border: 'border-orange-400' }
         ]
     }
 };
@@ -307,8 +310,8 @@ export default function MemoryGame({ setView }) {
                 {/* Header */}
                 {gameState !== 'lobby' ? (
                     <PlayerGameHeader
-                        title="تطابق الذاكرة 🃏"
-                        gameEmoji="🃏"
+                        title="تطابق الذاكرة"
+                        gameEmoji=""
                         isMyTurn={isMyTurn}
                         oppProfile={oppProfile}
                         myScore={isHost ? scores.host : scores.client}
@@ -376,7 +379,8 @@ export default function MemoryGame({ setView }) {
                                 onClick={handleStartGame}
                                 className="glow-button w-full h-14 rounded-2xl text-base font-black flex items-center justify-center gap-2"
                             >
-                                🕹️ ابدأ اللعبة الآن
+                                <IconMemoryGame size={20} />
+                                بدء اللعبة الآن
                             </button>
                         </div>
                     </div>
@@ -386,10 +390,13 @@ export default function MemoryGame({ setView }) {
                 {gameState === 'waiting-start' && (
                     <div className="flex-1 flex items-center justify-center px-4 animate-fade-in">
                         <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center border border-emerald-400/30 shadow-2xl">
-                            <div className="w-16 h-16 bg-emerald-500/20 rounded-full mx-auto flex items-center justify-center mb-3 animate-bounce">
-                                <span className="text-3xl">🎴</span>
+                            <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full mx-auto flex items-center justify-center mb-3 animate-bounce">
+                                <IconMemoryGame size={36} />
                             </div>
-                            <h2 className="text-xl font-black mb-1">في الانتظار... ⏳</h2>
+                            <h2 className="text-xl font-black mb-1 flex items-center justify-center gap-2">
+                                في الانتظار...
+                                <IconHourglass size={18} className="animate-spin text-emerald-400" />
+                            </h2>
                             <p className="opacity-60 text-xs font-bold mb-4">
                                 {oppProfile?.nickname || 'المضيف'} يختار عالم البطاقات ويخلطها الآن!
                             </p>
@@ -406,13 +413,13 @@ export default function MemoryGame({ setView }) {
                             {!isGameOver ? (
                                 <div className={`glass-card rounded-2xl py-2 px-6 inline-block transition-all ${isMyTurn ? 'border-2 border-emerald-400/60 bg-emerald-500/10 animate-pulse' : 'border border-white/5'}`}>
                                     <p className={`font-black text-xs ${isMyTurn ? 'text-emerald-400' : 'opacity-70'}`}>
-                                        {isMyTurn ? '🎯 دورك، اقلب كرتين متطابقين!' : '⏳ دور الخصم يقلب الكروت...'}
+                                        {isMyTurn ? 'دورك، اقلب كرتين متطابقين!' : 'دور الخصم يقلب الكروت...'}
                                     </p>
                                 </div>
                             ) : (
                                 <div className="glass-card rounded-2xl py-2.5 px-6 text-center animate-pop-in">
                                     <p className={`font-black text-xl mb-0.5 ${overallWinner === 'me' ? 'text-emerald-400' : (overallWinner === 'draw' ? 'text-amber-400' : 'text-rose-400')}`}>
-                                        {overallWinner === 'draw' ? '⚖️ تعادل ذكي!' : overallWinner === 'me' ? '👑 انتصرت في التحدي!' : '💔 فاز الخصم، حاول تاني!'}
+                                        {overallWinner === 'draw' ? 'تعادل ذكي!' : overallWinner === 'me' ? 'انتصرت في التحدي!' : 'فاز الخصم، حاول تاني!'}
                                     </p>
                                 </div>
                             )}
@@ -436,9 +443,7 @@ export default function MemoryGame({ setView }) {
                                                 {/* Guilloche border design */}
                                                 <div className="w-full h-full rounded-xl border border-amber-400/20 flex flex-col items-center justify-center relative overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-black/60">
                                                     <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent rotate-45 pointer-events-none" />
-                                                    <span className="text-xl drop-shadow-[0_0_8px_rgba(251,191,36,0.6)] animate-pulse">
-                                                        ⚜️
-                                                    </span>
+                                                    <div className="w-5 h-5 rotate-45 border-2 border-amber-400/60 bg-amber-400/20 shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
                                                 </div>
                                             </div>
 
@@ -451,10 +456,10 @@ export default function MemoryGame({ setView }) {
                                                     {/* Specular Glint */}
                                                     <div className="absolute top-0 right-0 left-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-t-xl" />
 
-                                                    {/* Emoji Symbol */}
-                                                    <span className="text-3xl sm:text-4xl drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] filter hover:scale-110 transition-transform">
-                                                        {card.symbol}
-                                                    </span>
+                                                    {/* Vector Symbol */}
+                                                    <div className="drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] filter hover:scale-110 transition-transform">
+                                                        <MemoryCardIcon id={card.id} size={38} className="text-white" />
+                                                    </div>
 
                                                     {/* Arabic Title */}
                                                     <span className="text-[9px] font-black mt-1 text-white/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] tracking-tight text-center px-0.5 line-clamp-1">
@@ -463,8 +468,8 @@ export default function MemoryGame({ setView }) {
 
                                                     {/* Matched Star Badge */}
                                                     {card.isMatched && (
-                                                        <div className="absolute top-1 right-1 text-[8px] bg-emerald-500 text-black font-black px-1 rounded-full shadow-md animate-pop-in">
-                                                            ✓
+                                                        <div className="absolute top-1 right-1 p-0.5 bg-emerald-500 text-black font-black rounded-full shadow-md animate-pop-in">
+                                                            <Check size={8} strokeWidth={3} />
                                                         </div>
                                                     )}
                                                 </div>
@@ -482,7 +487,7 @@ export default function MemoryGame({ setView }) {
                                 onClick={handleRestart}
                                 className="mt-5 glow-button w-[95%] h-14 rounded-2xl text-base font-black flex items-center justify-center gap-2 animate-pop-in shadow-2xl"
                             >
-                                <RotateCcw size={18} /> جولة جديدة متجددة 🎴
+                                <RotateCcw size={18} /> جولة جديدة متجددة
                             </button>
                         )}
 

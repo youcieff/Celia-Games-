@@ -3,6 +3,7 @@ import StickyNote from 'lucide-react/dist/esm/icons/sticky-note';
 import X from 'lucide-react/dist/esm/icons/x';
 import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down';
 import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up';
+import { IconEdit } from './icons/GameIcons';
 
 export default function Scratchpad() {
     const [notes, setNotes] = useState('');
@@ -17,7 +18,10 @@ export default function Scratchpad() {
             >
                 <div className="flex items-center gap-2 font-bold text-sm">
                     <StickyNote size={16} style={{ color: 'var(--accent-color)' }} />
-                    <span>ملاحظاتي 📝</span>
+                    <span className="flex items-center gap-1.5">
+                        ملاحظاتي
+                        <IconEdit size={14} className="opacity-70" />
+                    </span>
                     {notes && (
                         <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse-slow" />
                     )}
@@ -39,7 +43,7 @@ export default function Scratchpad() {
                     <textarea
                         value={notes}
                         onChange={e => setNotes(e.target.value)}
-                        placeholder="✏️ سجّل ملاحظاتك..."
+                        placeholder="سجّل ملاحظاتك هنا..."
                         dir="rtl"
                         rows={3}
                         className="glass-input w-full rounded-xl px-3 py-2 text-sm resize-none font-arabic"

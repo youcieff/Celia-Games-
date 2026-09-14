@@ -5,6 +5,7 @@ import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Wifi from 'lucide-react/dist/esm/icons/wifi';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
+import { IconBigXOGame, IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
 // Helper to check winning states on a 3x3 array (Classic XO)
 const checkWin = (squares) => {
@@ -147,37 +148,29 @@ export default function UltimateGame({ setView }) {
             <div className="animated-bg"><div className="bg-orb-3" style={{ background: 'var(--accent-glow)' }} /></div>
             <div className="min-h-dvh max-w-lg mx-auto flex flex-col safe-area-pt overflow-x-hidden overflow-y-auto pb-6">
 
-                {/* Nav */}
-                <div className="px-4 flex justify-between items-center py-4 mb-2 relative">
-                    <div className="flex items-center gap-2 z-10">
-                        <Logo size="small" />
-                        <button
-                            onClick={() => { connRef.current?.close(); setView('hub'); }}
-                            className="glass-card w-11 h-11 flex items-center justify-center rounded-2xl hover:scale-105 transition-transform"
-                        >
-                            <ArrowRight size={20} />
-                        </button>
-                        <GlobalMuteButton />
-                    </div>
+                {/* Clean 3-Column Top Bar */}
+                <header className="px-4 py-3 flex items-center justify-between gap-2 w-full z-20">
+                    <button
+                        onClick={() => { connRef.current?.close(); setView('hub'); }}
+                        className="glass-card w-10 h-10 flex items-center justify-center rounded-2xl hover:scale-105 active:scale-95 transition-all text-white/80 shrink-0"
+                        title="الرجوع للرئيسية"
+                    >
+                        <ArrowRight size={18} />
+                    </button>
 
-                    <div className="flex items-center gap-2 glass-card px-3 py-1.5 rounded-[1.25rem] text-xs font-bold leading-tight text-center z-10">
-                        {gameState !== 'lobby' ? (
-                            <div className="flex items-center gap-3">
-                                <span className="flex flex-col items-end">
-                                    <span className="text-[12px] font-black gradient-text leading-none mb-1">إكس أو الكبير 💥</span>
-                                    <span className="text-[9px] opacity-70 leading-none">أنت ({mySymbol})</span>
-                                </span>
-                                <div className="w-px h-5 bg-white/20"></div>
-                                <span className="flex flex-col items-center justify-center text-emerald-400">
-                                    <Wifi size={12} />
-                                    <span className="text-[8px] mt-0.5 font-black">متصل</span>
-                                </span>
-                            </div>
-                        ) : (
-                            <span className="text-[11px] font-black gradient-text">إكس أو الكبير 💥</span>
+                    <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
+                        <IconBigXOGame size={18} className="text-[var(--accent)]" />
+                        <span className="text-xs font-black gradient-text">Big XO</span>
+                        {gameState !== 'lobby' && (
+                            <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold mr-1">
+                                <Wifi size={11} />
+                                <span>متصل ({mySymbol})</span>
+                            </span>
                         )}
                     </div>
-                </div>
+
+                    <GlobalMuteButton className="w-10 h-10 !rounded-2xl shrink-0" />
+                </header>
 
                 {/* Lobby */}
                 {gameState === 'lobby' && (
@@ -188,25 +181,25 @@ export default function UltimateGame({ setView }) {
 
                 {/* Screen: Choosing Symbol (Host) */}
                 {gameState === 'choosing-symbol' && (
-                    <div className="flex-1 flex flex-col items-center justify-center -mt-10 px-4">
-                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pop-in">
-                            <h2 className="text-2xl font-black mb-3">🎮 اختار تلعب بإيه؟</h2>
-                            <p className="opacity-60 text-sm mb-6 font-bold">دايماً X بيلعب الأول</p>
+                    <div className="flex-1 flex flex-col items-center justify-center -mt-6 px-4">
+                        <div className="glass-card rounded-3xl p-7 w-full max-w-sm text-center animate-pop-in border border-white/10 shadow-2xl">
+                            <h2 className="text-xl font-black mb-2 gradient-text">اختار تلعب بإيه؟</h2>
+                            <p className="opacity-60 text-xs mb-6 font-bold">دايماً X بيلعب الأول</p>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <button
                                     onClick={() => handleChooseSymbol('X')}
-                                    className="glass-card glass-card-hover rounded-2xl py-6 flex flex-col items-center gap-2 border border-transparent hover:border-emerald-400/50"
+                                    className="glass-card glass-card-hover rounded-2xl py-6 flex flex-col items-center gap-2 border border-white/10 hover:border-emerald-400/50"
                                 >
                                     <span className="text-5xl font-black text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]">X</span>
-                                    <span className="text-sm font-bold opacity-70 mt-2">العب الأول</span>
+                                    <span className="text-xs font-bold opacity-70 mt-1">العب الأول</span>
                                 </button>
                                 <button
                                     onClick={() => handleChooseSymbol('O')}
-                                    className="glass-card glass-card-hover rounded-2xl py-6 flex flex-col items-center gap-2 border border-transparent hover:border-pink-400/50"
+                                    className="glass-card glass-card-hover rounded-2xl py-6 flex flex-col items-center gap-2 border border-white/10 hover:border-pink-400/50"
                                 >
                                     <span className="text-5xl font-black text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.6)]">O</span>
-                                    <span className="text-sm font-bold opacity-70 mt-2">خلي الخصم يبدأ</span>
+                                    <span className="text-xs font-bold opacity-70 mt-1">الخصم يبدأ</span>
                                 </button>
                             </div>
                         </div>
@@ -215,10 +208,10 @@ export default function UltimateGame({ setView }) {
 
                 {/* Screen: Waiting (Client) */}
                 {gameState === 'waiting-start' && (
-                    <div className="flex-1 flex items-center justify-center -mt-10 px-4">
-                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pulse-glow">
-                            <h2 className="text-2xl font-black mb-2">في الانتظار... ⏳</h2>
-                            <p className="opacity-60 text-sm font-bold">الطرف التاني بيختار X ولا O</p>
+                    <div className="flex-1 flex items-center justify-center -mt-6 px-4">
+                        <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center animate-pulse-glow border border-white/10">
+                            <h2 className="text-xl font-black mb-2 gradient-text">في الانتظار...</h2>
+                            <p className="opacity-60 text-xs font-bold">الطرف الآخر يحدد من يبدأ</p>
                         </div>
                     </div>
                 )}
@@ -228,21 +221,34 @@ export default function UltimateGame({ setView }) {
                     <div className="flex-1 flex flex-col items-center pb-6">
 
                         {/* Status */}
-                        <div className="mb-4">
+                        <div className="mb-4 w-full px-4 text-center">
                             {!overallWinner ? (
-                                <div className={`glass-card rounded-2xl py-2 px-6 transition-all ${isMyTurn ? 'animate-pulse-glow shadow-[0_0_15px_var(--primary-color)]' : ''}`}>
-                                    <p className="font-black text-sm text-center leading-relaxed" style={{ color: isMyTurn ? 'var(--primary-color)' : 'inherit' }}>
-                                        {isMyTurn ? `🎯 دورك تلعب بـ (${mySymbol})!` : '⏳ دور الطرف التاني...'} <br />
-                                        <span className="text-xs opacity-70 text-white">العب جوا المربع المنور</span>
+                                <div className={`glass-card rounded-2xl py-2 px-6 inline-flex flex-col items-center transition-all border border-white/10 ${isMyTurn ? 'animate-pulse-glow' : ''}`}>
+                                    <p className="font-black text-xs text-center flex items-center gap-1.5" style={{ color: isMyTurn ? 'var(--accent)' : 'inherit' }}>
+                                        {isMyTurn ? (
+                                            <>
+                                                <IconTarget size={13} className="shrink-0" />
+                                                <span>دورك تلعب بـ ({mySymbol})!</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <IconHourglass size={13} className="opacity-60 shrink-0" />
+                                                <span className="opacity-70">دور الخصم...</span>
+                                            </>
+                                        )}
                                     </p>
+                                    <span className="text-[10px] opacity-60 text-white mt-0.5">العب داخل المربع المضيء</span>
                                 </div>
                             ) : (
-                                <div className="glass-card rounded-2xl py-4 px-8 text-center animate-pop-in">
-                                    <p className={`font-black text-2xl ${overallWinner === mySymbol ? 'text-emerald-400' : (overallWinner === 'draw' ? 'text-yellow-400' : 'text-red-400')}`}>
-                                        {overallWinner === 'draw' ? '⚖️ تعادل!' : overallWinner === mySymbol ? '🎉 أنت البطل!' : '💔 خسرت التحدي!'}
+                                <div className="glass-card rounded-2xl py-4 px-8 text-center animate-pop-in border border-white/10 shadow-2xl">
+                                    <p className={`font-black text-xl flex items-center justify-center gap-2 ${overallWinner === mySymbol ? 'text-emerald-400' : (overallWinner === 'draw' ? 'text-yellow-400' : 'text-rose-400')}`}>
+                                        <IconTrophy size={20} className="text-amber-400" />
+                                        <span>
+                                            {overallWinner === 'draw' ? 'تعادل رائع!' : overallWinner === mySymbol ? 'أنت الفائز البطل!' : 'انتهت اللعبة!'}
+                                        </span>
                                     </p>
-                                    <button onClick={handleRestart} className="mt-4 glow-button w-full h-12 rounded-xl text-sm font-black flex items-center justify-center gap-2">
-                                        <RotateCcw size={18} /> العب جديد
+                                    <button onClick={handleRestart} className="mt-3 glow-button w-full h-11 rounded-xl text-sm font-black flex items-center justify-center gap-2">
+                                        <RotateCcw size={16} /> العب جديد
                                     </button>
                                 </div>
                             )}
