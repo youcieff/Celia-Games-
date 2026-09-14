@@ -148,36 +148,45 @@ export default function Hub({ setView }) {
 
             <div className="min-h-dvh flex flex-col items-center px-4 safe-area-pt">
 
-                {/* ── Header ── */}
-                <header className="w-full max-w-md flex items-center gap-2 py-3 mb-5">
-                    {/* Logo image only */}
-                    <Logo size="small" />
-
-                    {/* Center title */}
-                    <div className="flex-1 flex flex-col items-center">
-                        <p className="text-[9px] font-black tracking-[0.22em] uppercase opacity-25 leading-none mb-1">اختار وابدأ</p>
-                        <h1 className="text-base font-black leading-none tracking-tight">
-                            ألعاب <span className="gradient-text">سيليا</span>
-                        </h1>
+                {/* ── Top Header Navigation Bar ── */}
+                <header className="w-full max-w-md flex items-center justify-between py-3 mb-2 px-1">
+                    {/* Right: Logo */}
+                    <div className="shrink-0">
+                        <Logo size="small" />
                     </div>
 
-                    {/* Right: 3 icon buttons */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Center: Profile (Avatar + Nickname) */}
+                    <div className="flex items-center justify-center">
                         <ProfileWidget />
+                    </div>
+
+                    {/* Left: Theme toggle ('ولادي' / 'بناتي') + Mute button */}
+                    <div className="flex items-center gap-1.5 shrink-0">
                         <ThemeToggle />
                         <GlobalMuteButton />
                     </div>
                 </header>
 
-                {/* ── Stats strip ── */}
-                <div className="w-full max-w-md mb-4">
-                    <div className="hub-hero-stats">
-                        <span className="hub-stat-dot" />
+                {/* ── Hero Title & Branding Section ── */}
+                <section className="w-full max-w-md flex flex-col items-center text-center my-3 animate-fade-in">
+                    {/* Grand Title: ألعاب سيليا */}
+                    <h1 className="text-3xl sm:text-4xl font-black tracking-tight leading-none mb-1.5 drop-shadow-[0_0_30px_var(--accent-glow)]">
+                        ألعاب <span className="gradient-text">سيليا</span>
+                    </h1>
+
+                    {/* Subtitle: اختار وابدأ */}
+                    <p className="text-xs font-black tracking-[0.25em] text-white/50 mb-3 uppercase">
+                        اختار وابدأ
+                    </p>
+
+                    {/* Games Count Badge */}
+                    <div className="glass-card px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2 shadow-sm text-xs font-bold text-white/80">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
                         <span>{GAMES.filter(g => g.online).length} ألعاب أونلاين</span>
-                        <span className="opacity-20 mx-1">·</span>
-                        <span>{GAMES.length} لعبة إجمالاً</span>
+                        <span className="opacity-25">|</span>
+                        <span className="opacity-60">{GAMES.length} لعبة إجمالاً</span>
                     </div>
-                </div>
+                </section>
 
                 {/* ── Games List ── */}
                 <main className="w-full max-w-md flex flex-col gap-2.5 flex-1 pb-24">

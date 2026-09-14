@@ -26,13 +26,19 @@ export default function ProfileWidget() {
 
     return (
         <>
-            <div
-                className="glass-card w-10 h-10 rounded-2xl flex items-center justify-center cursor-pointer hover:bg-white/10 transition-all select-none shrink-0 border border-white/10 shadow-sm overflow-hidden"
+            <button
+                type="button"
+                className="glass-card h-10 px-3 rounded-2xl flex items-center gap-2 cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all select-none shrink-0 border border-white/10 shadow-sm max-w-[140px] active:scale-95 group"
                 onClick={handleOpen}
                 title="تعديل الملف الشخصي"
             >
-                <AvatarDisplay avatarId={profile.avatar} size={28} />
-            </div>
+                <div className="w-6 h-6 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden border border-white/10 shrink-0 group-hover:scale-105 transition-transform">
+                    <AvatarDisplay avatarId={profile.avatar} size={18} />
+                </div>
+                <span className="text-xs font-black truncate text-white/90">
+                    {profile.nickname || 'أنت'}
+                </span>
+            </button>
 
 
             {isOpen && (
