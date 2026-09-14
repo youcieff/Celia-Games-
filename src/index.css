@@ -708,6 +708,275 @@
 ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 999px; opacity: 0.4; }
 
 /* ================================================
+   HUB HERO
+   ================================================ */
+.hub-hero {
+  padding: 4px 0 0;
+}
+
+.hub-hero-title {
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 10px;
+}
+
+.hub-hero-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  opacity: 0.35;
+  direction: rtl;
+}
+
+.hub-stat-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: pulse 2.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+/* Online pip (replaces generic text badge) */
+.hub-online-pip {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--pip-color, var(--accent));
+  box-shadow: 0 0 6px var(--pip-color, var(--accent));
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+/* ================================================
+   LOBBY — Ticket + Join UI
+   ================================================ */
+
+/* Invite ticket card */
+.lobby-ticket {
+  position: relative;
+  background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 22px 24px 0;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+/* Subtle accent glow on ticket */
+.lobby-ticket::before {
+  content: '';
+  position: absolute;
+  top: -40px; left: 50%;
+  transform: translateX(-50%);
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 20%, transparent) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.lobby-ticket-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.lobby-ticket-dot {
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: var(--glass-border);
+}
+
+/* The 4-digit code row */
+.lobby-code-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 20px;
+  direction: ltr;
+}
+
+/* Single code digit box */
+.lobby-digit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px; height: 64px;
+  border-radius: 14px;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 -3px 0 var(--accent),
+    0 0 18px color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text-color);
+  transition: box-shadow var(--theme-transition);
+  user-select: all;
+}
+
+/* Perforated tear line between code and copy */
+.lobby-ticket-perforation {
+  height: 1px;
+  margin: 0 -24px;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 6px,
+    var(--glass-border) 6px,
+    var(--glass-border) 12px
+  );
+  opacity: 0.5;
+  margin-bottom: 0;
+}
+
+.lobby-copy-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 13px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-color);
+  opacity: 0.5;
+  transition: opacity 0.2s ease, color 0.2s ease;
+  border: none;
+  background: none;
+  cursor: pointer;
+  min-height: unset;
+}
+.lobby-copy-btn:hover { opacity: 0.85; }
+.lobby-copy-btn--done { opacity: 1 !important; color: var(--accent); }
+
+/* Join input field */
+.lobby-join-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 12px 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.lobby-join-field:focus-within {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.lobby-join-field--error {
+  border-color: rgba(239,68,68,0.5);
+  box-shadow: 0 0 0 3px rgba(239,68,68,0.08);
+}
+
+.lobby-join-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: 'Space Grotesk', monospace;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--text-color);
+  text-align: center;
+  text-transform: uppercase;
+}
+.lobby-join-input::placeholder {
+  color: var(--text-color);
+  opacity: 0.18;
+  letter-spacing: 0.3em;
+}
+
+/* AI button */
+.lobby-ai-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-color);
+  cursor: pointer;
+  direction: rtl;
+  text-align: right;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  width: 100%;
+  min-height: unset;
+}
+.lobby-ai-btn:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  transform: translateY(-1px);
+}
+.lobby-ai-btn:active { transform: scale(0.97); }
+
+.lobby-ai-icon {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  flex-shrink: 0;
+}
+
+/* Connected state card */
+.lobby-connected-card {
+  position: relative;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 36px 28px 28px;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Animated accent glow rings */
+.lobby-rings {
+  position: absolute;
+  top: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 24px;
+}
+.lobby-rings span {
+  position: absolute;
+  top: 50%; left: 50%;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  transform: translate(-50%, -50%);
+  animation: lobby-ring-pulse 3s ease-in-out infinite;
+}
+.lobby-rings span:nth-child(1) { width: 100px; height: 100px; animation-delay: 0s; }
+.lobby-rings span:nth-child(2) { width: 160px; height: 160px; animation-delay: 0.6s; }
+.lobby-rings span:nth-child(3) { width: 220px; height: 220px; animation-delay: 1.2s; }
+
+@keyframes lobby-ring-pulse {
+  0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
+  50%       { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.lobby-connected-icon {
+  width: 68px; height: 68px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  box-shadow: 0 0 24px var(--accent-glow);
+}
+
+/* ================================================
    SAFE AREA (iOS notch)
    ================================================ */
 .safe-area-pb { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); }

@@ -315,7 +315,7 @@ export default function DotsBoxesGame({ setView }) {
                                 <span className="text-[11px] font-bold opacity-60">الخصم</span>
                                 <span className="text-2xl font-black opacity-80 font-mono" style={{ color: getColorObj(isHost ? 'opp' : 'host').hex }}>
                                     {isHost ? scores.opp : scores.host}
-                                0</span>
+                                </span>
                             </div>
                         </div>
 

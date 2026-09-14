@@ -12,73 +12,84 @@ const GAMES = [
         id: 'code-game',
         title: 'خمن الكود',
         desc: 'كود سري وردود فعل دقيقة',
-        badge: 'أونلاين',
+        online: true,
         accentVar: 'var(--game-1-accent)',
     },
     {
         id: 'word-game',
         title: 'خمن الكلمة',
         desc: 'حرف حرف لحد ما تخمنها',
-        badge: null,
+        online: false,
         accentVar: 'var(--game-2-accent)',
     },
     {
         id: 'xo-game',
         title: 'إكس أو',
         desc: 'الكلاسيك السريع',
-        badge: 'أونلاين',
+        online: true,
         accentVar: 'var(--game-3-accent)',
     },
     {
         id: 'big-xo-game',
         title: 'Big XO',
         desc: '٩ إكس أو في شبكة واحدة',
-        badge: 'أونلاين',
+        online: true,
         accentVar: 'var(--game-4-accent)',
     },
     {
         id: 'connect-4',
         title: 'Connect 4',
         desc: 'رص ٤ في صف رأسي أو أفقي',
-        badge: 'أونلاين',
+        online: true,
         accentVar: 'var(--game-5-accent)',
     },
     {
         id: 'memory-game',
         title: 'Memory Match',
         desc: 'تطابق الورق وقوة الذاكرة',
-        badge: 'أونلاين',
+        online: true,
         accentVar: 'var(--game-6-accent)',
     },
     {
         id: 'dots-boxes',
         title: 'Dots & Boxes',
         desc: 'قفل المربعات واكسب النقاط',
-        badge: 'أونلاين',
+        online: true,
         accentVar: 'var(--game-7-accent)',
     },
     {
         id: 'sea-battle',
         title: 'Sea Battle',
         desc: 'حرب السفن الاستراتيجية',
-        badge: 'أونلاين',
+        online: true,
         accentVar: 'var(--game-8-accent)',
     },
     {
         id: 'guess-time',
         title: 'خمن الوقت',
         desc: 'وقّف الساعة في اللحظة المضبوطة',
-        badge: 'أونلاين',
+        online: true,
         accentVar: 'var(--game-9-accent)',
     },
     {
         id: 'bus-complete',
         title: 'أتوبيس كومبليت',
         desc: 'اسم حيوان نبات جماد بلاد',
-        badge: 'أونلاين',
+        online: true,
         accentVar: 'var(--game-10-accent)',
     },
 ];
+
+/* ─── online dot indicator ───────────────────────────────────────────────── */
+function OnlinePip({ accentVar }) {
+    return (
+        <span
+            className="hub-online-pip"
+            style={{ '--pip-color': accentVar }}
+            title="أونلاين"
+        />
+    );
+}
 
 /* ─── word game sub-selector ─────────────────────────────────────────────── */
 function WordGameSelector({ onSelect }) {
@@ -138,7 +149,7 @@ export default function Hub({ setView }) {
             <div className="min-h-dvh flex flex-col items-center px-4 safe-area-pt">
 
                 {/* ── Header ── */}
-                <header className="w-full max-w-md flex justify-between items-center py-3 mb-1">
+                <header className="w-full max-w-md flex justify-between items-center py-3 mb-4">
                     <Logo />
                     <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                         <ProfileWidget />
@@ -147,37 +158,54 @@ export default function Hub({ setView }) {
                     </div>
                 </header>
 
-                {/* ── Hero Tagline ── */}
-                <div className="w-full max-w-md mb-6">
-                    <p className="text-xs font-bold opacity-40 tracking-widest uppercase">
-                        اختار اللعبة وابدأ التحدي
-                    </p>
+                {/* ── Hero section ── */}
+                <div className="w-full max-w-md mb-5">
+                    <div className="hub-hero">
+                        {/* Small decorative label */}
+                        <p className="text-[10px] font-black tracking-[0.2em] uppercase opacity-30 mb-2">
+                            اختار وابدأ
+                        </p>
+                        <h1 className="hub-hero-title">
+                            ألعاب&nbsp;
+                            <span className="gradient-text">سيليا</span>
+                        </h1>
+                        {/* Live game count */}
+                        <div className="hub-hero-stats">
+                            <span className="hub-stat-dot" />
+                            <span>{GAMES.filter(g => g.online).length} ألعاب أونلاين</span>
+                            <span className="opacity-20 mx-1">·</span>
+                            <span>{GAMES.length} لعبة إجمالاً</span>
+                        </div>
+                    </div>
                 </div>
 
                 {/* ── Games List ── */}
-                <main className="w-full max-w-md flex flex-col gap-3 flex-1 pb-24">
+                <main className="w-full max-w-md flex flex-col gap-2.5 flex-1 pb-24">
 
-                    {GAMES.map((game) => (
+                    {GAMES.map((game, idx) => (
                         <div key={game.id}>
                             <button
                                 onClick={() => handleCardClick(game)}
                                 className="game-card group"
-                                style={{ '--card-accent': game.accentVar }}
+                                style={{
+                                    '--card-accent': game.accentVar,
+                                    animationDelay: `${idx * 35}ms`,
+                                }}
                             >
                                 {/* shimmer layer */}
                                 <span className="game-card-shimmer" />
 
                                 {/* icon */}
                                 <div
-                                    className="game-card-icon flex items-center justify-center radial-glow"
-                                    style={{ 
-                                        boxShadow: `0 0 20px color-mix(in srgb, ${game.accentVar} 30%, transparent)`,
+                                    className="game-card-icon flex items-center justify-center"
+                                    style={{
+                                        boxShadow: `0 0 20px color-mix(in srgb, ${game.accentVar} 28%, transparent)`,
                                     }}
                                 >
-                                    <GameIcon 
-                                        gameId={game.id} 
-                                        size={26} 
-                                        className="text-[var(--card-accent)] transition-transform duration-300 group-hover:scale-110" 
+                                    <GameIcon
+                                        gameId={game.id}
+                                        size={26}
+                                        className="text-[var(--card-accent)] transition-transform duration-300 group-hover:scale-110"
                                     />
                                 </div>
 
@@ -187,25 +215,18 @@ export default function Hub({ setView }) {
                                     <p className="game-card-desc">{game.desc}</p>
                                 </div>
 
-                                {/* badge / arrow */}
-                                {game.badge && (
-                                    <span
-                                        className="game-card-badge"
-                                        style={{
-                                            color: game.accentVar,
-                                            borderColor: `color-mix(in srgb, ${game.accentVar} 35%, transparent)`,
-                                            background: `color-mix(in srgb, ${game.accentVar} 12%, transparent)`,
-                                        }}
-                                    >
-                                        {game.badge}
-                                    </span>
-                                )}
-                                {game.id === 'word-game' && (
-                                    <span className="text-white/30 text-sm font-black ml-1 transition-transform"
-                                        style={{ transform: wordExpanded ? 'rotate(90deg)' : 'none', display: 'inline-block' }}>
-                                        ›
-                                    </span>
-                                )}
+                                {/* online indicator or chevron */}
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {game.online && <OnlinePip accentVar={game.accentVar} />}
+                                    {game.id === 'word-game' && (
+                                        <span
+                                            className="text-white/25 text-base font-black transition-transform duration-300"
+                                            style={{ transform: wordExpanded ? 'rotate(90deg)' : 'none', display: 'inline-block' }}
+                                        >
+                                            ›
+                                        </span>
+                                    )}
+                                </div>
                             </button>
 
                             {/* word game sub-menu */}
@@ -219,7 +240,7 @@ export default function Hub({ setView }) {
 
                 </main>
 
-                <footer className="py-5 text-[11px] font-bold opacity-30 tracking-widest flex items-center gap-1.5">
+                <footer className="py-5 text-[11px] font-bold opacity-25 tracking-widest flex items-center gap-1.5">
                     <span>ألعاب سيليا — صُنع بكل</span>
                     <IconHeart size={14} filled className="text-rose-500 animate-pulse-slow" />
                 </footer>
