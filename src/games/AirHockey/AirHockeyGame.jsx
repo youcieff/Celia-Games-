@@ -12,6 +12,7 @@ import Flame from 'lucide-react/dist/esm/icons/flame';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import { playSound, playHaptic } from '../../lib/audioEngine';
 import useProfile from '../../hooks/useProfile';
+import { triggerVictoryEffects, triggerDefeatEffects } from '../../lib/effectsEngine';
 import { AvatarDisplay } from '../../components/icons/AvatarIcons';
 
 const WIN_SCORE = 7;
@@ -455,8 +456,11 @@ export default function AirHockeyGame({ setView }) {
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
             if (w === 'me') {
                 awardMatchResult(true);
+                triggerVictoryEffects();
+                if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
             } else {
                 awardMatchResult(false);
+                triggerDefeatEffects();
             }
         } else {
             // When goal is scored, player who was scored against gets the serve!

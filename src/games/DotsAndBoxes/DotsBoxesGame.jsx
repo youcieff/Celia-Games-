@@ -7,6 +7,7 @@ import Wifi from 'lucide-react/dist/esm/icons/wifi';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
 import EmotesOverlay, { ChatTriggerButton } from '../../components/EmotesOverlay';
 import useProfile from '../../hooks/useProfile';
+import { triggerVictoryEffects, triggerDefeatEffects, triggerDrawEffects } from '../../lib/effectsEngine';
 import { AvatarDisplay } from '../../components/icons/AvatarIcons';
 import { IconDotsBoxes, IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
@@ -67,6 +68,19 @@ export default function DotsBoxesGame({ setView }) {
         else if (scores.host > scores.opp) overallWinner = isHost ? 'me' : 'opp';
         else overallWinner = isHost ? 'opp' : 'me';
     }
+
+    useEffect(() => {
+        if (isGameOver) {
+            if (overallWinner === 'draw') {
+                triggerDrawEffects();
+            } else if (overallWinner === 'me') {
+                triggerVictoryEffects();
+                if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
+            } else {
+                triggerDefeatEffects();
+            }
+        }
+    }, [isGameOver, overallWinner]);
 
     const handleGameStart = (conn, hostMode, oppProf) => {
         isHostRef.current = hostMode;

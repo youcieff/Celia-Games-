@@ -11,6 +11,7 @@ import Wifi from 'lucide-react/dist/esm/icons/wifi';
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
 import useProfile from '../../hooks/useProfile';
+import { triggerVictoryEffects, triggerDefeatEffects } from '../../lib/effectsEngine';
 import { AvatarDisplay } from '../../components/icons/AvatarIcons';
 import EmotesOverlay, { ChatTriggerButton } from '../../components/EmotesOverlay';
 import { IconCodeGame, IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
@@ -90,6 +91,7 @@ export default function CodeGame({ setView }) {
                 connRef.current.send({ type: 'guess_result', code: msg.code, result });
                 if (result.every(r => r === 'green')) {
                     setGameState('lost');
+                    triggerDefeatEffects();
                 } else {
                     turnRef.current = true;
                     setIsMyTurn(true);
@@ -101,6 +103,8 @@ export default function CodeGame({ setView }) {
                 setMyGuesses(prev => [...prev, { code: code.split(''), result }]);
                 if (result.every(r => r === 'green')) {
                     setGameState('won');
+                    triggerVictoryEffects();
+                    if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
                 }
                 break;
             }

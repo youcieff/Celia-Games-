@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import ThemeToggle from './ThemeToggle';
 import Logo from './Logo';
 import ProfileWidget from './ProfileWidget';
+import LeaderboardWidget from './LeaderboardWidget';
 import GlobalMuteButton from './GlobalMuteButton';
 import { playSound, playHaptic } from '../lib/audioEngine';
 import { GameIcon, IconPhone, IconWifi, IconHeart } from './icons/GameIcons';
@@ -317,9 +318,10 @@ export default function Hub({ setView }) {
                         <Logo size="small" />
                     </div>
 
-                    {/* Center: Profile (Avatar + Nickname) */}
-                    <div className="flex items-center justify-center">
+                    {/* Center: Profile & Leaderboard */}
+                    <div className="flex items-center justify-center gap-1.5">
                         <ProfileWidget />
+                        <LeaderboardWidget />
                     </div>
 
                     {/* Left: Theme toggle ('ولادي' / 'بناتي') + Mute button */}
@@ -482,7 +484,7 @@ export default function Hub({ setView }) {
                                                     boxShadow: '0 0 14px color-mix(in srgb, var(--card-accent) 45%, transparent)'
                                                 }}
                                             >
-                                                <GameIcon gameId={game.id} size={19} className="text-white drop-shadow-[0_0_6px_var(--card-accent)]" />
+                                                <GameIcon gameId={game.id} size={19} className="text-white" />
                                             </div>
 
                                             <div className="flex flex-col text-right overflow-hidden flex-1 min-w-0">
@@ -567,7 +569,7 @@ export default function Hub({ setView }) {
                                                     boxShadow: '0 0 16px color-mix(in srgb, var(--card-accent) 45%, transparent)'
                                                 }}
                                             >
-                                                <GameIcon gameId={game.id} size={22} className="text-white drop-shadow-[0_0_8px_var(--card-accent)]" />
+                                                <GameIcon gameId={game.id} size={22} className="text-white" />
                                             </div>
 
                                             <h3 className="text-xs sm:text-sm font-black text-white group-hover:text-[var(--card-accent)] transition-colors truncate w-full px-0.5">
@@ -613,7 +615,7 @@ export default function Hub({ setView }) {
                                                 boxShadow: '0 0 14px color-mix(in srgb, var(--card-accent) 45%, transparent)'
                                             }}
                                         >
-                                            <GameIcon gameId={game.id} size={22} className="text-white drop-shadow-[0_0_8px_var(--card-accent)]" />
+                                            <GameIcon gameId={game.id} size={22} className="text-white" />
                                         </div>
 
                                         <div className="flex flex-col text-right overflow-hidden flex-1 min-w-0">

@@ -13,6 +13,7 @@ import EmotesOverlay from '../../components/EmotesOverlay';
 import PlayerGameHeader from '../../components/PlayerGameHeader';
 import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
 import MatchRecapModal from '../../components/MatchRecapModal';
+import { triggerVictoryEffects, triggerDefeatEffects } from '../../lib/effectsEngine';
 import useProfile from '../../hooks/useProfile';
 import { IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
@@ -86,10 +87,10 @@ export default function SeaBattleGame({ setView }) {
     useEffect(() => {
         if (gameState === 'playing') {
             if (hitsOnMe >= TOTAL_HEALTH) {
-                playSound('lose');
+                triggerDefeatEffects();
                 setGameState('finished');
             } else if (hitsOnOpp >= TOTAL_HEALTH) {
-                playSound('win');
+                triggerVictoryEffects();
                 playHaptic([100, 50, 100, 50, 200]);
                 setGameState('finished');
             }

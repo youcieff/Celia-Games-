@@ -9,6 +9,7 @@ import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
 import useProfile from '../../hooks/useProfile';
+import { triggerVictoryEffects, triggerDefeatEffects } from '../../lib/effectsEngine';
 import { AvatarDisplay } from '../../components/icons/AvatarIcons';
 import EmotesOverlay, { ChatTriggerButton } from '../../components/EmotesOverlay';
 import { IconWordGame, IconEdit, IconTrophy, IconHourglass } from '../../components/icons/GameIcons';
@@ -116,8 +117,15 @@ export default function WordGame({ setView, mode }) {
     useEffect(() => {
         if (gameState !== 'playing' || !secretWord) return;
         const isWin = secretWord.split('').every(char => char === ' ' || guessedLetters.includes(char));
-        if (isWin) setGameState('won');
-        else if (lives <= 0) setGameState('lost');
+        if (isWin) {
+            setGameState('won');
+            triggerVictoryEffects();
+            if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
+        }
+        else if (lives <= 0) {
+            setGameState('lost');
+            triggerDefeatEffects();
+        }
     }, [guessedLetters, lives, gameState, secretWord]);
 
     const resetGame = (newMyTurnToWrite) => {

@@ -12,6 +12,7 @@ import Palette from 'lucide-react/dist/esm/icons/palette';
 import HelpCircle from 'lucide-react/dist/esm/icons/help-circle';
 import { playSound, playHaptic } from '../../lib/audioEngine';
 import useProfile from '../../hooks/useProfile';
+import { triggerVictoryEffects, triggerDefeatEffects } from '../../lib/effectsEngine';
 import { getRandomWords } from './drawWords';
 
 const DRAW_TIME_SEC = 60;  // 1 minute to draw
@@ -415,8 +416,17 @@ export default function QuickDrawGame({ setView }) {
                     const w = myCurrent > oppCurrent ? 'me' : 'opp';
                     setWinner(w);
                     setGameState('gameover');
-                    if (w === 'me') { awardMatchResult(true); playSound('win'); }
-                    else if (w === 'opp') { awardMatchResult(false); playSound('lose'); }
+                    if (w === 'me') { 
+                        awardMatchResult(true); 
+                        playSound('win');
+                        triggerVictoryEffects();
+                        if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
+                    }
+                    else if (w === 'opp') { 
+                        awardMatchResult(false); 
+                        playSound('lose');
+                        triggerDefeatEffects();
+                    }
                     return;
                 }
                 // If tied at 5+ points: continue to next round to break the tie

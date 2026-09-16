@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 
+import { recordMatch } from '../lib/statsEngine';
+
 const STORAGE_KEY = 'celia_games_profile';
 
 const DEFAULT_PROFILE = {
@@ -52,7 +54,15 @@ export default function useProfile() {
         });
     };
 
-    const awardMatchResult = (isWin) => {
+    const awardMatchResult = (isWin, matchDetails = {}) => {
+        // Record match in history and update win streak
+        if (matchDetails.gameTitle) {
+            recordMatch({
+                isWin,
+                ...matchDetails
+            });
+        }
+
         setProfile(prev => {
             const addedXP = isWin ? 30 : 10;
             const newProfile = {

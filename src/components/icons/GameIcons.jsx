@@ -479,8 +479,11 @@ export const GAME_ICON_MAP = {
   'quick-draw':   IconQuickDraw,
 };
 
-export function GameIcon({ gameId, size = 26, className = '' }) {
-  const Icon = GAME_ICON_MAP[gameId];
-  if (!Icon) return null;
-  return <Icon size={size} className={className} />;
+export function GameIcon({ gameId, size = 26, className = '', style = {} }) {
+  const Icon = GAME_ICON_MAP[gameId] || IconCodeGame;
+  return (
+    <div className={`inline-flex items-center justify-center shrink-0 ${className}`} style={style}>
+      <Icon size={size} />
+    </div>
+  );
 }

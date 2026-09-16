@@ -8,6 +8,7 @@ import EmotesOverlay from '../../components/EmotesOverlay';
 import PlayerGameHeader from '../../components/PlayerGameHeader';
 import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
 import MatchRecapModal from '../../components/MatchRecapModal';
+import { triggerVictoryEffects, triggerDefeatEffects, triggerDrawEffects } from '../../lib/effectsEngine';
 import useProfile from '../../hooks/useProfile';
 import { AvatarDisplay } from '../../components/icons/AvatarIcons';
 import { IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
@@ -88,13 +89,13 @@ export default function TicTacToeGame({ setView }) {
             const win = calculateWinner(newBoard);
             if (win) {
                 if (win.winner === 'draw') {
-                    playSound('ding');
+                    triggerDrawEffects();
                 } else if (win.winner === mySymbol) {
-                    playSound('win');
+                    triggerVictoryEffects();
                     playHaptic([50, 50, 100]);
                     setScores(s => ({ ...s, me: s.me + 1 }));
                 } else {
-                    playSound('lose');
+                    triggerDefeatEffects();
                     setScores(s => ({ ...s, opp: s.opp + 1 }));
                 }
             }
@@ -126,13 +127,13 @@ export default function TicTacToeGame({ setView }) {
         const win = calculateWinner(newBoard);
         if (win) {
             if (win.winner === 'draw') {
-                playSound('ding');
+                triggerDrawEffects();
             } else if (win.winner === mySymbol) {
-                playSound('win');
+                triggerVictoryEffects();
                 playHaptic([50, 50, 100]);
                 setScores(s => ({ ...s, me: s.me + 1 }));
             } else {
-                playSound('lose');
+                triggerDefeatEffects();
                 setScores(s => ({ ...s, opp: s.opp + 1 }));
             }
         }

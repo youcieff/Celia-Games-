@@ -11,6 +11,7 @@ import Snowflake from 'lucide-react/dist/esm/icons/snowflake';
 import Trophy from 'lucide-react/dist/esm/icons/trophy';
 import { playSound, playHaptic } from '../../lib/audioEngine';
 import useProfile from '../../hooks/useProfile';
+import { triggerVictoryEffects, triggerDefeatEffects } from '../../lib/effectsEngine';
 
 const CHOICES = [
     { id: 'rock', label: 'حجر', emoji: '🪨', color: 'from-amber-600 to-amber-800 border-amber-500/40' },
@@ -226,9 +227,12 @@ export default function RPSArenaGame({ setView }) {
                 if (w === 'me') {
                     playSound('win');
                     awardMatchResult(true);
+                    triggerVictoryEffects();
+                    if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
                 } else {
                     playSound('lose');
                     awardMatchResult(false);
+                    triggerDefeatEffects();
                 }
             } else {
                 // Next round reset

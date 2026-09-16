@@ -7,6 +7,7 @@ import Wifi from 'lucide-react/dist/esm/icons/wifi';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
 import EmotesOverlay, { ChatTriggerButton } from '../../components/EmotesOverlay';
 import useProfile from '../../hooks/useProfile';
+import { triggerVictoryEffects, triggerDefeatEffects, triggerDrawEffects } from '../../lib/effectsEngine';
 import { AvatarDisplay } from '../../components/icons/AvatarIcons';
 import { IconConnect4, IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
@@ -95,6 +96,19 @@ export default function Connect4Game({ setView }) {
     const oppColorId = isHost ? oppColor : (clientConfig?.hostColor || 'red');
     const isMyTurn = isHost ? hostTurn : !hostTurn;
     const winData = checkWin(board);
+
+    useEffect(() => {
+        if (winData) {
+            if (winData.winner === 'draw') {
+                triggerDrawEffects();
+            } else if (winData.winner === (isHost ? 'host' : 'opp')) {
+                triggerVictoryEffects();
+                if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
+            } else {
+                triggerDefeatEffects();
+            }
+        }
+    }, [winData, isHost]);
 
     const handleGameStart = (conn, hostMode, oppProf) => {
         isHostRef.current = hostMode;

@@ -12,6 +12,7 @@ import Zap from 'lucide-react/dist/esm/icons/zap';
 import { playSound, playHaptic } from '../../lib/audioEngine';
 import useProfile from '../../hooks/useProfile';
 import { getRandomTriviaQuiz } from './triviaQuestions';
+import { triggerVictoryEffects, triggerDefeatEffects, triggerDrawEffects } from '../../lib/effectsEngine';
 
 const QUESTION_TIME_SEC = 10;
 const OPTION_LABELS = ['أ', 'ب', 'ج', 'د'];
@@ -197,8 +198,19 @@ export default function TriviaGame({ setView }) {
                 }
             } else {
                 setGameState('gameover');
-                playSound('gameover');
+                
                 const didIWin = myScoreRef.current > oppScoreRef.current;
+                const isDraw = myScoreRef.current === oppScoreRef.current;
+
+                if (didIWin) {
+                    triggerVictoryEffects();
+                    if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
+                } else if (isDraw) {
+                    triggerDrawEffects();
+                } else {
+                    triggerDefeatEffects();
+                }
+                
                 awardMatchResult?.(didIWin);
             }
         }, 2600);

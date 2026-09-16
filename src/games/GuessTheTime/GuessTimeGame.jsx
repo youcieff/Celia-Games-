@@ -10,6 +10,7 @@ import Users from 'lucide-react/dist/esm/icons/users';
 import Edit3 from 'lucide-react/dist/esm/icons/edit-3';
 import { playSound, playHaptic } from '../../lib/audioEngine';
 import useProfile from '../../hooks/useProfile';
+import { triggerVictoryEffects, triggerDefeatEffects, triggerDrawEffects } from '../../lib/effectsEngine';
 
 const TARGET_TIMES = [3, 5, 10]; // seconds
 
@@ -257,10 +258,14 @@ export default function GuessTimeGame({ setView }) {
                     playSound('win');
                     playHaptic([50, 50, 100]);
                     setScores(s => ({ ...s, me: s.me + 1 }));
+                    triggerVictoryEffects();
+                    if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
                 } else if (oppDiff < myDiff) {
                     playSound('lose');
+                    triggerDefeatEffects();
                 } else {
                     playSound('ding');
+                    triggerDrawEffects();
                 }
                 setGameState('result-target');
             }
@@ -281,6 +286,15 @@ export default function GuessTimeGame({ setView }) {
                     playSound('lose');
                     if (myRole === 'hider') setScores(s => ({ ...s, me: s.me + 1 }));
                     else setScores(s => ({ ...s, opp: s.opp + 1 }));
+                }
+
+                const guesserWonLocally = diff <= 1000;
+                const iWonLocally = (myRole === 'guesser' && guesserWonLocally) || (myRole === 'hider' && !guesserWonLocally);
+                if (iWonLocally) {
+                    triggerVictoryEffects();
+                    if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
+                } else {
+                    triggerDefeatEffects();
                 }
                 setGameState('result-roles');
             }

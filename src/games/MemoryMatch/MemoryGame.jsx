@@ -9,6 +9,7 @@ import EmotesOverlay from '../../components/EmotesOverlay';
 import PlayerGameHeader from '../../components/PlayerGameHeader';
 import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
 import useProfile from '../../hooks/useProfile';
+import { triggerVictoryEffects, triggerDefeatEffects, triggerDrawEffects } from '../../lib/effectsEngine';
 import { MemoryCardIcon } from '../../components/icons/MemoryCardIcons';
 import { IconMemoryGame, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
@@ -156,6 +157,19 @@ export default function MemoryGame({ setView }) {
         else if (scores.host > scores.client) overallWinner = isHost ? 'me' : 'opp';
         else overallWinner = isHost ? 'opp' : 'me';
     }
+
+    useEffect(() => {
+        if (isGameOver) {
+            if (overallWinner === 'draw') {
+                triggerDrawEffects();
+            } else if (overallWinner === 'me') {
+                triggerVictoryEffects();
+                if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
+            } else {
+                triggerDefeatEffects();
+            }
+        }
+    }, [isGameOver, overallWinner]);
 
     const handleGameStart = (conn, hostMode, oppProf) => {
         isHostRef.current = hostMode;

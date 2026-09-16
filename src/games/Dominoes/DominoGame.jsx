@@ -11,6 +11,7 @@ import Play from 'lucide-react/dist/esm/icons/play';
 import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle';
 import { playSound, playHaptic } from '../../lib/audioEngine';
 import useProfile from '../../hooks/useProfile';
+import { triggerVictoryEffects, triggerDefeatEffects, triggerDrawEffects } from '../../lib/effectsEngine';
 
 const TARGET_SCORE = 151; // Official 151 points match target
 
@@ -583,7 +584,16 @@ export default function DominoGame({ setView }) {
                 setOppMatchScore(oppScore);
                 setGameState('gameover');
                 awardMatchResult(winnerKey === 'me');
-                playSound(winnerKey === 'me' ? 'win' : 'lose');
+                
+                if (winnerKey === 'draw') {
+                    triggerDrawEffects();
+                } else if (winnerKey === 'me') {
+                    triggerVictoryEffects();
+                    if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
+                } else {
+                    triggerDefeatEffects();
+                }
+
                 break;
             }
 
@@ -809,7 +819,13 @@ export default function DominoGame({ setView }) {
             setMatchWinner(finalWinner);
             setGameState('gameover');
             awardMatchResult(finalWinner === 'me');
-            playSound(finalWinner === 'me' ? 'win' : 'lose');
+            
+            if (finalWinner === 'me') {
+                triggerVictoryEffects();
+                if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
+            } else {
+                triggerDefeatEffects();
+            }
 
             connRef.current?.send({
                 type: 'match_over',
