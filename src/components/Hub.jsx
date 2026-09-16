@@ -120,7 +120,7 @@ const GAMES = [
     },
     {
         id: 'sea-battle',
-        title: 'Sea Battle',
+        title: 'حرب السفن',
         desc: 'حرب السفن الاستراتيجية',
         category: 'strategy',
         online: true,
@@ -424,22 +424,22 @@ export default function Hub({ setView }) {
                 {selectedCategory === 'all' && !searchQuery && (
                     <div className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mb-6">
                         <div className="flex items-center justify-between px-2 mb-2.5">
-                            <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-[0_0_12px_rgba(245,158,11,0.5)]">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-[0_0_12px_rgba(245,158,11,0.5)] shrink-0">
                                     <Flame size={15} className="fill-current animate-pulse" />
                                 </div>
-                                <div className="flex items-baseline gap-2">
-                                    <h2 className="text-sm font-black text-white tracking-wide">
+                                <div className="flex items-baseline gap-1.5 min-w-0">
+                                    <h2 className="text-xs sm:text-sm font-black text-white tracking-wide truncate">
                                         أحدث الألعاب المضافة
                                     </h2>
-                                    <span className="text-[10px] font-bold text-amber-300 bg-amber-400/15 px-2 py-0.5 rounded-full border border-amber-400/30">
+                                    <span className="text-[9px] sm:text-[10px] font-bold text-amber-300 bg-amber-400/15 px-1.5 py-0.5 rounded-full border border-amber-400/30 shrink-0">
                                         {featuredGames.length} ألعاب جديدة
                                     </span>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-1 text-[11px] font-bold text-white/40">
+                            <div className="flex items-center gap-1 text-[10px] font-bold text-white/50 md:hidden shrink-0">
                                 <span>اسحب للتصفح</span>
-                                <ChevronLeft size={13} className="text-white/40" />
+                                <ChevronLeft size={12} className="text-white/50" />
                             </div>
                         </div>
 
@@ -477,12 +477,12 @@ export default function Hub({ setView }) {
                                             <div
                                                 className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform duration-300"
                                                 style={{
-                                                    background: 'color-mix(in srgb, var(--card-accent) 25%, rgba(255,255,255,0.06))',
-                                                    border: '1px solid color-mix(in srgb, var(--card-accent) 45%, rgba(255,255,255,0.18))',
-                                                    boxShadow: '0 0 12px color-mix(in srgb, var(--card-accent) 30%, transparent)'
+                                                    background: 'color-mix(in srgb, var(--card-accent) 30%, rgba(255,255,255,0.08))',
+                                                    border: '1.5px solid color-mix(in srgb, var(--card-accent) 60%, rgba(255,255,255,0.3))',
+                                                    boxShadow: '0 0 14px color-mix(in srgb, var(--card-accent) 45%, transparent)'
                                                 }}
                                             >
-                                                <GameIcon gameId={game.id} size={18} className="text-[var(--card-accent)]" />
+                                                <GameIcon gameId={game.id} size={19} className="text-white drop-shadow-[0_0_6px_var(--card-accent)]" />
                                             </div>
 
                                             <div className="flex flex-col text-right overflow-hidden flex-1 min-w-0">
@@ -562,12 +562,12 @@ export default function Hub({ setView }) {
                                             <div
                                                 className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center shrink-0 shadow-md group-hover:scale-110 transition-transform duration-300 mb-1.5"
                                                 style={{
-                                                    background: 'color-mix(in srgb, var(--card-accent) 25%, rgba(255,255,255,0.06))',
-                                                    border: '1.5px solid color-mix(in srgb, var(--card-accent) 45%, rgba(255,255,255,0.18))',
-                                                    boxShadow: '0 0 16px color-mix(in srgb, var(--card-accent) 30%, transparent)'
+                                                    background: 'color-mix(in srgb, var(--card-accent) 30%, rgba(255,255,255,0.08))',
+                                                    border: '1.5px solid color-mix(in srgb, var(--card-accent) 60%, rgba(255,255,255,0.3))',
+                                                    boxShadow: '0 0 16px color-mix(in srgb, var(--card-accent) 45%, transparent)'
                                                 }}
                                             >
-                                                <GameIcon gameId={game.id} size={22} className="text-[var(--card-accent)]" />
+                                                <GameIcon gameId={game.id} size={22} className="text-white drop-shadow-[0_0_8px_var(--card-accent)]" />
                                             </div>
 
                                             <h3 className="text-xs sm:text-sm font-black text-white group-hover:text-[var(--card-accent)] transition-colors truncate w-full px-0.5">
@@ -608,12 +608,12 @@ export default function Hub({ setView }) {
                                         <div
                                             className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform"
                                             style={{
-                                                background: 'color-mix(in srgb, var(--card-accent) 22%, rgba(255,255,255,0.06))',
-                                                border: '1px solid color-mix(in srgb, var(--card-accent) 40%, rgba(255,255,255,0.15))',
-                                                boxShadow: '0 0 14px color-mix(in srgb, var(--card-accent) 30%, transparent)'
+                                                background: 'color-mix(in srgb, var(--card-accent) 30%, rgba(255,255,255,0.08))',
+                                                border: '1.5px solid color-mix(in srgb, var(--card-accent) 60%, rgba(255,255,255,0.3))',
+                                                boxShadow: '0 0 14px color-mix(in srgb, var(--card-accent) 45%, transparent)'
                                             }}
                                         >
-                                            <GameIcon gameId={game.id} size={22} className="text-[var(--card-accent)]" />
+                                            <GameIcon gameId={game.id} size={22} className="text-white drop-shadow-[0_0_8px_var(--card-accent)]" />
                                         </div>
 
                                         <div className="flex flex-col text-right overflow-hidden flex-1 min-w-0">

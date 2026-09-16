@@ -377,7 +377,7 @@ export default function SeaBattleGame({ setView }) {
                 {/* Player Cards Header during playing & finished */}
                 {gameState !== 'lobby' && (
                     <PlayerGameHeader
-                        title="Sea Battle"
+                        title="حرب السفن"
                         gameId="sea-battle"
                         isMyTurn={isMyTurn}
                         oppProfile={oppProfile}
