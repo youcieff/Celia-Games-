@@ -258,7 +258,7 @@ export default function Hub({ setView }) {
                 <div className="animated-bg-noise" />
             </div>
 
-            <div className="min-h-dvh flex flex-col items-center px-4 safe-area-pt">
+            <div className="min-h-dvh flex flex-col items-center px-4 safe-area-pt overflow-x-hidden">
 
                 {/* ── Top Header Navigation Bar ── */}
                 <header className="w-full max-w-lg flex items-center justify-between py-3 mb-2 px-1">
@@ -337,29 +337,31 @@ export default function Hub({ setView }) {
                 </div>
 
                 {/* ── Category Filter Pills ── */}
-                <div className="w-full max-w-lg flex items-center gap-1.5 overflow-x-auto pb-2 mb-2 scrollbar-none" style={{ scrollbarWidth: 'none' }}>
-                    {CATEGORIES.map(cat => {
-                        const isActive = selectedCategory === cat.id;
-                        return (
-                            <button
-                                key={cat.id}
-                                onClick={() => { playSound('click'); setSelectedCategory(cat.id); }}
-                                className={`px-3 py-1.5 rounded-2xl text-xs font-black transition-all flex items-center gap-1 shrink-0 active:scale-95
-                                    ${isActive
-                                        ? 'bg-[var(--accent)] text-slate-950 shadow-[0_0_15px_var(--accent-glow)] scale-105'
-                                        : 'glass-card border border-white/10 text-white/70 hover:text-white hover:border-white/20'}`}
-                            >
-                                <span>{cat.emoji}</span>
-                                <span>{cat.label}</span>
-                            </button>
-                        );
-                    })}
+                <div className="hub-scroll-row mb-2">
+                    <div className="hub-scroll-inner">
+                        {CATEGORIES.map(cat => {
+                            const isActive = selectedCategory === cat.id;
+                            return (
+                                <button
+                                    key={cat.id}
+                                    onClick={() => { playSound('click'); setSelectedCategory(cat.id); }}
+                                    className={`px-3 py-1.5 rounded-2xl text-xs font-black transition-all flex items-center gap-1 shrink-0 active:scale-95
+                                        ${isActive
+                                            ? 'bg-[var(--accent)] text-slate-950 shadow-[0_0_15px_var(--accent-glow)] scale-105'
+                                            : 'glass-card border border-white/10 text-white/70 hover:text-white hover:border-white/20'}`}
+                                >
+                                    <span>{cat.emoji}</span>
+                                    <span>{cat.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 {/* ── Featured New Games Horizontal Spotlight (Shown when viewing 'all' and not searching) ── */}
                 {selectedCategory === 'all' && !searchQuery && (
-                    <div className="w-full max-w-lg mb-4">
-                        <div className="flex items-center justify-between px-1 mb-2">
+                    <div className="w-full mb-4">
+                        <div className="flex items-center justify-between px-1 mb-2 max-w-lg">
                             <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
                                 <Flame size={14} className="text-amber-400 fill-amber-400" />
                                 <span>أحدث الألعاب المضافة</span>
@@ -367,35 +369,37 @@ export default function Hub({ setView }) {
                             <span className="text-[10px] font-bold text-white/40">اسحب للمزيد ◀</span>
                         </div>
 
-                        <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none" style={{ scrollbarWidth: 'none' }}>
-                            {featuredGames.map(game => (
-                                <button
-                                    key={game.id}
-                                    onClick={() => handleCardClick(game)}
-                                    style={{ '--card-accent': game.accentVar }}
-                                    className="shrink-0 w-36 glass-card p-3 rounded-3xl border border-white/15 hover:border-[var(--card-accent)] hover:shadow-[0_8px_25px_color-mix(in_srgb,var(--card-accent)_35%,transparent)] transition-all duration-300 active:scale-95 flex flex-col items-center text-center relative group"
-                                >
-                                    <span className="absolute top-2 right-2 text-[8px] font-black px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                                        جديد ✨
-                                    </span>
-                                    <div
-                                        className="w-11 h-11 rounded-2xl flex items-center justify-center mb-2 mt-1 transition-transform group-hover:scale-110 shadow-md"
-                                        style={{
-                                            background: 'color-mix(in srgb, var(--card-accent) 18%, rgba(255,255,255,0.05))',
-                                            border: '1px solid color-mix(in srgb, var(--card-accent) 30%, rgba(255,255,255,0.1))',
-                                            boxShadow: '0 0 16px color-mix(in srgb, var(--card-accent) 25%, transparent)'
-                                        }}
+                        <div className="hub-scroll-row">
+                            <div className="hub-scroll-inner">
+                                {featuredGames.map(game => (
+                                    <button
+                                        key={game.id}
+                                        onClick={() => handleCardClick(game)}
+                                        style={{ '--card-accent': game.accentVar }}
+                                        className="shrink-0 w-36 glass-card p-3 rounded-3xl border border-white/15 hover:border-[var(--card-accent)] hover:shadow-[0_8px_25px_color-mix(in_srgb,var(--card-accent)_35%,transparent)] transition-all duration-300 active:scale-95 flex flex-col items-center text-center relative group"
                                     >
-                                        <GameIcon gameId={game.id} size={22} className="text-[var(--card-accent)]" />
-                                    </div>
-                                    <span className="text-xs font-black text-white group-hover:text-[var(--card-accent)] transition-colors truncate w-full">
-                                        {game.title}
-                                    </span>
-                                    <span className="text-[9px] text-white/40 truncate w-full font-medium mt-0.5">
-                                        {game.desc}
-                                    </span>
-                                </button>
-                            ))}
+                                        <span className="absolute top-2 right-2 text-[8px] font-black px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                            جديد ✨
+                                        </span>
+                                        <div
+                                            className="w-11 h-11 rounded-2xl flex items-center justify-center mb-2 mt-1 transition-transform group-hover:scale-110 shadow-md"
+                                            style={{
+                                                background: 'color-mix(in srgb, var(--card-accent) 18%, rgba(255,255,255,0.05))',
+                                                border: '1px solid color-mix(in srgb, var(--card-accent) 30%, rgba(255,255,255,0.1))',
+                                                boxShadow: '0 0 16px color-mix(in srgb, var(--card-accent) 25%, transparent)'
+                                            }}
+                                        >
+                                            <GameIcon gameId={game.id} size={22} className="text-[var(--card-accent)]" />
+                                        </div>
+                                        <span className="text-xs font-black text-white group-hover:text-[var(--card-accent)] transition-colors truncate w-full">
+                                            {game.title}
+                                        </span>
+                                        <span className="text-[9px] text-white/40 truncate w-full font-medium mt-0.5">
+                                            {game.desc}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 )}
