@@ -286,6 +286,13 @@
   );
 }
 
+@media (min-width: 768px) {
+  .hub-scroll-wrap {
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+}
+
 /* Inner flex row: actual scrollable strip */
 .hub-scroll-inner {
   display: flex;

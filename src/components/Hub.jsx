@@ -311,7 +311,7 @@ export default function Hub({ setView }) {
             <div className="min-h-dvh flex flex-col items-center px-4 safe-area-pt overflow-x-hidden">
 
                 {/* ── Top Header Navigation Bar ── */}
-                <header className="w-full max-w-lg flex items-center justify-between py-3 mb-2 px-1">
+                <header className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl flex items-center justify-between py-3 mb-2 px-1">
                     {/* Right: Logo */}
                     <div className="shrink-0">
                         <Logo size="small" />
@@ -330,24 +330,24 @@ export default function Hub({ setView }) {
                 </header>
 
                 {/* ── Hero Title & Branding Section ── */}
-                <section className="w-full max-w-lg flex flex-col items-center text-center my-2 animate-fade-in">
-                    <h1 className="text-3xl sm:text-4xl font-black tracking-tight leading-none mb-1 drop-shadow-[0_0_30px_var(--accent-glow)]">
+                <section className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl flex flex-col items-center text-center my-3 animate-fade-in">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-none mb-1 drop-shadow-[0_0_30px_var(--accent-glow)]">
                         ألعاب <span className="gradient-text">سيليا</span>
                     </h1>
 
                     <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[11px] font-black tracking-wider text-white/50 uppercase">
+                        <span className="text-[11px] sm:text-xs font-black tracking-wider text-white/50 uppercase">
                             صالة الألعاب الذكية
                         </span>
                         <span className="w-1 h-1 rounded-full bg-white/30" />
-                        <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
+                        <span className="text-[11px] sm:text-xs font-bold text-amber-400 flex items-center gap-1">
                             <Sparkles size={11} /> {GAMES.length} لعبة
                         </span>
                     </div>
                 </section>
 
                 {/* ── Search & View Mode Controls ── */}
-                <div className="w-full max-w-lg flex items-center gap-2 my-2.5">
+                <div className="w-full max-w-lg md:max-w-2xl flex items-center gap-2 my-2.5">
                     <div className="relative flex-1">
                         <input
                             type="text"
@@ -386,10 +386,10 @@ export default function Hub({ setView }) {
                     </div>
                 </div>
 
-                {/* ── Category Filter Pills (Aligned with content) ── */}
-                <div className="w-full max-w-lg mb-3">
-                    <div className="hub-scroll-row">
-                        <div className="hub-scroll-inner py-1">
+                {/* ── Category Filter Pills (Aligned with content, wraps centered on desktop) ── */}
+                <div className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mb-4">
+                    <div className="hub-scroll-row hub-scroll-wrap">
+                        <div className="hub-scroll-inner py-1 md:justify-center md:flex-wrap">
                             {CATEGORIES.map(cat => {
                                 const isActive = selectedCategory === cat.id;
                                 const count = categoryCounts[cat.id] || 0;
@@ -397,7 +397,7 @@ export default function Hub({ setView }) {
                                     <button
                                         key={cat.id}
                                         onClick={() => { playSound('click'); setSelectedCategory(cat.id); }}
-                                        className={`relative px-3 py-1.5 rounded-2xl text-xs font-black transition-all duration-300 flex items-center gap-1.5 shrink-0 active:scale-95 group cursor-pointer
+                                        className={`relative px-3.5 py-2 rounded-2xl text-xs font-black transition-all duration-300 flex items-center gap-2 shrink-0 active:scale-95 group cursor-pointer
                                             ${isActive
                                                 ? `bg-gradient-to-r ${cat.accent} text-white shadow-[0_4px_16px_${cat.glow}] scale-105 ring-1 ring-white/30 z-10`
                                                 : 'glass-card border border-white/10 text-white/75 hover:text-white hover:border-white/20 hover:bg-white/[0.08]'}`}
@@ -422,29 +422,29 @@ export default function Hub({ setView }) {
 
                 {/* ── Featured New Games Horizontal Spotlight (Shown when viewing 'all' and not searching) ── */}
                 {selectedCategory === 'all' && !searchQuery && (
-                    <div className="w-full max-w-lg mb-4">
-                        <div className="flex items-center justify-between px-1 mb-2">
+                    <div className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mb-6">
+                        <div className="flex items-center justify-between px-2 mb-2.5">
                             <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-[0_0_10px_rgba(245,158,11,0.5)]">
-                                    <Flame size={14} className="fill-current animate-pulse" />
+                                <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-[0_0_12px_rgba(245,158,11,0.5)]">
+                                    <Flame size={15} className="fill-current animate-pulse" />
                                 </div>
-                                <div className="flex items-baseline gap-1.5">
-                                    <h2 className="text-xs sm:text-sm font-black text-white tracking-wide">
+                                <div className="flex items-baseline gap-2">
+                                    <h2 className="text-sm font-black text-white tracking-wide">
                                         أحدث الألعاب المضافة
                                     </h2>
-                                    <span className="text-[9px] font-bold text-amber-300 bg-amber-400/15 px-1.5 py-0.5 rounded-full border border-amber-400/30">
-                                        {featuredGames.length} ألعاب
+                                    <span className="text-[10px] font-bold text-amber-300 bg-amber-400/15 px-2 py-0.5 rounded-full border border-amber-400/30">
+                                        {featuredGames.length} ألعاب جديدة
                                     </span>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-1 text-[10px] font-bold text-white/40">
+                            <div className="flex items-center gap-1 text-[11px] font-bold text-white/40">
                                 <span>اسحب للتصفح</span>
-                                <ChevronLeft size={12} className="text-white/40" />
+                                <ChevronLeft size={13} className="text-white/40" />
                             </div>
                         </div>
 
                         <div className="hub-scroll-row">
-                            <div className="hub-scroll-inner py-1">
+                            <div className="hub-scroll-inner py-1.5">
                                 {featuredGames.map(game => (
                                     <button
                                         key={game.id}
@@ -453,9 +453,9 @@ export default function Hub({ setView }) {
                                             '--card-accent': game.accentVar,
                                             background: 'linear-gradient(135deg, color-mix(in srgb, var(--card-accent) 20%, rgba(15, 23, 42, 0.95)) 0%, rgba(15, 23, 42, 0.9) 100%)',
                                             borderColor: 'color-mix(in srgb, var(--card-accent) 35%, rgba(255, 255, 255, 0.12))',
-                                            boxShadow: '0 6px 20px -4px color-mix(in srgb, var(--card-accent) 25%, transparent)'
+                                            boxShadow: '0 6px 22px -4px color-mix(in srgb, var(--card-accent) 25%, transparent)'
                                         }}
-                                        className="spotlight-card shrink-0 w-[215px] sm:w-[230px] p-3 rounded-2xl border text-right transition-all duration-300 active:scale-95 flex flex-col justify-between group cursor-pointer"
+                                        className="spotlight-card shrink-0 w-[220px] sm:w-[235px] md:w-[250px] p-3.5 rounded-2xl border text-right transition-all duration-300 active:scale-95 flex flex-col justify-between group cursor-pointer"
                                     >
                                         {/* Top Badges */}
                                         <div className="flex items-center justify-between w-full mb-2">
@@ -513,7 +513,7 @@ export default function Hub({ setView }) {
                 )}
 
                 {/* ── Main Games Container ── */}
-                <main className="w-full max-w-lg flex-1 pb-24">
+                <main className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl flex-1 pb-24">
                     {filteredGames.length === 0 ? (
                         <div className="glass-card p-8 rounded-3xl text-center border border-white/10 my-8">
                             <span className="text-3xl mb-2 block">🔍</span>
@@ -521,8 +521,8 @@ export default function Hub({ setView }) {
                             <p className="text-xs text-white/40">جرّب البحث بكلمة أخرى أو تغيير التصنيف</p>
                         </div>
                     ) : viewMode === 'grid' ? (
-                        /* ── Modern Unified Responsive Game Cards Feed ── */
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                        /* ── Modern Unified Responsive Game Cards Feed (1 col mobile, 2 tablet, 3-4 desktop) ── */
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 w-full">
                             {filteredGames.map((game, idx) => {
                                 const catObj = CATEGORIES.find(c => c.id === game.category);
                                 return (
@@ -597,8 +597,8 @@ export default function Hub({ setView }) {
                             })}
                         </div>
                     ) : (
-                        /* ── Compact Streamlined List View ── */
-                        <div className="flex flex-col gap-2.5">
+                        /* ── Compact Streamlined List View (1 col mobile, 2-3 cols desktop) ── */
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 w-full">
                             {filteredGames.map((game, idx) => (
                                 <button
                                     key={game.id}
