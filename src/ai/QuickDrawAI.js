@@ -13,9 +13,10 @@ export default class QuickDrawAI {
         setTimeout(() => {
             this.conn._sendToPlayer({
                 type: 'global_ready',
-                profile: { nickname: 'الفنان الذكي (AI) 🎨', avatar: 'robot' }
+                profile: { nickname: 'الذكاء الاصطناعي 🤖', avatar: 'robot' }
             });
         }, 500);
+        this.timers = [];
     }
 
     onMessage(msg) {
@@ -28,9 +29,9 @@ export default class QuickDrawAI {
                 const wordChoices = getRandomWords(1);
                 const chosen = wordChoices[0] || { word: 'شمس', category: 'طبيعة', emoji: '☀️' };
 
-                // AI draws for 3-5 seconds then sends the finished drawing
-                const drawDelay = 3000 + Math.random() * 2000;
-                this.drawTimer = setTimeout(() => {
+                // AI draws for 3-4 seconds then sends the finished drawing
+                const drawDelay = 3000 + Math.random() * 1500;
+                const t = setTimeout(() => {
                     const canvas = document.createElement('canvas');
                     canvas.width = 600;
                     canvas.height = 450;
@@ -66,64 +67,108 @@ export default class QuickDrawAI {
                         category: chosen.category
                     });
                 }, drawDelay);
+                this.timers.push(t);
                 break;
             }
 
-            // ── AI received player's drawing ──────────────────────────────
+            // ── AI received player's drawing (AI is guessing) ─────────────
             case 'drawing_sent': {
-                // AI is guessing now AFTER the player finished drawing and sent it
                 this._clearAll();
                 const actualWord = msg.word;
                 if (!actualWord) break;
 
-                // 55% chance AI successfully figures out the drawing
                 const willGuessCorrectly = Math.random() < 0.55;
+                const otherWords = DRAW_WORDS.filter(w => w.word !== actualWord);
+                const getWrong = () => otherWords[Math.floor(Math.random() * otherWords.length)]?.word || 'قمر';
 
                 if (willGuessCorrectly) {
-                    // AI takes 6-12 seconds to "think", then guesses the correct word
-                    const delay = 6000 + Math.random() * 6000;
-                    this.guessTimer = setTimeout(() => {
-                        this.conn._sendToPlayer({
-                            type: 'chat_guess',
-                            guess: actualWord,
-                            isCorrect: true
-                        });
-                        this.conn._sendToPlayer({
-                            type: 'correct_guess',
-                            pts: 1
-                        });
-                    }, delay);
+                    // Decide if AI guesses correctly on 1st try (40%) or 2nd try (60%)
+                    const correctOnFirst = Math.random() < 0.4;
+                    if (correctOnFirst) {
+                        const t = setTimeout(() => {
+                            this.conn._sendToPlayer({
+                                type: 'chat_guess',
+                                guess: actualWord,
+                                isCorrect: true
+                            });
+                            this.conn._sendToPlayer({
+                                type: 'correct_guess',
+                                pts: 1
+                            });
+                        }, 4000 + Math.random() * 3000);
+                        this.timers.push(t);
+                    } else {
+                        // 1 wrong guess first, then correct guess
+                        const wrong1 = getWrong();
+                        const t1 = setTimeout(() => {
+                            this.conn._sendToPlayer({
+                                type: 'chat_guess',
+                                guess: wrong1,
+                                isCorrect: false
+                            });
+                            const t2 = setTimeout(() => {
+                                this.conn._sendToPlayer({
+                                    type: 'chat_guess',
+                                    guess: actualWord,
+                                    isCorrect: true
+                                });
+                                this.conn._sendToPlayer({
+                                    type: 'correct_guess',
+                                    pts: 1
+                                });
+                            }, 3500 + Math.random() * 2500);
+                            this.timers.push(t2);
+                        }, 3000 + Math.random() * 2500);
+                        this.timers.push(t1);
+                    }
                 } else {
-                    // AI does NOT know the drawing! It makes wrong guesses (0 points!)
-                    const otherWords = DRAW_WORDS.filter(w => w.word !== actualWord);
-                    const wrong1 = otherWords[Math.floor(Math.random() * otherWords.length)]?.word || 'قمر';
-                    const wrong2 = otherWords[Math.floor(Math.random() * otherWords.length)]?.word || 'طائر';
+                    // AI fails: makes 3 wrong guesses, then immediately sends guesser_out_of_attempts!
+                    const wrong1 = getWrong();
+                    let wrong2 = getWrong();
+                    while (wrong2 === wrong1) wrong2 = getWrong();
+                    let wrong3 = getWrong();
+                    while (wrong3 === wrong1 || wrong3 === wrong2) wrong3 = getWrong();
 
-                    // First wrong guess after 5-8 seconds (0 points)
-                    const firstDelay = 5000 + Math.random() * 3000;
-                    this.guessTimer = setTimeout(() => {
+                    // 1st wrong guess
+                    const t1 = setTimeout(() => {
                         this.conn._sendToPlayer({
                             type: 'chat_guess',
                             guess: wrong1,
                             isCorrect: false
                         });
 
-                        // Optional second wrong guess after another 8 seconds (still 0 points!)
-                        this.guessTimer = setTimeout(() => {
+                        // 2nd wrong guess
+                        const t2 = setTimeout(() => {
                             this.conn._sendToPlayer({
                                 type: 'chat_guess',
                                 guess: wrong2,
                                 isCorrect: false
                             });
-                            // AI failed to guess! No points are EVER awarded!
-                        }, 8000);
-                    }, firstDelay);
+
+                            // 3rd wrong guess -> immediately end round
+                            const t3 = setTimeout(() => {
+                                this.conn._sendToPlayer({
+                                    type: 'chat_guess',
+                                    guess: wrong3,
+                                    isCorrect: false
+                                });
+                                this.conn._sendToPlayer({
+                                    type: 'guesser_out_of_attempts',
+                                    word: actualWord
+                                });
+                            }, 3000 + Math.random() * 2000);
+                            this.timers.push(t3);
+                        }, 3000 + Math.random() * 2000);
+                        this.timers.push(t2);
+                    }, 3000 + Math.random() * 2000);
+                    this.timers.push(t1);
                 }
                 break;
             }
 
             case 'correct_guess':
             case 'time_up_sync':
+            case 'guesser_out_of_attempts':
             case 'next_round': {
                 this._clearAll();
                 break;
@@ -141,13 +186,9 @@ export default class QuickDrawAI {
     }
 
     _clearAll() {
-        if (this.guessTimer) {
-            clearTimeout(this.guessTimer);
-            this.guessTimer = null;
-        }
-        if (this.drawTimer) {
-            clearTimeout(this.drawTimer);
-            this.drawTimer = null;
+        if (this.timers && this.timers.length > 0) {
+            this.timers.forEach(t => clearTimeout(t));
+            this.timers = [];
         }
     }
 

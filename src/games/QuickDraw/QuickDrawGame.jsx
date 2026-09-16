@@ -56,6 +56,8 @@ export default function QuickDrawGame({ setView }) {
     const [chatGuesses, setChatGuesses] = useState([]);
     const [brushColor, setBrushColor] = useState('#ffffff');
     const [brushSize, setBrushSize] = useState(1);
+    const [guessAttemptsLeft, setGuessAttemptsLeft] = useState(3);
+    const guessAttemptsRef = useRef(3);
 
     const canvasRef = useRef(null);
     const isDrawing = useRef(false);
@@ -104,6 +106,8 @@ export default function QuickDrawGame({ setView }) {
         setIsDrawer(imDrawer);
         setGuessInput('');
         setChatGuesses([]);
+        setGuessAttemptsLeft(3);
+        guessAttemptsRef.current = 3;
         clearCanvas();
 
         if (imDrawer) {
@@ -309,6 +313,14 @@ export default function QuickDrawGame({ setView }) {
                 break;
             }
 
+            case 'guesser_out_of_attempts': {
+                // Opponent used all 3 guesses — end round for drawer side too
+                if (timerRef.current) clearInterval(timerRef.current);
+                const word = msg.word || '';
+                showRoundOver(`❌ الخصم نفدت محاولاته الثلاث! الكلمة كانت: "${word}" (0 نقطة للتخمين)`);
+                break;
+            }
+
             case 'next_round': {
                 startRound(msg.roundIdx);
                 break;
@@ -334,6 +346,7 @@ export default function QuickDrawGame({ setView }) {
 
     const handleGuessSubmit = () => {
         if (!guessInput.trim() || !currentWordRef.current || gameState !== 'guessing') return;
+        if (guessAttemptsRef.current <= 0) return;
 
         const rawGuess = guessInput.trim();
         const guessNorm = normalizeArabic(rawGuess);
@@ -365,9 +378,20 @@ export default function QuickDrawGame({ setView }) {
             connRef.current?.send({ type: 'correct_guess', pts: 1 });
             showRoundOver(`🎉 أحسنت! تخمين صحيح للكلمة "${currentWordRef.current?.word}" ✅ (+1 نقطة)`);
         } else {
-            // Wrong guess: strictly 0 points!
+            // Wrong guess — consume an attempt
             playSound('lose');
             playHaptic(20);
+
+            const newAttempts = guessAttemptsRef.current - 1;
+            guessAttemptsRef.current = newAttempts;
+            setGuessAttemptsLeft(newAttempts);
+
+            if (newAttempts <= 0) {
+                // All attempts exhausted — end round immediately, no point for guesser
+                if (timerRef.current) clearInterval(timerRef.current);
+                connRef.current?.send({ type: 'guesser_out_of_attempts', word: currentWordRef.current?.word });
+                showRoundOver(`❌ نفدت المحاولات الثلاث! الكلمة كانت: "${currentWordRef.current?.word}" (0 نقطة)`);
+            }
         }
 
         setGuessInput('');
@@ -718,6 +742,34 @@ export default function QuickDrawGame({ setView }) {
                     {/* Guesser Input Bar & Chat */}
                     {!isDrawer && gameState === 'guessing' && (
                         <div className="flex flex-col gap-2">
+                            {/* Attempts indicator + Guesses Log */}
+                            <div className="flex items-center justify-between px-2 py-1 rounded-xl bg-white/5 border border-white/10">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-slate-300">المحاولات المتبقية:</span>
+                                    <div className="flex items-center gap-1.5">
+                                        {[1, 2, 3].map((num) => (
+                                            <span
+                                                key={num}
+                                                className={`w-3.5 h-3.5 rounded-full transition-all duration-300 ${
+                                                    num <= guessAttemptsLeft
+                                                        ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.7)] ring-1 ring-amber-300'
+                                                        : 'bg-white/10 ring-1 ring-white/20 scale-75 opacity-40'
+                                                }`}
+                                                title={`محاولة ${num}`}
+                                            />
+                                        ))}
+                                        <span className="text-xs font-black text-amber-300 mr-1">
+                                            ({guessAttemptsLeft} من 3)
+                                        </span>
+                                    </div>
+                                </div>
+                                {guessAttemptsLeft === 1 && (
+                                    <span className="text-[11px] font-black text-rose-400 animate-pulse bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
+                                        ⚠️ آخر فرصة!
+                                    </span>
+                                )}
+                            </div>
+
                             {/* Guesses Log */}
                             {chatGuesses.length > 0 && (
                                 <div className="flex gap-2 overflow-x-auto py-1">
@@ -739,12 +791,14 @@ export default function QuickDrawGame({ setView }) {
                                     value={guessInput}
                                     onChange={(e) => setGuessInput(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleGuessSubmit()}
-                                    placeholder="اكتب تخمينك هنا..."
-                                    className="flex-1 bg-white/10 border border-white/20 rounded-2xl px-4 py-2.5 text-white text-sm outline-none focus:border-amber-400 focus:bg-white/15 transition-all"
+                                    placeholder={guessAttemptsLeft > 0 ? "اكتب تخمينك هنا..." : "انتهت المحاولات"}
+                                    disabled={guessAttemptsLeft <= 0}
+                                    className="flex-1 bg-white/10 border border-white/20 rounded-2xl px-4 py-2.5 text-white text-sm outline-none focus:border-amber-400 focus:bg-white/15 transition-all disabled:opacity-50"
                                 />
                                 <button
                                     onClick={handleGuessSubmit}
-                                    className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm rounded-2xl shadow-lg transition-transform active:scale-95 flex items-center gap-1.5"
+                                    disabled={guessAttemptsLeft <= 0}
+                                    className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold text-sm rounded-2xl shadow-lg transition-transform active:scale-95 flex items-center gap-1.5 cursor-pointer"
                                 >
                                     <Send size={15} /> تخمين
                                 </button>
