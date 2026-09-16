@@ -8,14 +8,26 @@ import WordAI from './WordAI.js';
 import DotsBoxesAI from './DotsBoxesAI.js';
 import TimeAI from './TimeAI.js';
 import BusAI from './BusAI.js';
+import TriviaAI from './TriviaAI.js';
+import DominoAI from './DominoAI.js';
+import RPSArenaAI from './RPSArenaAI.js';
+import AirHockeyAI from './AirHockeyAI.js';
+import QuickDrawAI from './QuickDrawAI.js';
 
 export default function createAIConn(gameIdPrefix) {
     const listeners = { data: [] };
     let aiInstance = null;
 
     const mockConn = {
+        isAI: true,
         send(data) {
-            // Realistic fast transport latency (50ms)
+            if (gameIdPrefix?.includes('hockey') || data?.type === 'puck_sync' || data?.type === 'paddle_move') {
+                if (aiInstance && aiInstance.onMessage) {
+                    aiInstance.onMessage(data);
+                }
+                return;
+            }
+            // Realistic fast transport latency (50ms) for turn-based games
             setTimeout(() => {
                 if (aiInstance && aiInstance.onMessage) {
                     aiInstance.onMessage(data);
@@ -67,6 +79,16 @@ export default function createAIConn(gameIdPrefix) {
         aiInstance = new TimeAI(mockConn);
     } else if (prefix.includes('bus')) {
         aiInstance = new BusAI(mockConn);
+    } else if (prefix.includes('trivia')) {
+        aiInstance = new TriviaAI(mockConn);
+    } else if (prefix.includes('domino')) {
+        aiInstance = new DominoAI(mockConn);
+    } else if (prefix.includes('rps')) {
+        aiInstance = new RPSArenaAI(mockConn);
+    } else if (prefix.includes('hockey')) {
+        aiInstance = new AirHockeyAI(mockConn);
+    } else if (prefix.includes('draw')) {
+        aiInstance = new QuickDrawAI(mockConn);
     }
 
     return mockConn;

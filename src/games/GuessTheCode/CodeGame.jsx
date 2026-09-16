@@ -196,34 +196,45 @@ export default function CodeGame({ setView }) {
 
             <div className="min-h-dvh max-w-md mx-auto px-4 flex flex-col safe-area-pt overflow-x-hidden overflow-y-auto">
 
-                {/* ── Clean 3-Column Top Bar ── */}
-                <header className="px-2 py-3 flex items-center justify-between gap-2 w-full z-20">
-                    <button
-                        onClick={() => { connRef.current?.close(); setView('hub'); }}
-                        className="glass-card w-10 h-10 flex items-center justify-center rounded-2xl hover:scale-105 active:scale-95 transition-all text-white/80 shrink-0"
-                        title="الرجوع للرئيسية"
-                    >
-                        <ArrowRight size={18} />
-                    </button>
+                {/* Header: Lobby with Logo vs In-Game Header */}
+                {gameState === 'lobby' ? (
+                    <div className="px-4 flex justify-between items-center py-4 mb-2 w-full">
+                        <Logo size="small" />
+                        <button
+                            onClick={() => { connRef.current?.close(); setView('hub'); }}
+                            className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 active:scale-95 transition-transform text-white/90"
+                        >
+                            الرئيسية
+                        </button>
+                    </div>
+                ) : (
+                    <header className="px-2 py-3 flex items-center justify-between gap-2 w-full z-20">
+                        <button
+                            onClick={() => { connRef.current?.close(); setView('hub'); }}
+                            className="glass-card w-10 h-10 flex items-center justify-center rounded-2xl hover:scale-105 active:scale-95 transition-all text-white/80 shrink-0"
+                            title="الرجوع للرئيسية"
+                        >
+                            <ArrowRight size={18} />
+                        </button>
 
-                    <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
-                        <IconCodeGame size={18} className="text-[var(--accent)]" />
-                        <span className="text-xs font-black gradient-text">خمن الكود</span>
-                        {gameState !== 'lobby' && (
+                        <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
+                            <Logo size="mini" />
+                            <IconCodeGame size={18} className="text-[var(--accent)]" />
+                            <span className="text-xs font-black gradient-text">خمن الكود</span>
                             <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold mr-1">
                                 <Wifi size={11} />
                                 <span>{codeLength} أرقام</span>
                             </span>
-                        )}
-                    </div>
+                        </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                        {['setting-secret', 'waiting-start', 'playing', 'won', 'lost'].includes(gameState) && (
-                            <ChatTriggerButton onClick={() => window.dispatchEvent(new CustomEvent('toggle-game-chat'))} />
-                        )}
-                        <GlobalMuteButton className="w-10 h-10 !rounded-2xl shrink-0" />
-                    </div>
-                </header>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            {['setting-secret', 'waiting-start', 'playing', 'won', 'lost'].includes(gameState) && (
+                                <ChatTriggerButton onClick={() => window.dispatchEvent(new CustomEvent('toggle-game-chat'))} />
+                            )}
+                            <GlobalMuteButton className="w-10 h-10 !rounded-2xl shrink-0" />
+                        </div>
+                    </header>
+                )}
 
                 {/* ── Lobby ── */}
                 {gameState === 'lobby' && (

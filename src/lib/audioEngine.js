@@ -293,6 +293,86 @@ export function playSound(type) {
                 break;
             }
 
+            case 'hockey_hit': {
+                // Crisp plastic/composite mallet striker impact
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(680, t);
+                osc.frequency.exponentialRampToValueAtTime(180, t + 0.055);
+                gain.gain.setValueAtTime(0.4, t);
+                gain.gain.exponentialRampToValueAtTime(0.005, t + 0.055);
+                osc.start(t);
+                osc.stop(t + 0.055);
+
+                // Transient click snap
+                const snap = ctx.createOscillator();
+                const snapGain = ctx.createGain();
+                snap.type = 'triangle';
+                snap.frequency.setValueAtTime(1400, t);
+                snap.frequency.exponentialRampToValueAtTime(300, t + 0.025);
+                snapGain.gain.setValueAtTime(0.3, t);
+                snapGain.gain.exponentialRampToValueAtTime(0.005, t + 0.025);
+                snap.connect(snapGain);
+                snapGain.connect(ctx.destination);
+                snap.start(t);
+                snap.stop(t + 0.025);
+                return;
+            }
+
+            case 'hockey_slap': {
+                // Heavy arcade slap-shot smash with bass thud and sharp strike
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(220, t);
+                osc.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+                gain.gain.setValueAtTime(0.75, t);
+                gain.gain.exponentialRampToValueAtTime(0.005, t + 0.12);
+                osc.start(t);
+                osc.stop(t + 0.12);
+
+                const snap = ctx.createOscillator();
+                const snapGain = ctx.createGain();
+                snap.type = 'sawtooth';
+                snap.frequency.setValueAtTime(900, t);
+                snap.frequency.exponentialRampToValueAtTime(180, t + 0.04);
+                snapGain.gain.setValueAtTime(0.4, t);
+                snapGain.gain.exponentialRampToValueAtTime(0.005, t + 0.04);
+                snap.connect(snapGain);
+                snapGain.connect(ctx.destination);
+                snap.start(t);
+                snap.stop(t + 0.04);
+                return;
+            }
+
+            case 'hockey_wall': {
+                // Rubbery rail bounce
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(280, t);
+                osc.frequency.exponentialRampToValueAtTime(90, t + 0.05);
+                gain.gain.setValueAtTime(0.25, t);
+                gain.gain.exponentialRampToValueAtTime(0.005, t + 0.05);
+                osc.start(t);
+                osc.stop(t + 0.05);
+                break;
+            }
+
+            case 'hockey_goal': {
+                // Goal horn & siren fanfare
+                [220, 277.18, 329.63].forEach((freq) => {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.type = 'sawtooth';
+                    o.frequency.setValueAtTime(freq, t);
+                    o.frequency.linearRampToValueAtTime(freq * 1.05, t + 0.6);
+                    g.gain.setValueAtTime(0.2, t);
+                    g.gain.linearRampToValueAtTime(0.25, t + 0.3);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+                    o.connect(g);
+                    g.connect(ctx.destination);
+                    o.start(t);
+                    o.stop(t + 0.7);
+                });
+                return;
+            }
+
             default:
                 break;
         }

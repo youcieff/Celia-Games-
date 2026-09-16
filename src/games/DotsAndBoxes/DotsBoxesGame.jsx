@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import P2PConnectionManager from '../../components/P2PConnectionManager';
+import Logo from '../../components/Logo';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Wifi from 'lucide-react/dist/esm/icons/wifi';
@@ -192,34 +193,45 @@ export default function DotsBoxesGame({ setView }) {
             <div className="animated-bg"><div className="bg-orb-3" /></div>
             <div className="min-h-dvh max-w-lg mx-auto flex flex-col safe-area-pt overflow-hidden overflow-y-auto">
 
-                {/* Clean 3-Column Top Bar — Back | Title Badge | Mute */}
-                <header className="px-4 py-3 flex items-center justify-between gap-2 w-full z-20">
-                    <button
-                        onClick={() => { connRef.current?.close(); setView('hub'); }}
-                        className="glass-card w-10 h-10 flex items-center justify-center rounded-2xl hover:scale-105 active:scale-95 transition-all text-white/80 shrink-0"
-                        title="الرجوع للرئيسية"
-                    >
-                        <ArrowRight size={18} />
-                    </button>
+                {/* Header: Lobby with Logo vs In-Game Header */}
+                {gameState === 'lobby' ? (
+                    <div className="px-4 flex justify-between items-center py-4 mb-2 w-full">
+                        <Logo size="small" />
+                        <button
+                            onClick={() => { connRef.current?.close(); setView('hub'); }}
+                            className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 active:scale-95 transition-transform text-white/90"
+                        >
+                            الرئيسية
+                        </button>
+                    </div>
+                ) : (
+                    <header className="px-4 py-3 flex items-center justify-between gap-2 w-full z-20">
+                        <button
+                            onClick={() => { connRef.current?.close(); setView('hub'); }}
+                            className="glass-card w-10 h-10 flex items-center justify-center rounded-2xl hover:scale-105 active:scale-95 transition-all text-white/80 shrink-0"
+                            title="الرجوع للرئيسية"
+                        >
+                            <ArrowRight size={18} />
+                        </button>
 
-                    <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
-                        <IconDotsBoxes size={18} className="text-[var(--accent)]" />
-                        <span className="text-xs font-black gradient-text">نقاط ومربعات</span>
-                        {gameState !== 'lobby' && (
+                        <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
+                            <Logo size="mini" />
+                            <IconDotsBoxes size={18} className="text-[var(--accent)]" />
+                            <span className="text-xs font-black gradient-text">نقاط ومربعات</span>
                             <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold mr-1">
                                 <Wifi size={11} />
                                 <span>متصل</span>
                             </span>
-                        )}
-                    </div>
+                        </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                        {gameState === 'playing' && (
-                            <ChatTriggerButton onClick={() => window.dispatchEvent(new CustomEvent('toggle-game-chat'))} />
-                        )}
-                        <GlobalMuteButton className="w-10 h-10 !rounded-2xl shrink-0" />
-                    </div>
-                </header>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            {gameState === 'playing' && (
+                                <ChatTriggerButton onClick={() => window.dispatchEvent(new CustomEvent('toggle-game-chat'))} />
+                            )}
+                            <GlobalMuteButton className="w-10 h-10 !rounded-2xl shrink-0" />
+                        </div>
+                    </header>
+                )}
 
                 {/* Lobby */}
                 {gameState === 'lobby' && (

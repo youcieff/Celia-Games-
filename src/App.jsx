@@ -11,10 +11,48 @@ import DotsBoxesGame from './games/DotsAndBoxes/DotsBoxesGame';
 import SeaBattleGame from './games/SeaBattle/SeaBattleGame';
 import GuessTimeGame from './games/GuessTheTime/GuessTimeGame';
 import BusCompleteGame from './games/BusComplete/BusCompleteGame';
+import TriviaGame from './games/TriviaDuel/TriviaGame';
+import DominoGame from './games/Dominoes/DominoGame';
+import RPSArenaGame from './games/RPSArena/RPSArenaGame';
+import AirHockeyGame from './games/AirHockey/AirHockeyGame';
+import QuickDrawGame from './games/QuickDraw/QuickDrawGame';
 import GlobalMuteButton from './components/GlobalMuteButton';
 
 function App() {
   const [view, setView] = React.useState('hub');
+
+  React.useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const gameParam = params.get('game');
+      const roomParam = params.get('room');
+
+      if (gameParam) {
+        if (roomParam) {
+          sessionStorage.setItem('celia_autojoin_room', roomParam);
+        }
+        const prefixToView = {
+          'celia-code': 'code-game',
+          'celia-word': 'word-game-online',
+          'celia-xo': 'xo-game',
+          'celia-big-xo': 'big-xo-game',
+          'celia-connect4': 'connect-4',
+          'celia-mem': 'memory-game',
+          'celia-db': 'dots-boxes',
+          'celia-sea': 'sea-battle',
+          'celia-time': 'guess-time',
+          'celia-bus': 'bus-complete',
+          'celia-trivia': 'trivia-duel',
+          'celia-domino': 'domino-game',
+          'celia-rps': 'rps-arena',
+          'celia-hockey': 'air-hockey',
+          'celia-draw': 'quick-draw',
+        };
+        const resolvedView = prefixToView[gameParam] || gameParam;
+        setView(resolvedView);
+      }
+    } catch (e) { }
+  }, []);
 
   return (
     <ThemeProvider>
@@ -31,6 +69,11 @@ function App() {
         {view === 'sea-battle' && <SeaBattleGame setView={setView} />}
         {view === 'guess-time' && <GuessTimeGame setView={setView} />}
         {view === 'bus-complete' && <BusCompleteGame setView={setView} />}
+        {view === 'trivia-duel' && <TriviaGame setView={setView} />}
+        {view === 'domino-game' && <DominoGame setView={setView} />}
+        {view === 'rps-arena' && <RPSArenaGame setView={setView} />}
+        {view === 'air-hockey' && <AirHockeyGame setView={setView} />}
+        {view === 'quick-draw' && <QuickDrawGame setView={setView} />}
       </div>
     </ThemeProvider>
   );

@@ -368,6 +368,96 @@ export function IconTrophy({ size = 40, className = '' }) {
   );
 }
 
+/** Trivia Duel — lightning bolt with question */
+export function IconTriviaDuel({ size = 24, className = '' }) {
+  return (
+    <svg {...iconProps} width={size} height={size} className={className}>
+      {/* Lightning bolt */}
+      <path d="M13 2 L6 13 H12 L11 22 L18 11 H12 Z" />
+      {/* Small question mark */}
+      <circle cx="20" cy="4" r="3" strokeWidth="1.2" />
+      <path d="M20 3 Q20 3 20.5 3.5 Q21 4 20 4.5" strokeWidth="1" />
+      <circle cx="20" cy="5.5" r="0.4" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** Domino — two domino tiles in chain */
+export function IconDominoGame({ size = 24, className = '' }) {
+  return (
+    <svg {...iconProps} width={size} height={size} className={className}>
+      {/* First domino tile */}
+      <rect x="2" y="6" width="9" height="13" rx="1.5" />
+      <line x1="2" y1="12.5" x2="11" y2="12.5" />
+      <circle cx="5.5" cy="9.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="7.5" cy="9.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="6.5" cy="15" r="1.2" fill="currentColor" stroke="none" />
+      {/* Second domino tile (rotated 90°) */}
+      <rect x="12" y="8" width="10" height="6" rx="1.5" />
+      <line x1="17" y1="8" x2="17" y2="14" />
+      <circle cx="14.5" cy="11" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="19.5" cy="11" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** RPS Arena — rock fist / paper / scissors combined */
+export function IconRPSArena({ size = 24, className = '' }) {
+  return (
+    <svg {...iconProps} width={size} height={size} className={className}>
+      {/* Fist (rock) */}
+      <path d="M6 16 L6 10 Q6 8 8 8 Q10 8 10 10 L10 13 Q11 11 13 12 Q15 13 13 15 L12 18 Q11 20 9 20 L7 20 Q5 20 6 18 Z" />
+      {/* Scissors blades */}
+      <path d="M16 6 L21 11" strokeWidth="1.8" />
+      <path d="M21 6 L16 11" strokeWidth="1.8" />
+      {/* Pivot */}
+      <circle cx="18.5" cy="8.5" r="1.5" fill="currentColor" stroke="none" opacity="0.6" />
+      {/* Star accent */}
+      <path d="M18 16 L19 19 L22 19 L20 21 L21 24 L18 22 L15 24 L16 21 L14 19 L17 19 Z"
+            transform="scale(0.6) translate(12, 5)" opacity="0.7" strokeWidth="0.8" />
+    </svg>
+  );
+}
+
+/** Air Hockey — puck + paddle */
+export function IconAirHockey({ size = 24, className = '' }) {
+  return (
+    <svg {...iconProps} width={size} height={size} className={className}>
+      {/* Table outline */}
+      <rect x="2" y="3" width="20" height="18" rx="2" />
+      {/* Center line */}
+      <line x1="2" y1="12" x2="22" y2="12" strokeWidth="0.8" opacity="0.5" />
+      {/* Goals */}
+      <line x1="8" y1="3" x2="16" y2="3" strokeWidth="2.5" />
+      <line x1="8" y1="21" x2="16" y2="21" strokeWidth="2.5" />
+      {/* Paddle (top) */}
+      <circle cx="12" cy="7" r="3" />
+      <circle cx="12" cy="7" r="1.2" fill="currentColor" stroke="none" opacity="0.5" />
+      {/* Puck */}
+      <circle cx="12" cy="15" r="2" fill="currentColor" opacity="0.8" stroke="none" />
+    </svg>
+  );
+}
+
+/** Quick Draw — pencil + speech bubble */
+export function IconQuickDraw({ size = 24, className = '' }) {
+  return (
+    <svg {...iconProps} width={size} height={size} className={className}>
+      {/* Canvas/paper */}
+      <rect x="2" y="4" width="15" height="13" rx="2" />
+      {/* Drawing stroke */}
+      <path d="M5 13 Q7 9 9 11 Q11 13 13 9" strokeWidth="1.5" />
+      {/* Pencil */}
+      <path d="M16 13 L20 9 L22 11 L18 15 Z" />
+      <line x1="16" y1="13" x2="15" y2="16" />
+      <path d="M15 16 L14 17 L17 16 Z" fill="currentColor" stroke="none" opacity="0.6" />
+      {/* Question mark bubble */}
+      <path d="M14 18 Q14 18 16 18 Q18 18 18 20 Q18 22 16 22 H15 L14 23 V22 Q14 22 14 20 Q14 18 14 18 Z"
+            strokeWidth="1.2" />
+    </svg>
+  );
+}
+
 /** The full icon map — used by Hub to pick icon by game ID */
 export const GAME_ICON_MAP = {
   'code-game':    IconCodeGame,
@@ -382,6 +472,11 @@ export const GAME_ICON_MAP = {
   'sea-battle':   IconSeaBattle,
   'guess-time':   IconGuessTime,
   'bus-complete': IconBusComplete,
+  'trivia-duel':  IconTriviaDuel,
+  'domino-game':  IconDominoGame,
+  'rps-arena':    IconRPSArena,
+  'air-hockey':   IconAirHockey,
+  'quick-draw':   IconQuickDraw,
 };
 
 export function GameIcon({ gameId, size = 26, className = '' }) {

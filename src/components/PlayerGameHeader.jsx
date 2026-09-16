@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import Volume2 from 'lucide-react/dist/esm/icons/volume-2';
 import VolumeX from 'lucide-react/dist/esm/icons/volume-x';
@@ -7,6 +7,7 @@ import useProfile from '../hooks/useProfile';
 import { toggleMute, getMuted, playSound } from '../lib/audioEngine';
 import { AvatarDisplay } from './icons/AvatarIcons';
 import { GameIcon, IconTarget, IconHourglass } from './icons/GameIcons';
+import Logo from './Logo';
 
 export default function PlayerGameHeader({
     title = 'اللعبة',
@@ -22,6 +23,18 @@ export default function PlayerGameHeader({
 }) {
     const [myProfile] = useProfile();
     const [muted, setMutedState] = useState(() => getMuted());
+    const [hasUnread, setHasUnread] = useState(false);
+
+    useEffect(() => {
+        const handleUnread = () => setHasUnread(true);
+        const handleOpened = () => setHasUnread(false);
+        window.addEventListener('game-chat-unread', handleUnread);
+        window.addEventListener('game-chat-opened', handleOpened);
+        return () => {
+            window.removeEventListener('game-chat-unread', handleUnread);
+            window.removeEventListener('game-chat-opened', handleOpened);
+        };
+    }, []);
 
     const handleToggleMute = () => {
         const next = toggleMute();
@@ -44,6 +57,7 @@ export default function PlayerGameHeader({
                 </button>
 
                 <div className="flex items-center gap-2 glass-card px-3 py-1.5 rounded-2xl border border-white/10">
+                    <Logo size="mini" />
                     {gameId ? (
                         <GameIcon gameId={gameId} size={18} className="text-[var(--accent)]" />
                     ) : gameEmoji && typeof gameEmoji === 'string' && gameEmoji.length > 2 ? (
@@ -55,11 +69,20 @@ export default function PlayerGameHeader({
 
                 <div className="flex items-center gap-1.5 shrink-0">
                     <button
-                        onClick={() => window.dispatchEvent(new CustomEvent('toggle-game-chat'))}
-                        className="glass-card w-10 h-10 flex items-center justify-center rounded-2xl hover:scale-105 active:scale-95 transition-all text-[var(--accent)]"
+                        onClick={() => {
+                            setHasUnread(false);
+                            window.dispatchEvent(new CustomEvent('toggle-game-chat'));
+                        }}
+                        className="glass-card w-10 h-10 flex items-center justify-center rounded-2xl hover:scale-105 active:scale-95 transition-all text-[var(--accent)] relative"
                         title="المحادثة والتفاعلات"
                     >
                         <MessageCircle size={18} />
+                        {hasUnread && (
+                            <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-75" />
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--accent)]" />
+                            </span>
+                        )}
                     </button>
 
                     <button

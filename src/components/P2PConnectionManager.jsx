@@ -209,10 +209,72 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
         return () => { if (interval) clearInterval(interval); };
     }, [myReady, oppReady]);
 
+    const inviteUrl = typeof window !== 'undefined' ? `${window.location.origin}/?game=${gameIdPrefix}&room=${myId}` : '';
+
     const handleCopy = () => {
-        navigator.clipboard.writeText(myId);
+        try {
+            navigator.clipboard.writeText(inviteUrl);
+        } catch (e) {
+            navigator.clipboard.writeText(myId);
+        }
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleWhatsAppShare = () => {
+        const text = `تعال اتحداك في ألعاب سيليا! 🎮🔥\nاضغط على الرابط وادخل الجولة معايا فوراً:\n${inviteUrl}`;
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+    };
+
+    // Auto-join from URL / sessionStorage
+    useEffect(() => {
+        try {
+            const autoCode = sessionStorage.getItem('celia_autojoin_room');
+            if (autoCode && autoCode.length >= 4) {
+                sessionStorage.removeItem('celia_autojoin_room');
+                setJoinId(autoCode.toUpperCase());
+                setTimeout(() => {
+                    handleJoinWithId(autoCode.toUpperCase());
+                }, 400);
+            }
+        } catch (e) { }
+    }, []);
+
+    const handleJoinWithId = async (codeToJoin) => {
+        if (!codeToJoin || codeToJoin.length < 4) return;
+        setIsConnecting(true);
+        setErrorMsg('');
+
+        const targetRoom = `rooms/${gameIdPrefix}-${codeToJoin.trim().toUpperCase()}`;
+        const statusRef = ref(db, `${targetRoom}/status`);
+
+        try {
+            const snap = await get(statusRef);
+            if (!snap.exists() || snap.val() === 'closed') {
+                setErrorMsg('الغرفة دي مش موجودة أو اتقفلت. اتأكد من الكود أو خلي صاحبك يعمل غرفة جديدة.');
+                setIsConnecting(false);
+                return;
+            }
+
+            await set(ref(db, `${targetRoom}/guestReady`), true);
+
+            isHostRef.current = false;
+            const conn = createFirebaseConn(targetRoom, false);
+            connRef.current = conn;
+
+            conn.on('data', (d) => {
+                if (d?.type === 'global_ready') {
+                    setOppReady(true);
+                    if (d.profile) setOppProfile(d.profile);
+                }
+            });
+
+            setIsConnecting(false);
+            setLobbyState('connected');
+        } catch {
+            setErrorMsg('فشل الاتصال. تأكد من اتصال الإنترنت.');
+            setIsConnecting(false);
+        }
     };
 
     // ── CONNECTED STATE ────────────────────────────────────────────────────────
@@ -310,17 +372,29 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                 {/* Ticket perforated bottom */}
                 <div className="lobby-ticket-perforation" />
 
-                {/* Copy button */}
-                <button
-                    onClick={handleCopy}
-                    className={`lobby-copy-btn ${copied ? 'lobby-copy-btn--done' : ''}`}
-                >
-                    {copied ? (
-                        <><Check size={15} /> تم النسخ</>
-                    ) : (
-                        <><IconCopy size={15} /> انسخ الكود</>
-                    )}
-                </button>
+                {/* Actions: Copy Link & WhatsApp Share */}
+                <div className="flex gap-2 w-full mt-1">
+                    <button
+                        onClick={handleCopy}
+                        className={`lobby-copy-btn flex-[1.2] ${copied ? 'lobby-copy-btn--done' : ''}`}
+                    >
+                        {copied ? (
+                            <><Check size={15} /> تم نسخ الرابط</>
+                        ) : (
+                            <><IconCopy size={15} /> نسخ الرابط</>
+                        )}
+                    </button>
+                    <button
+                        onClick={handleWhatsAppShare}
+                        className="h-11 px-3.5 rounded-2xl flex items-center justify-center gap-1.5 font-black text-xs border border-emerald-400/40 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] active:scale-95 shrink-0"
+                        title="مشاركة مباشرة عبر واتساب"
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 14.99 3.8 13.47 3.8 11.91C3.81 7.37 7.5 3.67 12.05 3.67M9.53 7.33C9.33 7.33 9.04 7.41 8.78 7.69C8.53 7.97 7.82 8.63 7.82 10C7.82 11.36 8.81 12.67 8.95 12.86C9.09 13.05 10.89 15.83 13.65 17.03C14.31 17.31 14.82 17.48 15.22 17.61C15.89 17.82 16.5 17.79 16.98 17.72C17.52 17.64 18.64 17.04 18.88 16.38C19.11 15.71 19.11 15.14 19.04 15.02C18.97 14.9 18.78 14.83 18.49 14.69C18.2 14.55 16.78 13.85 16.52 13.75C16.26 13.66 16.07 13.61 15.88 13.9C15.68 14.18 15.12 14.83 14.95 15.02C14.78 15.22 14.61 15.24 14.32 15.1C14.03 14.96 13.1 14.65 12 13.67C11.14 12.91 10.56 11.97 10.4 11.68C10.23 11.4 10.38 11.24 10.53 11.1C10.66 10.97 10.82 10.76 10.97 10.59C11.11 10.42 11.16 10.29 11.26 10.1C11.36 9.9 11.31 9.73 11.23 9.59C11.16 9.45 10.57 8.01 10.33 7.42C10.09 6.85 9.85 6.93 9.68 6.92C9.51 6.92 9.33 6.92 9.53 7.33Z" />
+                        </svg>
+                        واتساب
+                    </button>
+                </div>
             </div>
 
             {/* ── Divider ── */}

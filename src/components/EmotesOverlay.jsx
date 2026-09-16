@@ -51,7 +51,7 @@ export function ChatTriggerButton({ onClick, hasUnread = false, className = '' }
     );
 }
 
-export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneButton = true, buttonPosition = 'top-left' }) {
+export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneButton = false, buttonPosition = 'top-left' }) {
     const [myProfile] = useProfile();
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('emotes'); // 'emotes' | 'messages'
@@ -111,7 +111,10 @@ export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneB
         playSound('pop');
         if (!isMine) {
             playHaptic(20);
-            if (!isOpen) setHasUnread(true);
+            if (!isOpen) {
+                setHasUnread(true);
+                window.dispatchEvent(new CustomEvent('game-chat-unread'));
+            }
         }
 
         setTimeout(() => {
@@ -140,7 +143,10 @@ export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneB
         playSound('pop');
         if (!isMine) {
             playHaptic(25);
-            if (!isOpen) setHasUnread(true);
+            if (!isOpen) {
+                setHasUnread(true);
+                window.dispatchEvent(new CustomEvent('game-chat-unread'));
+            }
         }
 
         setTimeout(() => {
@@ -242,19 +248,7 @@ export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneB
                 </div>
             </div>
 
-            {/* ── Standalone Floating Trigger (Never placed on bottom elements) ── */}
-            {/* Positioned cleanly at top-left under header or alongside top bar */}
-            {showStandaloneButton && conn && (
-                <div className="fixed top-3.5 right-16 sm:right-20 z-30 pointer-events-auto">
-                    <ChatTriggerButton
-                        onClick={() => {
-                            setIsOpen(!isOpen);
-                            setHasUnread(false);
-                        }}
-                        hasUnread={hasUnread}
-                    />
-                </div>
-            )}
+
 
             {/* ── Chat & Emotes Modal / Sheet ── */}
             {isOpen && (
