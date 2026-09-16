@@ -444,7 +444,7 @@ export default function Hub({ setView }) {
                         </div>
 
                         <div className="hub-scroll-row">
-                            <div className="hub-scroll-inner py-1.5">
+                            <div className="hub-scroll-inner py-1">
                                 {featuredGames.map(game => (
                                     <button
                                         key={game.id}
@@ -453,56 +453,56 @@ export default function Hub({ setView }) {
                                             '--card-accent': game.accentVar,
                                             background: 'linear-gradient(135deg, color-mix(in srgb, var(--card-accent) 20%, rgba(15, 23, 42, 0.95)) 0%, rgba(15, 23, 42, 0.9) 100%)',
                                             borderColor: 'color-mix(in srgb, var(--card-accent) 35%, rgba(255, 255, 255, 0.12))',
-                                            boxShadow: '0 6px 22px -4px color-mix(in srgb, var(--card-accent) 25%, transparent)'
+                                            boxShadow: '0 4px 16px -3px color-mix(in srgb, var(--card-accent) 25%, transparent)'
                                         }}
-                                        className="spotlight-card shrink-0 w-[220px] sm:w-[235px] md:w-[250px] p-3.5 rounded-2xl border text-right transition-all duration-300 active:scale-95 flex flex-col justify-between group cursor-pointer"
+                                        className="spotlight-card shrink-0 w-[155px] sm:w-[170px] md:w-[185px] p-2.5 rounded-2xl border text-right transition-all duration-300 active:scale-95 flex flex-col justify-between group cursor-pointer"
                                     >
                                         {/* Top Badges */}
-                                        <div className="flex items-center justify-between w-full mb-2">
-                                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/25 to-rose-500/25 border border-amber-400/35 text-amber-300 text-[9px] font-black shadow-sm">
-                                                <Sparkles size={10} className="text-amber-300 animate-pulse" />
+                                        <div className="flex items-center justify-between w-full mb-1.5">
+                                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500/25 to-rose-500/25 border border-amber-400/35 text-amber-300 text-[8px] font-black shadow-sm">
+                                                <Sparkles size={8} className="text-amber-300 animate-pulse" />
                                                 <span>جديد</span>
                                             </div>
 
                                             {game.online && (
-                                                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[9px] font-bold">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping mr-0.5" />
-                                                    <span>1v1 مباشر</span>
+                                                <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[8px] font-bold">
+                                                    <span className="w-1 h-1 rounded-full bg-emerald-400 animate-ping" />
+                                                    <span>1v1</span>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Center: Icon + Title & Desc */}
-                                        <div className="flex items-center gap-2.5 w-full my-1">
+                                        <div className="flex items-center gap-2 w-full my-1">
                                             <div
-                                                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform duration-300"
+                                                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform duration-300"
                                                 style={{
                                                     background: 'color-mix(in srgb, var(--card-accent) 25%, rgba(255,255,255,0.06))',
                                                     border: '1px solid color-mix(in srgb, var(--card-accent) 45%, rgba(255,255,255,0.18))',
-                                                    boxShadow: '0 0 16px color-mix(in srgb, var(--card-accent) 35%, transparent)'
+                                                    boxShadow: '0 0 12px color-mix(in srgb, var(--card-accent) 30%, transparent)'
                                                 }}
                                             >
-                                                <GameIcon gameId={game.id} size={22} className="text-[var(--card-accent)]" />
+                                                <GameIcon gameId={game.id} size={18} className="text-[var(--card-accent)]" />
                                             </div>
 
                                             <div className="flex flex-col text-right overflow-hidden flex-1 min-w-0">
-                                                <h3 className="text-xs sm:text-sm font-black text-white group-hover:text-[var(--card-accent)] transition-colors truncate">
+                                                <h3 className="text-xs font-black text-white group-hover:text-[var(--card-accent)] transition-colors truncate">
                                                     {game.title}
                                                 </h3>
-                                                <p className="text-[10px] text-white/60 font-medium leading-snug line-clamp-1 mt-0.5">
+                                                <p className="text-[9px] text-white/50 font-medium truncate mt-0.5">
                                                     {game.desc}
                                                 </p>
                                             </div>
                                         </div>
 
                                         {/* Bottom CTA Action Bar */}
-                                        <div className="flex items-center justify-between pt-2 mt-1.5 border-t border-white/10 w-full">
-                                            <span className="text-[9px] font-bold text-white/40 flex items-center gap-1">
-                                                <Users size={11} className="text-white/40" /> 1v1 / AI
+                                        <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-white/10 w-full">
+                                            <span className="text-[8px] font-bold text-white/40 flex items-center gap-0.5">
+                                                <Users size={10} className="text-white/40" /> {game.online ? '1v1' : 'أوفلاين'}
                                             </span>
-                                            <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-white/10 group-hover:bg-[var(--card-accent)] group-hover:text-slate-950 text-white font-black text-[10px] transition-all duration-300 shadow-sm">
+                                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/10 group-hover:bg-[var(--card-accent)] group-hover:text-slate-950 text-white font-black text-[9px] transition-all duration-300 shadow-sm">
                                                 <span>العب</span>
-                                                <Play size={8} className="fill-current" />
+                                                <Play size={7} className="fill-current" />
                                             </div>
                                         </div>
                                     </button>
@@ -521,8 +521,8 @@ export default function Hub({ setView }) {
                             <p className="text-xs text-white/40">جرّب البحث بكلمة أخرى أو تغيير التصنيف</p>
                         </div>
                     ) : viewMode === 'grid' ? (
-                        /* ── Modern Unified Responsive Game Cards Feed (1 col mobile, 2 tablet, 3-4 desktop) ── */
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 w-full">
+                        /* ── Grid View: 2 columns on mobile, 3 on tablet, 4 on desktop ── */
+                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 w-full">
                             {filteredGames.map((game, idx) => {
                                 const catObj = CATEGORIES.find(c => c.id === game.category);
                                 return (
@@ -533,63 +533,56 @@ export default function Hub({ setView }) {
                                             '--card-accent': game.accentVar,
                                             background: 'linear-gradient(135deg, color-mix(in srgb, var(--card-accent) 20%, rgba(15, 23, 42, 0.95)) 0%, rgba(15, 23, 42, 0.9) 100%)',
                                             borderColor: 'color-mix(in srgb, var(--card-accent) 35%, rgba(255, 255, 255, 0.12))',
-                                            boxShadow: '0 8px 25px -4px color-mix(in srgb, var(--card-accent) 22%, transparent)',
+                                            boxShadow: '0 6px 20px -4px color-mix(in srgb, var(--card-accent) 22%, transparent)',
                                             animationDelay: `${idx * 20}ms`,
                                         }}
-                                        className="spotlight-card w-full p-3.5 rounded-3xl border text-right transition-all duration-300 active:scale-[0.98] flex flex-col justify-between group cursor-pointer"
+                                        className="spotlight-card w-full p-2.5 sm:p-3.5 rounded-2xl sm:rounded-3xl border text-right transition-all duration-300 active:scale-[0.97] flex flex-col justify-between group cursor-pointer"
                                     >
                                         {/* Top Badges Row */}
-                                        <div className="flex items-center justify-between w-full mb-2.5">
-                                            <div className="flex items-center gap-1.5">
-                                                {game.isNew ? (
-                                                    <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500/25 to-rose-500/25 border border-amber-400/35 text-amber-300 text-[10px] font-black shadow-sm">
-                                                        <Sparkles size={11} className="text-amber-300 animate-pulse" />
-                                                        <span>جديد ومميز</span>
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50">
-                                                        {catObj ? `${catObj.emoji} ${catObj.label}` : 'لعبة ممتعة'}
-                                                    </span>
-                                                )}
-                                            </div>
+                                        <div className="flex items-center justify-between w-full mb-1.5 sm:mb-2">
+                                            {game.isNew ? (
+                                                <span className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/25 to-rose-500/25 border border-amber-400/35 text-amber-300 text-[8px] sm:text-[9px] font-black shadow-sm">
+                                                    <Sparkles size={9} className="text-amber-300 animate-pulse" />
+                                                    <span>جديد</span>
+                                                </span>
+                                            ) : (
+                                                <span className="text-[8px] sm:text-[9px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50 truncate max-w-[65px] sm:max-w-[85px]">
+                                                    {catObj ? `${catObj.emoji} ${catObj.label}` : 'لعبة'}
+                                                </span>
+                                            )}
 
-                                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping mr-0.5" />
-                                                <span>{game.online ? '1v1 مباشر' : 'أوفلاين'}</span>
-                                            </div>
+                                            <span className="text-[8px] sm:text-[9px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 flex items-center gap-1">
+                                                <span className="w-1 h-1 rounded-full bg-emerald-400 animate-ping" />
+                                                <span>{game.online ? '1v1' : 'أوفلاين'}</span>
+                                            </span>
                                         </div>
 
                                         {/* Center: Icon + Title & Desc */}
-                                        <div className="flex items-center gap-3 w-full my-1">
+                                        <div className="flex flex-col items-center text-center my-1 w-full">
                                             <div
-                                                className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform duration-300"
+                                                className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center shrink-0 shadow-md group-hover:scale-110 transition-transform duration-300 mb-1.5"
                                                 style={{
                                                     background: 'color-mix(in srgb, var(--card-accent) 25%, rgba(255,255,255,0.06))',
                                                     border: '1.5px solid color-mix(in srgb, var(--card-accent) 45%, rgba(255,255,255,0.18))',
-                                                    boxShadow: '0 0 20px color-mix(in srgb, var(--card-accent) 35%, transparent)'
+                                                    boxShadow: '0 0 16px color-mix(in srgb, var(--card-accent) 30%, transparent)'
                                                 }}
                                             >
-                                                <GameIcon gameId={game.id} size={24} className="text-[var(--card-accent)]" />
+                                                <GameIcon gameId={game.id} size={22} className="text-[var(--card-accent)]" />
                                             </div>
 
-                                            <div className="flex flex-col text-right overflow-hidden flex-1 min-w-0">
-                                                <h3 className="text-sm sm:text-base font-black text-white group-hover:text-[var(--card-accent)] transition-colors truncate">
-                                                    {game.title}
-                                                </h3>
-                                                <p className="text-[11px] text-white/65 font-medium leading-snug line-clamp-2 mt-0.5">
-                                                    {game.desc}
-                                                </p>
-                                            </div>
+                                            <h3 className="text-xs sm:text-sm font-black text-white group-hover:text-[var(--card-accent)] transition-colors truncate w-full px-0.5">
+                                                {game.title}
+                                            </h3>
+                                            <p className="text-[9px] sm:text-[10px] text-white/50 font-medium truncate w-full px-0.5 mt-0.5">
+                                                {game.desc}
+                                            </p>
                                         </div>
 
-                                        {/* Bottom CTA Action Bar */}
-                                        <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-white/10 w-full">
-                                            <span className="text-[10px] font-bold text-white/40 flex items-center gap-1">
-                                                <Users size={12} className="text-white/40" /> العب مع صديق أو AI
-                                            </span>
-                                            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white/10 group-hover:bg-[var(--card-accent)] group-hover:text-slate-950 text-white font-black text-xs transition-all duration-300 shadow-sm">
+                                        {/* Bottom Action Button */}
+                                        <div className="flex items-center justify-center pt-2 mt-1 border-t border-white/10 w-full">
+                                            <div className="w-full flex items-center justify-center gap-1.5 py-1 rounded-xl bg-white/10 group-hover:bg-[var(--card-accent)] group-hover:text-slate-950 text-white font-black text-[10px] sm:text-xs transition-all duration-300 shadow-sm">
                                                 <span>العب الآن</span>
-                                                <Play size={10} className="fill-current" />
+                                                <Play size={9} className="fill-current" />
                                             </div>
                                         </div>
                                     </button>
@@ -597,8 +590,8 @@ export default function Hub({ setView }) {
                             })}
                         </div>
                     ) : (
-                        /* ── Compact Streamlined List View (1 col mobile, 2-3 cols desktop) ── */
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 w-full">
+                        /* ── List View: 1 full-width column on mobile (stacked), 2-3 cols desktop ── */
+                        <div className="flex flex-col gap-2.5 w-full md:grid md:grid-cols-2 lg:grid-cols-3">
                             {filteredGames.map((game, idx) => (
                                 <button
                                     key={game.id}
@@ -609,7 +602,7 @@ export default function Hub({ setView }) {
                                         borderColor: 'color-mix(in srgb, var(--card-accent) 30%, rgba(255, 255, 255, 0.1))',
                                         animationDelay: `${idx * 20}ms`,
                                     }}
-                                    className="spotlight-card w-full p-3 rounded-2xl border text-right transition-all duration-300 active:scale-[0.99] flex items-center justify-between gap-3 group cursor-pointer"
+                                    className="spotlight-card w-full p-2.5 sm:p-3 rounded-2xl border text-right transition-all duration-300 active:scale-[0.99] flex items-center justify-between gap-3 group cursor-pointer"
                                 >
                                     <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0">
                                         <div
