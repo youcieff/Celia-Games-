@@ -18,11 +18,14 @@ export default class AirHockeyAI {
         this.interval = null;
         this.difficultyLevel = 'medium';
         this.isServingWait = false;
+        // Tracks how many ticks we've been "stuck behind" puck — escape after threshold
+        this._stuckTicks = 0;
+        this._flankDir = 1; // +1 right, -1 left
 
         setTimeout(() => {
             this.conn._sendToPlayer({
                 type: 'global_ready',
-                profile: { nickname: 'بطل الهوكي (AI) 🏒', avatar: 'robot' }
+                profile: { nickname: 'الذكاء الاصطناعي 🤖', avatar: 'robot' }
             });
         }, 500);
 
@@ -40,17 +43,17 @@ export default class AirHockeyAI {
                 if (level === 'easy') {
                     this.conn._sendToPlayer({
                         type: 'profile_update',
-                        profile: { nickname: 'الذكاء (مبتدئ) 🏒', avatar: 'robot' }
+                        profile: { nickname: 'الذكاء الاصطناعي 🤖', avatar: 'robot' }
                     });
                 } else if (level === 'hard') {
                     this.conn._sendToPlayer({
                         type: 'profile_update',
-                        profile: { nickname: 'الأسطورة (محترف) ⚡', avatar: 'robot' }
+                        profile: { nickname: 'الذكاء الاصطناعي 🤖', avatar: 'robot' }
                     });
                 } else {
                     this.conn._sendToPlayer({
                         type: 'profile_update',
-                        profile: { nickname: 'بطل الهوكي (متوسط) 🏒', avatar: 'robot' }
+                        profile: { nickname: 'الذكاء الاصطناعي 🤖', avatar: 'robot' }
                     });
                 }
                 break;
@@ -127,29 +130,51 @@ export default class AirHockeyAI {
             // ── AI HALF: Puck is in AI's court — must attack & clear! ──
             // ══════════════════════════════════════════════════════════
 
-            if (puck.y <= Y_MIN + 6) {
-                // Puck is pinned against or near the top wall/goal line
-                // Mallet sweeps into it from the side and drives forward
+            const paddleOnTopOfPuck =
+                Math.abs(this.paddleX - puck.x) < PADDLE_R + PUCK_R + 5 &&
+                Math.abs(this.paddleY - puck.y) < PADDLE_R + PUCK_R + 5;
+
+            const puckBehindPaddle = puck.y < this.paddleY - 5; // puck above paddle (closer to AI goal)
+
+            if (puck.y <= Y_MIN + 8) {
+                // Puck pinned near top wall — sweep from the side
                 targetX = clamp(puck.x, X_MIN, X_MAX);
-                targetY = Y_MIN + 10;
-            } else if (this.paddleY <= puck.y + 4) {
-                // AI paddle is behind the puck — DRIVE FORWARD TO SMASH IT!
-                // Add aim angle towards opponent corners on medium/hard
+                targetY = Y_MIN + 12;
+                this._stuckTicks = 0;
+
+            } else if (puckBehindPaddle || (paddleOnTopOfPuck && puck.vy >= -0.5)) {
+                // ── ESCAPE: Puck is behind/under us — pressing on it causes freeze!
+                // Flank sideways AWAY from the puck first, then re-engage from front.
+                this._stuckTicks++;
+
+                // After 8 ticks stuck, flip flank direction to avoid wall loop
+                if (this._stuckTicks === 1) {
+                    // Pick flank direction: go to whichever side has more room
+                    const roomRight = X_MAX - puck.x;
+                    const roomLeft  = puck.x - X_MIN;
+                    this._flankDir = roomRight > roomLeft ? 1 : -1;
+                } else if (this._stuckTicks > 20) {
+                    this._flankDir *= -1;
+                    this._stuckTicks = 0;
+                }
+
+                // Move sideways out of collision zone, then pull back above the puck
+                const flankDist = PADDLE_R * 2 + 25;
+                targetX = clamp(puck.x + this._flankDir * flankDist, X_MIN, X_MAX);
+                // Retreat slightly above puck so we have clear approach angle
+                targetY = clamp(puck.y - PADDLE_R - 10, Y_MIN, Y_MAX);
+
+            } else {
+                // ── NORMAL ATTACK: paddle is in front of puck — charge through it!
+                this._stuckTicks = 0;
                 let aimOffset = 0;
                 if (this.difficultyLevel === 'hard') {
                     aimOffset = puck.x < TABLE_W / 2 ? 30 : -30;
                 } else if (this.difficultyLevel === 'medium') {
                     aimOffset = puck.x < TABLE_W / 2 ? 15 : -15;
                 }
-
                 targetX = clamp(puck.x - aimOffset * 0.2, X_MIN, X_MAX);
-                // Drive 30px through the puck to ensure solid collision velocity
-                targetY = clamp(puck.y + 30, Y_MIN, Y_MAX);
-            } else {
-                // Puck slipped behind the AI paddle — quickly flank around it
-                const flankSide = puck.x < TABLE_W / 2 ? 55 : -55;
-                targetX = clamp(puck.x + flankSide, X_MIN, X_MAX);
-                targetY = clamp(puck.y - 25, Y_MIN, Y_MAX);
+                targetY = clamp(puck.y + 35, Y_MIN, Y_MAX);
             }
 
         } else {
