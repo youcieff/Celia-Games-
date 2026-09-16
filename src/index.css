@@ -265,26 +265,23 @@
    Uses mask-image for a silky fade at both edges.
    ================================================ */
 
-/* Outer wrapper: break out of px-4 and span full width */
+/* Outer wrapper: contained smoothly within max-w-lg */
 .hub-scroll-row {
-  /* Negative margin to cancel parent's px-4 (16px) */
-  width: calc(100% + 2rem);    /* 2rem = 2 * 16px */
-  margin-left: -1rem;
-  margin-right: -1rem;
+  width: 100%;
   position: relative;
-  /* Fade mask — left/right edges dissolve smoothly */
+  /* Visual scroll cue: soft gradient fade at the edges */
   -webkit-mask-image: linear-gradient(
     to right,
     transparent 0px,
-    black 28px,
-    black calc(100% - 28px),
+    black 16px,
+    black calc(100% - 16px),
     transparent 100%
   );
   mask-image: linear-gradient(
     to right,
     transparent 0px,
-    black 28px,
-    black calc(100% - 28px),
+    black 16px,
+    black calc(100% - 16px),
     transparent 100%
   );
 }
@@ -296,23 +293,62 @@
   gap: 0.625rem;           /* gap-2.5 */
   overflow-x: auto;
   overflow-y: visible;     /* don't clip shadows */
-  /* Smooth momentum scrolling on iOS */
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
-  /* Snap to start of each child */
   scroll-snap-type: x proximity;
-  /* Hide scrollbar across browsers */
   scrollbar-width: none;
   -ms-overflow-style: none;
-  /* Padding: 16px each side so first/last card has breathing room */
-  padding-left: 1rem;
-  padding-right: 1rem;
-  padding-bottom: 0.5rem;
-  /* Let children breathe vertically (for card shadows) */
-  padding-top: 0.25rem;
+  padding: 0.35rem 0.25rem 0.65rem 0.25rem;
 }
 .hub-scroll-inner::-webkit-scrollbar { display: none; }
 .hub-scroll-inner > * { scroll-snap-align: start; }
+
+/* ================================================
+   HUB SPOTLIGHT FEATURED CARDS
+   ================================================ */
+.spotlight-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.28s ease,
+              border-color 0.28s ease;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+.spotlight-card:hover {
+  transform: translateY(-4px) scale(1.02);
+}
+
+.spotlight-card:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Diagonal reflection sweep on hover */
+.spotlight-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.12),
+    transparent
+  );
+  transform: skewX(-20deg);
+  transition: left 0.75s ease;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.spotlight-card:hover::before {
+  left: 220%;
+}
 
 /* ================================================
    GAME CARD — premium horizontal layout

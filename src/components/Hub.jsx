@@ -11,6 +11,9 @@ import List from 'lucide-react/dist/esm/icons/list';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import X from 'lucide-react/dist/esm/icons/x';
 import Flame from 'lucide-react/dist/esm/icons/flame';
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
+import Play from 'lucide-react/dist/esm/icons/play';
+import Users from 'lucide-react/dist/esm/icons/users';
 
 /* ─── game catalogue ─────────────────────────────────────────────────────── */
 const GAMES = [
@@ -142,12 +145,48 @@ const GAMES = [
 ];
 
 const CATEGORIES = [
-    { id: 'all', label: 'الكل', emoji: '🎮' },
-    { id: 'new', label: 'أحدث الألعاب', emoji: '🔥' },
-    { id: 'action', label: 'سرعة وأكشن', emoji: '⚡' },
-    { id: 'words', label: 'كلمات وفنون', emoji: '🎨' },
-    { id: 'strategy', label: 'ذكاء وتفكير', emoji: '🧠' },
-    { id: 'classics', label: 'كلاسيكيات', emoji: '🎲' }
+    { 
+        id: 'all', 
+        label: 'الكل', 
+        emoji: '🎮', 
+        accent: 'from-sky-500 via-blue-500 to-indigo-600',
+        glow: 'rgba(56, 189, 248, 0.45)'
+    },
+    { 
+        id: 'new', 
+        label: 'أحدث الألعاب', 
+        emoji: '🔥', 
+        accent: 'from-amber-500 via-orange-500 to-rose-500',
+        glow: 'rgba(245, 158, 11, 0.5)'
+    },
+    { 
+        id: 'action', 
+        label: 'سرعة وأكشن', 
+        emoji: '⚡', 
+        accent: 'from-amber-400 via-orange-500 to-yellow-500',
+        glow: 'rgba(251, 191, 36, 0.5)'
+    },
+    { 
+        id: 'words', 
+        label: 'كلمات وفنون', 
+        emoji: '🎨', 
+        accent: 'from-pink-500 via-purple-500 to-rose-500',
+        glow: 'rgba(236, 72, 153, 0.5)'
+    },
+    { 
+        id: 'strategy', 
+        label: 'ذكاء وتفكير', 
+        emoji: '🧠', 
+        accent: 'from-purple-500 via-indigo-500 to-violet-600',
+        glow: 'rgba(168, 85, 247, 0.5)'
+    },
+    { 
+        id: 'classics', 
+        label: 'كلاسيكيات', 
+        emoji: '🎲', 
+        accent: 'from-emerald-400 via-teal-500 to-cyan-600',
+        glow: 'rgba(16, 185, 129, 0.5)'
+    }
 ];
 
 /* ─── online dot indicator ───────────────────────────────────────────────── */
@@ -250,6 +289,17 @@ export default function Hub({ setView }) {
     // Featured games spotlight (top new games)
     const featuredGames = useMemo(() => GAMES.filter(g => g.isNew), []);
 
+    // Dynamic game count per category
+    const categoryCounts = useMemo(() => {
+        const counts = { all: GAMES.length, new: GAMES.filter(g => g.isNew).length };
+        GAMES.forEach(g => {
+            if (g.category) {
+                counts[g.category] = (counts[g.category] || 0) + 1;
+            }
+        });
+        return counts;
+    }, []);
+
     return (
         <>
             {/* Background */}
@@ -336,67 +386,125 @@ export default function Hub({ setView }) {
                     </div>
                 </div>
 
-                {/* ── Category Filter Pills ── */}
-                <div className="hub-scroll-row mb-2">
-                    <div className="hub-scroll-inner">
-                        {CATEGORIES.map(cat => {
-                            const isActive = selectedCategory === cat.id;
-                            return (
-                                <button
-                                    key={cat.id}
-                                    onClick={() => { playSound('click'); setSelectedCategory(cat.id); }}
-                                    className={`px-3 py-1.5 rounded-2xl text-xs font-black transition-all flex items-center gap-1 shrink-0 active:scale-95
-                                        ${isActive
-                                            ? 'bg-[var(--accent)] text-slate-950 shadow-[0_0_15px_var(--accent-glow)] scale-105'
-                                            : 'glass-card border border-white/10 text-white/70 hover:text-white hover:border-white/20'}`}
-                                >
-                                    <span>{cat.emoji}</span>
-                                    <span>{cat.label}</span>
-                                </button>
-                            );
-                        })}
+                {/* ── Category Filter Pills (Aligned with content) ── */}
+                <div className="w-full max-w-lg mb-3">
+                    <div className="hub-scroll-row">
+                        <div className="hub-scroll-inner py-1">
+                            {CATEGORIES.map(cat => {
+                                const isActive = selectedCategory === cat.id;
+                                const count = categoryCounts[cat.id] || 0;
+                                return (
+                                    <button
+                                        key={cat.id}
+                                        onClick={() => { playSound('click'); setSelectedCategory(cat.id); }}
+                                        className={`relative px-3 py-1.5 rounded-2xl text-xs font-black transition-all duration-300 flex items-center gap-1.5 shrink-0 active:scale-95 group cursor-pointer
+                                            ${isActive
+                                                ? `bg-gradient-to-r ${cat.accent} text-white shadow-[0_4px_16px_${cat.glow}] scale-105 ring-1 ring-white/30 z-10`
+                                                : 'glass-card border border-white/10 text-white/75 hover:text-white hover:border-white/20 hover:bg-white/[0.08]'}`}
+                                    >
+                                        <span className="text-sm drop-shadow-sm transition-transform group-hover:scale-110">{cat.emoji}</span>
+                                        <span className="tracking-wide">{cat.label}</span>
+                                        <span
+                                            className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full transition-colors ${
+                                                isActive
+                                                    ? 'bg-black/30 text-white border border-white/20'
+                                                    : 'bg-white/10 text-white/50 group-hover:text-white/80'
+                                            }`}
+                                        >
+                                            {count}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
 
                 {/* ── Featured New Games Horizontal Spotlight (Shown when viewing 'all' and not searching) ── */}
                 {selectedCategory === 'all' && !searchQuery && (
-                    <div className="w-full mb-4">
-                        <div className="flex items-center justify-between px-1 mb-2 max-w-lg">
-                            <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
-                                <Flame size={14} className="text-amber-400 fill-amber-400" />
-                                <span>أحدث الألعاب المضافة</span>
+                    <div className="w-full max-w-lg mb-4">
+                        <div className="flex items-center justify-between px-1 mb-2">
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-[0_0_10px_rgba(245,158,11,0.5)]">
+                                    <Flame size={14} className="fill-current animate-pulse" />
+                                </div>
+                                <div className="flex items-baseline gap-1.5">
+                                    <h2 className="text-xs sm:text-sm font-black text-white tracking-wide">
+                                        أحدث الألعاب المضافة
+                                    </h2>
+                                    <span className="text-[9px] font-bold text-amber-300 bg-amber-400/15 px-1.5 py-0.5 rounded-full border border-amber-400/30">
+                                        {featuredGames.length} ألعاب
+                                    </span>
+                                </div>
                             </div>
-                            <span className="text-[10px] font-bold text-white/40">اسحب للمزيد ◀</span>
+                            <div className="flex items-center gap-1 text-[10px] font-bold text-white/40">
+                                <span>اسحب للتصفح</span>
+                                <ChevronLeft size={12} className="text-white/40" />
+                            </div>
                         </div>
 
                         <div className="hub-scroll-row">
-                            <div className="hub-scroll-inner">
+                            <div className="hub-scroll-inner py-1">
                                 {featuredGames.map(game => (
                                     <button
                                         key={game.id}
                                         onClick={() => handleCardClick(game)}
-                                        style={{ '--card-accent': game.accentVar }}
-                                        className="shrink-0 w-36 glass-card p-3 rounded-3xl border border-white/15 hover:border-[var(--card-accent)] hover:shadow-[0_8px_25px_color-mix(in_srgb,var(--card-accent)_35%,transparent)] transition-all duration-300 active:scale-95 flex flex-col items-center text-center relative group"
+                                        style={{
+                                            '--card-accent': game.accentVar,
+                                            background: 'linear-gradient(135deg, color-mix(in srgb, var(--card-accent) 20%, rgba(15, 23, 42, 0.95)) 0%, rgba(15, 23, 42, 0.9) 100%)',
+                                            borderColor: 'color-mix(in srgb, var(--card-accent) 35%, rgba(255, 255, 255, 0.12))',
+                                            boxShadow: '0 6px 20px -4px color-mix(in srgb, var(--card-accent) 25%, transparent)'
+                                        }}
+                                        className="spotlight-card shrink-0 w-[215px] sm:w-[230px] p-3 rounded-2xl border text-right transition-all duration-300 active:scale-95 flex flex-col justify-between group cursor-pointer"
                                     >
-                                        <span className="absolute top-2 right-2 text-[8px] font-black px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                                            جديد ✨
-                                        </span>
-                                        <div
-                                            className="w-11 h-11 rounded-2xl flex items-center justify-center mb-2 mt-1 transition-transform group-hover:scale-110 shadow-md"
-                                            style={{
-                                                background: 'color-mix(in srgb, var(--card-accent) 18%, rgba(255,255,255,0.05))',
-                                                border: '1px solid color-mix(in srgb, var(--card-accent) 30%, rgba(255,255,255,0.1))',
-                                                boxShadow: '0 0 16px color-mix(in srgb, var(--card-accent) 25%, transparent)'
-                                            }}
-                                        >
-                                            <GameIcon gameId={game.id} size={22} className="text-[var(--card-accent)]" />
+                                        {/* Top Badges */}
+                                        <div className="flex items-center justify-between w-full mb-2">
+                                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/25 to-rose-500/25 border border-amber-400/35 text-amber-300 text-[9px] font-black shadow-sm">
+                                                <Sparkles size={10} className="text-amber-300 animate-pulse" />
+                                                <span>جديد</span>
+                                            </div>
+
+                                            {game.online && (
+                                                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[9px] font-bold">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping mr-0.5" />
+                                                    <span>1v1 مباشر</span>
+                                                </div>
+                                            )}
                                         </div>
-                                        <span className="text-xs font-black text-white group-hover:text-[var(--card-accent)] transition-colors truncate w-full">
-                                            {game.title}
-                                        </span>
-                                        <span className="text-[9px] text-white/40 truncate w-full font-medium mt-0.5">
-                                            {game.desc}
-                                        </span>
+
+                                        {/* Center: Icon + Title & Desc */}
+                                        <div className="flex items-center gap-2.5 w-full my-1">
+                                            <div
+                                                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform duration-300"
+                                                style={{
+                                                    background: 'color-mix(in srgb, var(--card-accent) 25%, rgba(255,255,255,0.06))',
+                                                    border: '1px solid color-mix(in srgb, var(--card-accent) 45%, rgba(255,255,255,0.18))',
+                                                    boxShadow: '0 0 16px color-mix(in srgb, var(--card-accent) 35%, transparent)'
+                                                }}
+                                            >
+                                                <GameIcon gameId={game.id} size={22} className="text-[var(--card-accent)]" />
+                                            </div>
+
+                                            <div className="flex flex-col text-right overflow-hidden flex-1 min-w-0">
+                                                <h3 className="text-xs sm:text-sm font-black text-white group-hover:text-[var(--card-accent)] transition-colors truncate">
+                                                    {game.title}
+                                                </h3>
+                                                <p className="text-[10px] text-white/60 font-medium leading-snug line-clamp-1 mt-0.5">
+                                                    {game.desc}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Bottom CTA Action Bar */}
+                                        <div className="flex items-center justify-between pt-2 mt-1.5 border-t border-white/10 w-full">
+                                            <span className="text-[9px] font-bold text-white/40 flex items-center gap-1">
+                                                <Users size={11} className="text-white/40" /> 1v1 / AI
+                                            </span>
+                                            <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-white/10 group-hover:bg-[var(--card-accent)] group-hover:text-slate-950 text-white font-black text-[10px] transition-all duration-300 shadow-sm">
+                                                <span>العب</span>
+                                                <Play size={8} className="fill-current" />
+                                            </div>
+                                        </div>
                                     </button>
                                 ))}
                             </div>
@@ -413,99 +521,128 @@ export default function Hub({ setView }) {
                             <p className="text-xs text-white/40">جرّب البحث بكلمة أخرى أو تغيير التصنيف</p>
                         </div>
                     ) : viewMode === 'grid' ? (
-                        /* ── Modern 2-Column Responsive Grid View ── */
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                            {filteredGames.map((game, idx) => (
-                                <button
-                                    key={game.id}
-                                    onClick={() => handleCardClick(game)}
-                                    style={{
-                                        '--card-accent': game.accentVar,
-                                        animationDelay: `${idx * 25}ms`,
-                                    }}
-                                    className="group relative flex flex-col items-center text-center p-3.5 rounded-3xl glass-card border border-white/10 hover:border-[var(--card-accent)] hover:shadow-[0_8px_30px_color-mix(in_srgb,var(--card-accent)_35%,transparent)] transition-all duration-300 active:scale-95 overflow-hidden"
-                                >
-                                    {/* Shimmer on hover */}
-                                    <span className="game-card-shimmer" />
-
-                                    {/* Top badges: New + Online */}
-                                    <div className="w-full flex items-center justify-between mb-1">
-                                        <div>
-                                            {game.online && <OnlinePip accentVar={game.accentVar} />}
-                                        </div>
-                                        {game.isNew && (
-                                            <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                                                جديد ✨
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    {/* Game Icon Box with glow */}
-                                    <div
-                                        className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center my-1.5 transition-transform duration-300 group-hover:scale-110 shadow-lg relative"
+                        /* ── Modern Unified Responsive Game Cards Feed ── */
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                            {filteredGames.map((game, idx) => {
+                                const catObj = CATEGORIES.find(c => c.id === game.category);
+                                return (
+                                    <button
+                                        key={game.id}
+                                        onClick={() => handleCardClick(game)}
                                         style={{
-                                            background: 'color-mix(in srgb, var(--card-accent) 16%, rgba(255,255,255,0.04))',
-                                            border: '1px solid color-mix(in srgb, var(--card-accent) 30%, rgba(255,255,255,0.1))',
-                                            boxShadow: '0 0 20px color-mix(in srgb, var(--card-accent) 28%, transparent)'
+                                            '--card-accent': game.accentVar,
+                                            background: 'linear-gradient(135deg, color-mix(in srgb, var(--card-accent) 20%, rgba(15, 23, 42, 0.95)) 0%, rgba(15, 23, 42, 0.9) 100%)',
+                                            borderColor: 'color-mix(in srgb, var(--card-accent) 35%, rgba(255, 255, 255, 0.12))',
+                                            boxShadow: '0 8px 25px -4px color-mix(in srgb, var(--card-accent) 22%, transparent)',
+                                            animationDelay: `${idx * 20}ms`,
                                         }}
+                                        className="spotlight-card w-full p-3.5 rounded-3xl border text-right transition-all duration-300 active:scale-[0.98] flex flex-col justify-between group cursor-pointer"
                                     >
-                                        <GameIcon gameId={game.id} size={26} className="text-[var(--card-accent)]" />
-                                    </div>
+                                        {/* Top Badges Row */}
+                                        <div className="flex items-center justify-between w-full mb-2.5">
+                                            <div className="flex items-center gap-1.5">
+                                                {game.isNew ? (
+                                                    <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500/25 to-rose-500/25 border border-amber-400/35 text-amber-300 text-[10px] font-black shadow-sm">
+                                                        <Sparkles size={11} className="text-amber-300 animate-pulse" />
+                                                        <span>جديد ومميز</span>
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50">
+                                                        {catObj ? `${catObj.emoji} ${catObj.label}` : 'لعبة ممتعة'}
+                                                    </span>
+                                                )}
+                                            </div>
 
-                                    {/* Game Title */}
-                                    <p className="text-xs sm:text-sm font-black text-white group-hover:text-[var(--card-accent)] transition-colors truncate w-full mt-1">
-                                        {game.title}
-                                    </p>
+                                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping mr-0.5" />
+                                                <span>{game.online ? '1v1 مباشر' : 'أوفلاين'}</span>
+                                            </div>
+                                        </div>
 
-                                    {/* Game Description */}
-                                    <p className="text-[10px] text-white/50 truncate w-full font-medium mt-0.5">
-                                        {game.desc}
-                                    </p>
-                                </button>
-                            ))}
+                                        {/* Center: Icon + Title & Desc */}
+                                        <div className="flex items-center gap-3 w-full my-1">
+                                            <div
+                                                className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform duration-300"
+                                                style={{
+                                                    background: 'color-mix(in srgb, var(--card-accent) 25%, rgba(255,255,255,0.06))',
+                                                    border: '1.5px solid color-mix(in srgb, var(--card-accent) 45%, rgba(255,255,255,0.18))',
+                                                    boxShadow: '0 0 20px color-mix(in srgb, var(--card-accent) 35%, transparent)'
+                                                }}
+                                            >
+                                                <GameIcon gameId={game.id} size={24} className="text-[var(--card-accent)]" />
+                                            </div>
+
+                                            <div className="flex flex-col text-right overflow-hidden flex-1 min-w-0">
+                                                <h3 className="text-sm sm:text-base font-black text-white group-hover:text-[var(--card-accent)] transition-colors truncate">
+                                                    {game.title}
+                                                </h3>
+                                                <p className="text-[11px] text-white/65 font-medium leading-snug line-clamp-2 mt-0.5">
+                                                    {game.desc}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Bottom CTA Action Bar */}
+                                        <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-white/10 w-full">
+                                            <span className="text-[10px] font-bold text-white/40 flex items-center gap-1">
+                                                <Users size={12} className="text-white/40" /> العب مع صديق أو AI
+                                            </span>
+                                            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white/10 group-hover:bg-[var(--card-accent)] group-hover:text-slate-950 text-white font-black text-xs transition-all duration-300 shadow-sm">
+                                                <span>العب الآن</span>
+                                                <Play size={10} className="fill-current" />
+                                            </div>
+                                        </div>
+                                    </button>
+                                );
+                            })}
                         </div>
                     ) : (
-                        /* ── Detailed List View ── */
-                        <div className="flex flex-col gap-2">
+                        /* ── Compact Streamlined List View ── */
+                        <div className="flex flex-col gap-2.5">
                             {filteredGames.map((game, idx) => (
                                 <button
                                     key={game.id}
                                     onClick={() => handleCardClick(game)}
-                                    className="game-card group"
                                     style={{
                                         '--card-accent': game.accentVar,
-                                        animationDelay: `${idx * 25}ms`,
+                                        background: 'linear-gradient(135deg, color-mix(in srgb, var(--card-accent) 15%, rgba(15, 23, 42, 0.95)) 0%, rgba(15, 23, 42, 0.9) 100%)',
+                                        borderColor: 'color-mix(in srgb, var(--card-accent) 30%, rgba(255, 255, 255, 0.1))',
+                                        animationDelay: `${idx * 20}ms`,
                                     }}
+                                    className="spotlight-card w-full p-3 rounded-2xl border text-right transition-all duration-300 active:scale-[0.99] flex items-center justify-between gap-3 group cursor-pointer"
                                 >
-                                    <span className="game-card-shimmer" />
-
-                                    <div
-                                        className="game-card-icon flex items-center justify-center"
-                                        style={{
-                                            boxShadow: `0 0 20px color-mix(in srgb, ${game.accentVar} 28%, transparent)`,
-                                        }}
-                                    >
-                                        <GameIcon
-                                            gameId={game.id}
-                                            size={26}
-                                            className="text-[var(--card-accent)] transition-transform duration-300 group-hover:scale-110"
-                                        />
-                                    </div>
-
-                                    <div className="game-card-body">
-                                        <div className="flex items-center gap-2">
-                                            <p className="game-card-title">{game.title}</p>
-                                            {game.isNew && (
-                                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                                                    جديد
-                                                </span>
-                                            )}
+                                    <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0">
+                                        <div
+                                            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform"
+                                            style={{
+                                                background: 'color-mix(in srgb, var(--card-accent) 22%, rgba(255,255,255,0.06))',
+                                                border: '1px solid color-mix(in srgb, var(--card-accent) 40%, rgba(255,255,255,0.15))',
+                                                boxShadow: '0 0 14px color-mix(in srgb, var(--card-accent) 30%, transparent)'
+                                            }}
+                                        >
+                                            <GameIcon gameId={game.id} size={22} className="text-[var(--card-accent)]" />
                                         </div>
-                                        <p className="game-card-desc">{game.desc}</p>
+
+                                        <div className="flex flex-col text-right overflow-hidden flex-1 min-w-0">
+                                            <div className="flex items-center gap-1.5">
+                                                <h3 className="text-sm font-black text-white group-hover:text-[var(--card-accent)] transition-colors truncate">
+                                                    {game.title}
+                                                </h3>
+                                                {game.isNew && (
+                                                    <span className="text-[8px] font-black px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                                                        جديد
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-[10px] text-white/50 truncate font-medium mt-0.5">
+                                                {game.desc}
+                                            </p>
+                                        </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        {game.online && <OnlinePip accentVar={game.accentVar} />}
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 group-hover:bg-[var(--card-accent)] group-hover:text-slate-950 text-white font-black text-xs transition-all duration-300 shrink-0">
+                                        <span>العب</span>
+                                        <Play size={10} className="fill-current" />
                                     </div>
                                 </button>
                             ))}
