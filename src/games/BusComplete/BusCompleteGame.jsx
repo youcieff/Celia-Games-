@@ -31,6 +31,11 @@ const ARABIC_LETTERS = [
     'ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي'
 ];
 
+const ENGLISH_LETTERS = [
+    'A','B','C','D','E','F','G','H','I','J','K','L','M',
+    'N','O','P','Q','R','S','T','U','V','W','X','Y','Z'
+];
+
 const CATEGORIES = [
     { key: 'boy',     label: 'اسم ولد',            Icon: User },
     { key: 'girl',    label: 'اسم بنت',            Icon: Heart },
@@ -43,10 +48,11 @@ const CATEGORIES = [
 
 const EMPTY_ANSWERS = () => Object.fromEntries(CATEGORIES.map(c => [c.key, '']));
 
-const randomLetter = (exclude = '') => {
+const randomLetter = (exclude = '', mode = 'ar') => {
+    const letters = mode === 'en' ? ENGLISH_LETTERS : ARABIC_LETTERS;
     let l;
-    do { l = ARABIC_LETTERS[Math.floor(Math.random() * ARABIC_LETTERS.length)]; }
-    while (l === exclude && ARABIC_LETTERS.length > 1);
+    do { l = letters[Math.floor(Math.random() * letters.length)]; }
+    while (l === exclude && letters.length > 1);
     return l;
 };
 
@@ -61,13 +67,32 @@ const normalizeArabic = (s) => {
         .replace(/[\u064B-\u065F]/g, ''); // strip Arabic tashkeel / diacritics
 };
 
-export const isValidAnswer = (word, targetLetter) => {
+export const isValidAnswer = (word, targetLetter, mode = 'ar') => {
     if (!word || typeof word !== 'string') return { valid: false, reason: 'فارغ' };
     const trimmed = word.trim();
 
     // 1. Length check: Minimum 2 characters (rejects single letter entries)
     if (trimmed.length < 2) {
         return { valid: false, reason: 'أقصر من حرفين' };
+    }
+
+    if (mode === 'en') {
+        const englishOnlyRegex = /^[A-Za-z\s\-]+$/;
+        if (!englishOnlyRegex.test(trimmed)) {
+            return { valid: false, reason: 'حروف غير إنجليزية' };
+        }
+        
+        // Diversity check
+        const cleanLetters = trimmed.replace(/[\s\-]/g, '');
+        if (cleanLetters.length < 2) return { valid: false, reason: 'أقصر من حرفين' };
+        const uniqueChars = new Set(cleanLetters.toUpperCase().split(''));
+        if (uniqueChars.size < 2) return { valid: false, reason: 'حروف مكررة' };
+
+        // Starts with target letter
+        if (trimmed.toUpperCase().startsWith(targetLetter.toUpperCase())) {
+            return { valid: true };
+        }
+        return { valid: false, reason: `لا يبدأ بحرف "${targetLetter}"` };
     }
 
     // 2. Arabic characters only (no numbers, punctuation, english letters)
@@ -106,15 +131,20 @@ export const isValidAnswer = (word, targetLetter) => {
     return { valid: false, reason: `لا يبدأ بحرف "${targetLetter}"` };
 };
 
-const areWordsSame = (word1, word2) => {
+const areWordsSame = (word1, word2, mode = 'ar') => {
     if (!word1 || !word2) return false;
+    if (mode === 'en') {
+        const w1 = word1.trim().toUpperCase();
+        const w2 = word2.trim().toUpperCase();
+        return w1.length > 0 && w1 === w2;
+    }
     const w1 = normalizeArabic(word1).replace(/^ال/, '').replace(/[\s\-]/g, '');
     const w2 = normalizeArabic(word2).replace(/^ال/, '').replace(/[\s\-]/g, '');
     return w1.length > 0 && w1 === w2;
 };
 
 // ── Scoring Logic ──────────────────────────────────────────────────────────
-const calcRoundScores = (myAnswers, oppAnswers, letter, manualOverrides = {}) => {
+const calcRoundScores = (myAnswers, oppAnswers, letter, manualOverrides = {}, mode = 'ar') => {
     let myScore = 0, oppScore = 0;
     const breakdown = {};
 
@@ -122,8 +152,8 @@ const calcRoundScores = (myAnswers, oppAnswers, letter, manualOverrides = {}) =>
         const mine   = (myAnswers?.[cat.key]  || '').trim();
         const theirs = (oppAnswers?.[cat.key] || '').trim();
 
-        const myVal  = isValidAnswer(mine, letter);
-        const oppVal = isValidAnswer(theirs, letter);
+        const myVal  = isValidAnswer(mine, letter, mode);
+        const oppVal = isValidAnswer(theirs, letter, mode);
 
         let mineValid   = myVal.valid;
         let theirsValid = oppVal.valid;
@@ -136,7 +166,7 @@ const calcRoundScores = (myAnswers, oppAnswers, letter, manualOverrides = {}) =>
             theirsValid = manualOverrides[`opp_${cat.key}`];
         }
 
-        const isDup = mineValid && theirsValid && areWordsSame(mine, theirs);
+        const isDup = mineValid && theirsValid && areWordsSame(mine, theirs, mode);
 
         let myPts = 0, oppPts = 0;
         if (isDup) {
@@ -170,9 +200,10 @@ export default function BusCompleteGame({ setView }) {
     const [myProfile]   = useProfile();
     const [oppProfile, setOppProfile] = useState(null);
 
-    // States: lobby → waiting-letter | picking-letter → reveal → playing → review → scoreboard
+    // States: lobby → setup → waiting-letter | picking-letter → reveal → playing → review → scoreboard
     const [gameState, setGameState] = useState('lobby');
     const [letter, setLetter]       = useState('');
+    const [mode, setMode]           = useState('ar'); // 'ar' | 'en'
     const [myAnswers, setMyAnswers] = useState(EMPTY_ANSWERS());
     const [oppAnswers, setOppAnswers] = useState(null);
     const [busCallerName, setBusCallerName] = useState('');
@@ -193,8 +224,10 @@ export default function BusCompleteGame({ setView }) {
     const inputsLockedRef    = useRef(false);
     const oppAnswersRef      = useRef(null);
     const currentLetterRef   = useRef('');
+    const modeRef            = useRef('ar');
     const scoredRoundKeyRef  = useRef('');
     const usedLettersRef     = useRef([]);
+    const onDataRef          = useRef(null);
 
     // Keep refs in sync with state
     useEffect(() => {
@@ -230,8 +263,9 @@ export default function BusCompleteGame({ setView }) {
     };
 
     // ── pick & send a new letter (host only) ─────────────────────────────
-    const pickAndSendLetter = (excludeLetter = '', targetRound = null) => {
-        const l = randomLetter(excludeLetter);
+    const pickAndSendLetter = (excludeLetter = '', targetRound = null, startMode = null) => {
+        const gameMode = startMode || modeRef.current;
+        const l = randomLetter(excludeLetter, gameMode);
         usedLettersRef.current.push(l);
         currentLetterRef.current = l;
         setLetter(l);
@@ -240,6 +274,7 @@ export default function BusCompleteGame({ setView }) {
         connRef.current?.send({
             type: 'start_round',
             letter: l,
+            mode: gameMode,
             scores: { host: scoresRef.current.me, guest: scoresRef.current.opp },
             round: nextR
         });
@@ -261,9 +296,11 @@ export default function BusCompleteGame({ setView }) {
         isHostRef.current = hostMode;
         connRef.current   = conn;
         if (oppProf) setOppProfile(oppProf);
-        conn.on('data', onData);
+        conn.on('data', (msg) => {
+            if (onDataRef.current) onDataRef.current(msg);
+        });
         if (hostMode) {
-            setTimeout(() => pickAndSendLetter(), 800);
+            setGameState('setup');
         } else {
             setGameState('waiting-letter');
         }
@@ -276,6 +313,10 @@ export default function BusCompleteGame({ setView }) {
             case 'start_round':
                 currentLetterRef.current = msg.letter;
                 setLetter(msg.letter);
+                if (msg.mode) {
+                    setMode(msg.mode);
+                    modeRef.current = msg.mode;
+                }
                 resetRound();
                 if (msg.scores) {
                     const syncedScores = {
@@ -369,6 +410,15 @@ export default function BusCompleteGame({ setView }) {
         }
     }, []); // eslint-disable-line
 
+    onDataRef.current = onData;
+
+    // ── Setup (Host) ──────────────────────────────────────────────────────
+    const handleSetupComplete = (selectedMode) => {
+        setMode(selectedMode);
+        modeRef.current = selectedMode;
+        pickAndSendLetter('', 1, selectedMode);
+    };
+
     // ── bus! ──────────────────────────────────────────────────────────────
     const handleCallBus = () => {
         if (inputsLockedRef.current) return;
@@ -391,7 +441,7 @@ export default function BusCompleteGame({ setView }) {
     useEffect(() => {
         if (gameState === 'review' && oppAnswers && currentLetterRef.current) {
             const roundKey = `${currentLetterRef.current}_${round}`;
-            const result = calcRoundScores(myAnswers, oppAnswers, currentLetterRef.current, manualOverrides);
+            const result = calcRoundScores(myAnswers, oppAnswers, currentLetterRef.current, manualOverrides, modeRef.current);
             setMyRoundScore(result.myScore);
             setOppRoundScore(result.oppScore);
             setBreakdown(result.breakdown);
@@ -478,11 +528,11 @@ export default function BusCompleteGame({ setView }) {
         usedLettersRef.current = [];
 
         if (isHostRef.current && isInitiator) {
-            setTimeout(() => pickAndSendLetter('', 1), 600);
+            setGameState('setup');
         } else if (!isHostRef.current && !isInitiator) {
             setGameState('waiting-letter');
         } else if (isHostRef.current && !isInitiator) {
-            setTimeout(() => pickAndSendLetter('', 1), 600);
+            setGameState('setup');
         } else {
             setGameState('waiting-letter');
         }
@@ -524,6 +574,29 @@ export default function BusCompleteGame({ setView }) {
                 {gameState === 'lobby' && (
                     <div className="flex-1 flex pb-16 safe-area-pb">
                         <P2PConnectionManager gameIdPrefix="celia-bus" onGameStart={handleGameStart} />
+                    </div>
+                )}
+
+                {/* Host Setup */}
+                {gameState === 'setup' && (
+                    <div className="flex-1 flex flex-col items-center justify-center animate-fade-in gap-4 px-4">
+                        <div className="glass-card p-8 rounded-3xl text-center w-full max-w-sm">
+                            <h2 className="text-2xl font-black mb-6">اختر اللغة</h2>
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => handleSetupComplete('ar')}
+                                    className="flex-1 p-4 rounded-2xl glow-button font-black border border-white/20"
+                                >
+                                    عربي
+                                </button>
+                                <button
+                                    onClick={() => handleSetupComplete('en')}
+                                    className="flex-1 p-4 rounded-2xl bg-white/10 hover:bg-white/20 font-black border border-white/20 transition-all"
+                                >
+                                    English
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -621,8 +694,8 @@ export default function BusCompleteGame({ setView }) {
                                                 value={currentWord}
                                                 onChange={e => updateMyAnswer(cat.key, e.target.value)}
                                                 disabled={inputsLocked}
-                                                placeholder={`اكتب ${cat.label} بحرف "${letter}"`}
-                                                dir="rtl"
+                                                placeholder={mode === 'en' ? `Write a ${cat.key} starting with "${letter}"` : `اكتب ${cat.label} بحرف "${letter}"`}
+                                                dir={mode === 'en' ? 'ltr' : 'rtl'}
                                                 className="w-full bg-transparent outline-none font-bold text-sm placeholder:opacity-30 disabled:opacity-40"
                                                 maxLength={30}
                                             />

@@ -171,11 +171,15 @@ export default function MemoryGame({ setView }) {
         }
     }, [isGameOver, overallWinner]);
 
+    const onDataRef = useRef(null);
+
     const handleGameStart = (conn, hostMode, oppProf) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         if (oppProf) setOppProfile(oppProf);
-        conn.on('data', onData);
+        conn.on('data', (msg) => {
+            if (onDataRef.current) onDataRef.current(msg);
+        });
         setGameState(hostMode ? 'setup' : 'waiting-start');
     };
 
@@ -194,6 +198,8 @@ export default function MemoryGame({ setView }) {
             doRestart();
         }
     };
+
+    onDataRef.current = onData;
 
     const handleStartGame = () => {
         const { deck, activeKey } = generateDeck(theme);

@@ -47,6 +47,7 @@ export default function QuickDrawGame({ setView }) {
     const [oppScore, setOppScore] = useState(0);
     const [round, setRound] = useState(0);
     const [firstDrawerRole, setFirstDrawerRole] = useState('me'); // 'me' | 'opp'
+    const firstDrawerRoleRef = useRef('me');
     const [isDrawer, setIsDrawer] = useState(false);
     const [currentWord, setCurrentWord] = useState(null);
     const [wordChoices, setWordChoices] = useState([]);
@@ -69,11 +70,15 @@ export default function QuickDrawGame({ setView }) {
     const roundRef = useRef(0);
     const currentWordRef = useRef(null);
 
+    const onDataRef = useRef(null);
+
     const handleGameStart = (conn, hostMode, oppProf) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         if (oppProf) setOppProfile(oppProf);
-        conn.on('data', onData);
+        conn.on('data', (msg) => {
+            if (onDataRef.current) onDataRef.current(msg);
+        });
 
         if (hostMode) {
             // Host chooses who draws first
@@ -87,6 +92,7 @@ export default function QuickDrawGame({ setView }) {
     const chooseFirstDrawer = (choice) => {
         // choice: 'me' | 'opp'
         setFirstDrawerRole(choice);
+        firstDrawerRoleRef.current = choice;
         const peerDrawerRole = choice === 'me' ? 'opp' : 'me';
 
         connRef.current?.send({
@@ -98,7 +104,7 @@ export default function QuickDrawGame({ setView }) {
     };
 
     const startRound = (roundIdx, firstRole) => {
-        const role = firstRole !== undefined ? firstRole : firstDrawerRole;
+        const role = firstRole !== undefined ? firstRole : firstDrawerRoleRef.current;
         // Alternate every round: even round = role, odd round = opposite role
         const imDrawer = roundIdx % 2 === 0 ? (role === 'me') : (role === 'opp');
 
@@ -200,7 +206,17 @@ export default function QuickDrawGame({ setView }) {
         const canvas = canvasRef.current;
         if (!canvas) return;
 
-        const imageData = canvas.toDataURL('image/png');
+        // Create a temporary canvas to apply a solid background before saving as JPEG
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        const tCtx = tempCanvas.getContext('2d');
+        tCtx.fillStyle = '#0f172a'; // Match bg-slate-950 roughly
+        tCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+        tCtx.drawImage(canvas, 0, 0);
+
+        // Compress to JPEG with 0.5 quality to vastly reduce WebRTC payload size
+        const imageData = tempCanvas.toDataURL('image/jpeg', 0.5);
         const word = currentWordRef.current;
 
         connRef.current?.send({
@@ -239,6 +255,7 @@ export default function QuickDrawGame({ setView }) {
         switch (msg.type) {
             case 'init_roles': {
                 setFirstDrawerRole(msg.firstDrawerRole);
+                firstDrawerRoleRef.current = msg.firstDrawerRole;
                 startRound(0, msg.firstDrawerRole);
                 break;
             }
@@ -344,6 +361,8 @@ export default function QuickDrawGame({ setView }) {
                 break;
         }
     }, [oppProfile]);
+
+    onDataRef.current = onData;
 
     const handleGuessSubmit = () => {
         if (!guessInput.trim() || !currentWordRef.current || gameState !== 'guessing') return;
