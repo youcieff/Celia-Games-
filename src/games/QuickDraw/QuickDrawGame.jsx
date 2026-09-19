@@ -60,6 +60,7 @@ export default function QuickDrawGame({ setView }) {
     const [brushSize, setBrushSize] = useState(1);
     const [guessAttemptsLeft, setGuessAttemptsLeft] = useState(3);
     const guessAttemptsRef = useRef(3);
+    const [customWordInput, setCustomWordInput] = useState('');
 
     const canvasRef = useRef(null);
     const isDrawing = useRef(false);
@@ -115,12 +116,11 @@ export default function QuickDrawGame({ setView }) {
         setChatGuesses([]);
         setGuessAttemptsLeft(3);
         guessAttemptsRef.current = 3;
+        setCustomWordInput('');
         clearCanvas();
 
         if (imDrawer) {
-            // I am drawing: pick word first
-            const choices = getRandomWords(3);
-            setWordChoices(choices);
+            // I am drawing: drawer types their word
             setCurrentWord(null);
             currentWordRef.current = null;
             setTimeLeft(DRAW_TIME_SEC);
@@ -599,26 +599,40 @@ export default function QuickDrawGame({ setView }) {
 
             {/* Word Selection (Drawer role) */}
             {gameState === 'word_choice' && isDrawer && (
-                <div className="flex-1 flex items-center justify-center p-4">
+                <div className="flex-1 flex flex-col items-center justify-center p-4">
                     <div className="glass-card max-w-md w-full p-6 rounded-3xl border-2 border-white/15 text-center shadow-2xl animate-pop-in">
                         <span className="text-3xl">🎨</span>
                         <h2 className="text-lg font-black text-white mt-2 mb-1">دورك في الرسم!</h2>
-                        <p className="text-xs text-slate-300 mb-6">اختر كلمة واحدة لترسمها للخصم:</p>
+                        <p className="text-xs text-slate-300 mb-6">اكتب الكلمة التي تريد رسمها ليخمنها الخصم:</p>
 
-                        <div className="flex flex-col gap-3">
-                            {wordChoices.map((w, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => handleWordChoice(w)}
-                                    className="p-4 rounded-2xl glass-card border border-white/15 hover:border-amber-400 hover:bg-amber-500/10 flex items-center justify-between transition-all duration-200 active:scale-95 text-right"
-                                >
-                                    <div>
-                                        <div className="text-base font-black text-white">{w.word}</div>
-                                        <div className="text-xs text-slate-400">{w.category} ({w.word.length} حروف)</div>
-                                    </div>
-                                    <span className="text-2xl">{w.emoji || '🖌️'}</span>
-                                </button>
-                            ))}
+                        <div className="flex flex-col gap-4">
+                            <input
+                                type="text"
+                                value={customWordInput}
+                                onChange={(e) => setCustomWordInput(e.target.value)}
+                                placeholder="مثال: تفاحة، شجرة، قطة..."
+                                dir="rtl"
+                                maxLength={25}
+                                className="w-full bg-white/5 border border-white/20 p-4 rounded-2xl text-center font-black text-xl text-white outline-none focus:border-amber-400 focus:bg-white/10 transition-all"
+                            />
+                            {customWordInput.trim().length > 0 && (
+                                <p className="text-xs text-amber-300 font-bold">
+                                    عدد الحروف: {customWordInput.trim().length}
+                                </p>
+                            )}
+                            
+                            <button
+                                onClick={() => {
+                                    const trimmed = customWordInput.trim();
+                                    if(trimmed.length > 0) {
+                                        handleWordChoice({ word: trimmed, category: 'مخصص' });
+                                    }
+                                }}
+                                disabled={!customWordInput.trim()}
+                                className="w-full py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-lg transition-transform active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                            >
+                                ابدأ الرسم
+                            </button>
                         </div>
                     </div>
                 </div>
