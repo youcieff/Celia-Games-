@@ -14,7 +14,12 @@ import {
     IconAirHockey, IconQuickDraw, IconDominoGame 
 } from './icons/GameIcons';
 
-const genId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
+const genId = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let res = '';
+    for(let i=0; i<4; i++) res += chars[Math.floor(Math.random() * chars.length)];
+    return res;
+};
 
 // Creates a virtual "connection" object that mimics PeerJS API using Firebase
 function createFirebaseConn(roomPath, isHost) {

@@ -569,11 +569,29 @@ export default function GuessTimeGame({ setView }) {
                         {myRole === 'guesser' && (
                             <>
                                 {!hiderFinished ? (
-                                    <div className="glass-card rounded-3xl px-8 py-10 text-center border border-white/10 animate-pulse">
-                                        <Timer size={48} className="mx-auto mb-4 opacity-50" />
-                                        <h2 className="text-xl font-black mb-2">الخصم بيحسب الوقت</h2>
-                                        <p className="opacity-50 text-sm font-bold">ركز معاه عشان تخمن هو وقف بعد كام ثانية...</p>
-                                    </div>
+                                    !isHolding ? (
+                                        <div className="glass-card rounded-3xl px-8 py-10 text-center border border-white/10 animate-pulse">
+                                            <Timer size={48} className="mx-auto mb-4 opacity-50" />
+                                            <h2 className="text-xl font-black mb-2">في انتظار الخصم...</h2>
+                                            <p className="opacity-50 text-sm font-bold">ركز معاه عشان تخمن هو وقف بعد كام ثانية...</p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="glass-card rounded-3xl w-64 h-32 flex items-center justify-center border border-sky-400/20 shadow-2xl">
+                                                {showTimer ? (
+                                                    <span className="text-5xl font-black tracking-widest text-sky-400">
+                                                        {formatTime(elapsed)}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-2xl opacity-40 font-black">الساعة شغالة...</span>
+                                                )}
+                                            </div>
+                                            <div className="glass-card rounded-3xl px-8 py-10 text-center border border-sky-400/20 animate-pulse mt-4">
+                                                <h2 className="text-xl font-black mb-2 text-sky-400">الخصم بيحسب الوقت</h2>
+                                                <p className="opacity-70 text-sm font-bold">ركز في الصوت والعداد...</p>
+                                            </div>
+                                        </>
+                                    )
                                 ) : !guesserFinished ? (
                                     <div className="glass-card rounded-3xl p-6 text-center border border-sky-400/30 animate-pop-in">
                                         <h2 className="text-xl font-black mb-4">الخصم وقّف الساعة!</h2>
