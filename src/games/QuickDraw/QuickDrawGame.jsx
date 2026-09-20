@@ -42,13 +42,11 @@ const COLOR_PALETTE = [
 ];
 
 const SIZES = [
-    { label: 'XS', px: 2 },
-    { label: 'S',  px: 5 },
+    { label: 'S',  px: 4 },
     { label: 'M',  px: 10 },
-    { label: 'L',  px: 18 },
-    { label: 'XL', px: 28 },
-    { label: '2X', px: 42 },
-    { label: '3X', px: 60 },
+    { label: 'L',  px: 20 },
+    { label: 'XL', px: 35 },
+    { label: '2X', px: 50 },
 ];
 
 // ── Tools ──────────────────────────────────────────────────────────────────────
@@ -748,85 +746,89 @@ export default function QuickDrawGame({ setView }) {
 
                     {/* ── DRAWER TOOLS PALETTE ────────────────────────────────────── */}
                     {isDrawer && (
-                        <div className="flex flex-col gap-1.5 shrink-0">
+                        <div className="flex flex-col gap-2 shrink-0">
 
                             {/* Row 1: Recent Colors + Custom Picker */}
-                            <div className="glass-card px-2 py-1.5 rounded-xl border border-white/10 flex items-center gap-2">
-                                <span className="text-[9px] font-black text-slate-500 shrink-0">آخر</span>
-                                {recentColors.map((c, i) => (
-                                    <button key={i} onClick={() => pickColor(c)}
-                                        style={{ backgroundColor: c }}
-                                        className={`w-6 h-6 rounded-full border-2 transition-all shrink-0 ${brushColor === c && activeTool === TOOL_PEN ? 'scale-125 border-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.7)]' : 'border-white/30 hover:scale-110'}`}
-                                    />
-                                ))}
-                                <div className="w-px h-4 bg-white/10 mx-1 shrink-0" />
+                            <div className="glass-card px-3 py-2 rounded-xl border border-white/10 flex items-center justify-between">
+                                <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
+                                    <span className="text-[10px] font-black text-slate-400 shrink-0 uppercase">آخر الألوان</span>
+                                    {recentColors.map((c, i) => (
+                                        <button key={i} onClick={() => pickColor(c)}
+                                            style={{ backgroundColor: c }}
+                                            className={`w-6 h-6 rounded-full border-2 transition-all shrink-0 ${brushColor === c && activeTool === TOOL_PEN ? 'scale-125 border-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.7)]' : 'border-white/30 hover:scale-110'}`}
+                                        />
+                                    ))}
+                                </div>
+                                <div className="w-px h-5 bg-white/10 mx-2 shrink-0" />
                                 {/* Custom color picker */}
-                                <label className="relative w-7 h-7 rounded-full border-2 border-dashed border-white/40 hover:border-amber-400 cursor-pointer overflow-hidden flex items-center justify-center shrink-0 transition-all hover:scale-110">
-                                    <span className="text-sm">🎨</span>
+                                <label className="relative w-8 h-8 rounded-full border-2 border-dashed border-white/40 hover:border-amber-400 cursor-pointer overflow-hidden flex items-center justify-center shrink-0 transition-all hover:scale-110 bg-white/5">
+                                    <span className="text-base drop-shadow-md">🎨</span>
                                     <input type="color" className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
                                         onChange={e => pickColor(e.target.value)} />
                                 </label>
                             </div>
 
-                            {/* Row 2: Full Color Palette Grid */}
-                            <div className="glass-card p-2 rounded-xl border border-white/10">
+                            {/* Row 2: Full Color Palette Grid (Scrollable) */}
+                            <div className="glass-card p-2 rounded-xl border border-white/10 max-h-[110px] overflow-y-auto custom-scrollbar">
                                 {COLOR_PALETTE.map((row, ri) => (
                                     <div key={ri} className="flex gap-1 mb-1 last:mb-0">
                                         {row.map(c => (
                                             <button key={c} onClick={() => pickColor(c)}
                                                 style={{ backgroundColor: c }}
-                                                className={`flex-1 h-5 rounded-md border transition-all ${brushColor === c && activeTool === TOOL_PEN ? 'scale-y-125 border-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.7)]' : 'border-white/10 hover:scale-110 hover:border-white/40'}`}
+                                                className={`flex-1 h-6 rounded-md border transition-all ${brushColor === c && activeTool === TOOL_PEN ? 'border-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.7)] z-10' : 'border-white/10 hover:border-white/40 opacity-90 hover:opacity-100'}`}
                                             />
                                         ))}
                                     </div>
                                 ))}
                             </div>
 
-                            {/* Row 3: Tools + Sizes + Actions */}
-                            <div className="flex items-center gap-1.5 glass-card px-2 py-1.5 rounded-xl border border-white/10">
+                            {/* Row 3: Tools & Actions (Icons only on mobile) */}
+                            <div className="flex items-center justify-between glass-card px-2 py-2 rounded-xl border border-white/10 w-full overflow-hidden">
                                 {/* Tool buttons */}
-                                <button onClick={() => { setActiveTool(TOOL_PEN); activeToolRef.current = TOOL_PEN; }}
-                                    className={`px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${activeTool === TOOL_PEN ? 'bg-amber-500/30 border border-amber-400 text-amber-300' : 'border border-white/10 text-slate-400 hover:text-white'}`}>
-                                    <Paintbrush size={12} /> قلم
-                                </button>
-                                <button onClick={() => { setActiveTool(TOOL_ERASER); activeToolRef.current = TOOL_ERASER; }}
-                                    className={`px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${activeTool === TOOL_ERASER ? 'bg-sky-500/30 border border-sky-400 text-sky-300' : 'border border-white/10 text-slate-400 hover:text-white'}`}>
-                                    <Eraser size={12} /> ممحاة
-                                </button>
-                                <button onClick={() => { setActiveTool(TOOL_FILL); activeToolRef.current = TOOL_FILL; }}
-                                    className={`px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${activeTool === TOOL_FILL ? 'bg-emerald-500/30 border border-emerald-400 text-emerald-300' : 'border border-white/10 text-slate-400 hover:text-white'}`}>
-                                    <Droplets size={12} /> تعبئة
-                                </button>
+                                <div className="flex gap-1">
+                                    <button onClick={() => { setActiveTool(TOOL_PEN); activeToolRef.current = TOOL_PEN; }}
+                                        className={`p-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTool === TOOL_PEN ? 'bg-amber-500/30 border border-amber-400 text-amber-300 shadow-md' : 'border border-transparent text-slate-400 hover:bg-white/5'}`}>
+                                        <Paintbrush size={16} /> <span className="hidden sm:inline">قلم</span>
+                                    </button>
+                                    <button onClick={() => { setActiveTool(TOOL_ERASER); activeToolRef.current = TOOL_ERASER; }}
+                                        className={`p-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTool === TOOL_ERASER ? 'bg-sky-500/30 border border-sky-400 text-sky-300 shadow-md' : 'border border-transparent text-slate-400 hover:bg-white/5'}`}>
+                                        <Eraser size={16} /> <span className="hidden sm:inline">ممحاة</span>
+                                    </button>
+                                    <button onClick={() => { setActiveTool(TOOL_FILL); activeToolRef.current = TOOL_FILL; }}
+                                        className={`p-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${activeTool === TOOL_FILL ? 'bg-emerald-500/30 border border-emerald-400 text-emerald-300 shadow-md' : 'border border-transparent text-slate-400 hover:bg-white/5'}`}>
+                                        <Droplets size={16} /> <span className="hidden sm:inline">تعبئة</span>
+                                    </button>
+                                </div>
 
-                                <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
+                                <div className="w-px h-6 bg-white/10 shrink-0" />
 
-                                {/* Size selector */}
-                                <div className="flex items-center gap-1 flex-1 justify-center">
+                                {/* Undo / Clear */}
+                                <div className="flex gap-1">
+                                    <button onClick={handleUndo} className="p-2 rounded-lg flex items-center justify-center text-slate-400 hover:text-amber-300 hover:bg-white/5 transition-all" title="تراجع">
+                                        <Undo2 size={18} />
+                                    </button>
+                                    <button onClick={clearCanvas} className="p-2 rounded-lg flex items-center justify-center text-rose-400 hover:bg-rose-500/20 transition-all" title="مسح الكل">
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Row 4: Size selector & Send Button */}
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1 flex items-center justify-around glass-card px-2 py-2 rounded-xl border border-white/10">
                                     {SIZES.map((s, idx) => (
                                         <button key={idx} onClick={() => { setBrushSizeIdx(idx); brushSizeIdxRef.current = idx; }}
-                                            className={`flex items-center justify-center rounded-lg transition-all ${brushSizeIdx === idx ? 'bg-white/20 border border-white/50' : 'border border-transparent hover:border-white/20'}`}
-                                            style={{ width: 22, height: 22 }}>
-                                            <span className="rounded-full block bg-white" style={{ width: Math.max(2, s.px * 0.33), height: Math.max(2, s.px * 0.33), maxWidth: 16, maxHeight: 16 }} />
+                                            className={`flex items-center justify-center rounded-full transition-all flex-shrink-0 ${brushSizeIdx === idx ? 'bg-white/20 border border-white/50 shadow-inner' : 'border border-transparent hover:bg-white/10'}`}
+                                            style={{ width: 34, height: 34 }}>
+                                            <span className="rounded-full block bg-white" style={{ width: Math.max(3, s.px * 0.45), height: Math.max(3, s.px * 0.45), maxWidth: 24, maxHeight: 24 }} />
                                         </button>
                                     ))}
                                 </div>
-
-                                <div className="w-px h-5 bg-white/10 mx-0.5 shrink-0" />
-
-                                {/* Undo / Clear */}
-                                <button onClick={handleUndo} className="w-8 h-8 rounded-lg glass-card flex items-center justify-center border border-white/10 text-slate-400 hover:text-amber-300 hover:border-amber-400/50 transition-all" title="تراجع">
-                                    <Undo2 size={14} />
-                                </button>
-                                <button onClick={clearCanvas} className="w-8 h-8 rounded-lg glass-card flex items-center justify-center text-rose-400 hover:bg-rose-500/20 border border-white/10 transition-all" title="مسح الكل">
-                                    <Trash2 size={13} />
+                                <button onClick={handleSendDrawing}
+                                    className="px-6 py-3 h-[50px] bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-sm rounded-xl shadow-xl flex items-center justify-center gap-2 transition-transform active:scale-95 shrink-0">
+                                    <Send size={18} /> <span className="hidden sm:inline">إرسال</span>
                                 </button>
                             </div>
-
-                            {/* Send Drawing Button */}
-                            <button onClick={handleSendDrawing}
-                                className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-sm rounded-2xl shadow-xl flex items-center justify-center gap-2 transition-transform active:scale-95">
-                                <Send size={16} /> إرسال الرسمة للخصم 🚀
-                            </button>
                         </div>
                     )}
 
