@@ -105,16 +105,38 @@ export default function GuessTimeGame({ setView }) {
                 setGameState('playing-roles');
                 playSound('ding');
                 break;
+            case 'hider_started':
+                playSound('stopwatch_start');
+                playHaptic(20);
+                const st = Date.now();
+                setIsHolding(true);
+                setElapsed(0);
+                setShowTimer(true);
+                setTimeout(() => setShowTimer(false), BLIND_DELAY);
+                intervalRef.current = setInterval(() => {
+                    setElapsed(Date.now() - st);
+                }, 30);
+                break;
             case 'hider_done':
+                clearHoldInterval();
+                playSound('stopwatch_stop');
+                playHaptic([30, 20, 50]);
                 setOppResult(msg.elapsed);
+                setElapsed(msg.elapsed);
+                setIsHolding(false);
+                setShowTimer(true);
                 setHiderFinished(true);
                 break;
             case 'guesser_done':
                 setOppResult(msg.guessMs);
                 setGuesserFinished(true);
                 break;
+            case 'opp_started':
+                playSound('stopwatch_start');
+                break;
             case 'opp_result':
                 setOppResult(msg.elapsed);
+                playSound('stopwatch_stop');
                 break;
             case 'restart':
                 doRestart();
@@ -190,6 +212,7 @@ export default function GuessTimeGame({ setView }) {
         intervalRef.current = setInterval(() => {
             setElapsed(Date.now() - holdStartRef.current);
         }, 30);
+        connRef.current?.send({ type: 'opp_started' });
     };
 
     const handleHoldEnd = () => {
@@ -220,6 +243,7 @@ export default function GuessTimeGame({ setView }) {
             intervalRef.current = setInterval(() => {
                 setElapsed(Date.now() - holdStartRef.current);
             }, 30);
+            connRef.current?.send({ type: 'hider_started' });
         } else {
             // Stop
             clearHoldInterval();
