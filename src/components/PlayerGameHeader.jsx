@@ -56,15 +56,13 @@ export default function PlayerGameHeader({
                     <ArrowRight size={18} />
                 </button>
 
-                <div className="flex items-center gap-2 glass-card px-3 py-1.5 rounded-2xl border border-white/10">
-                    <Logo size="mini" />
+                <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
                     {gameId ? (
                         <GameIcon gameId={gameId} size={18} className="text-[var(--accent)]" />
                     ) : gameEmoji && typeof gameEmoji === 'string' && gameEmoji.length > 2 ? (
                         <GameIcon gameId={gameEmoji} size={18} className="text-[var(--accent)]" />
                     ) : null}
-                    <span className="text-xs font-black gradient-text tracking-wide">{title}</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]" />
+                    <span className="text-xs font-black gradient-text">{title}</span>
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
