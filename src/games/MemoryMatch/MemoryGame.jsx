@@ -172,6 +172,9 @@ export default function MemoryGame({ setView }) {
     }, [isGameOver, overallWinner]);
 
     const onDataRef = useRef(null);
+    const activeKeyRef = useRef('');
+    const cardOrderRef = useRef([]);
+    const resendRef = useRef(null);
 
     const handleGameStart = (conn, hostMode, oppProf) => {
         isHostRef.current = hostMode;
@@ -185,13 +188,39 @@ export default function MemoryGame({ setView }) {
 
     const onData = (msg) => {
         if (msg.type === 'start') {
-            setTheme(msg.theme);
-            setActiveThemeName(REALISTIC_THEMES[msg.activeKey]?.name || 'تشكيلة سينمائية');
-            setCards(msg.deck);
+            // Send ACK so host stops retrying
+            connRef.current?.send({ type: 'start_ack' });
+
+            // Reconstruct full deck locally from lightweight cardOrder
+            const activeKey = msg.activeKey;
+            const themeDef = REALISTIC_THEMES[activeKey];
+            const deck = (msg.cardOrder || []).map((cardId, idx) => {
+                const cardDef = themeDef?.cards?.find(c => c.id === cardId) || {};
+                return {
+                    id: idx,
+                    cardId,
+                    title: cardDef.title || '',
+                    gradient: cardDef.gradient || '',
+                    border: cardDef.border || '',
+                    themeKey: activeKey,
+                    isFlipped: false,
+                    isMatched: false
+                };
+            });
+
+            setTheme(msg.theme || activeKey);
+            setActiveThemeName(REALISTIC_THEMES[activeKey]?.name || 'تشكيلة سينمائية');
+            setCards(deck);
             setHostTurn(true);
             setScores({ host: 0, client: 0 });
             setGameState('playing');
             playSound('ding');
+        } else if (msg.type === 'start_ack') {
+            // Guest confirmed receipt — stop retrying
+            if (resendRef.current) {
+                clearInterval(resendRef.current);
+                resendRef.current = null;
+            }
         } else if (msg.type === 'flip') {
             applyFlip(msg.index);
         } else if (msg.type === 'restart') {
@@ -203,13 +232,26 @@ export default function MemoryGame({ setView }) {
 
     const handleStartGame = () => {
         const { deck, activeKey } = generateDeck(theme);
+        // Send only card ID order — tiny payload, guest reconstructs full objects locally
+        const cardOrder = deck.map(c => c.cardId);
+        activeKeyRef.current = activeKey;
+        cardOrderRef.current = cardOrder;
+
         setCards(deck);
         setActiveThemeName(REALISTIC_THEMES[activeKey]?.name || 'تشكيلة سينمائية');
         setHostTurn(true);
         setScores({ host: 0, client: 0 });
         setGameState('playing');
         playSound('ding');
-        connRef.current?.send({ type: 'start', theme, activeKey, deck });
+
+        const doSend = () => {
+            connRef.current?.send({ type: 'start', theme, activeKey, cardOrder });
+        };
+        doSend();
+
+        // Retry every 2s until guest ACKs
+        if (resendRef.current) clearInterval(resendRef.current);
+        resendRef.current = setInterval(doSend, 2000);
     };
 
     const applyFlip = (index) => {

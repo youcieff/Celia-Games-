@@ -6,6 +6,8 @@ import EmotesOverlay from '../../components/EmotesOverlay';
 import Logo from '../../components/Logo';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import Eraser from 'lucide-react/dist/esm/icons/eraser';
+import Undo2 from 'lucide-react/dist/esm/icons/undo-2';
 import Send from 'lucide-react/dist/esm/icons/send';
 import Trophy from 'lucide-react/dist/esm/icons/trophy';
 import Palette from 'lucide-react/dist/esm/icons/palette';
@@ -19,8 +21,12 @@ const DRAW_TIME_SEC = 60;  // 1 minute to draw
 const GUESS_TIME_SEC = 60; // 1 minute to guess
 const WIN_SCORE = 5;      // First to 5 points wins the match!
 
-const COLORS = ['#ffffff', '#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#000000'];
-const SIZES = [3, 7, 14, 24];
+const COLORS = [
+    '#ffffff', '#94a3b8', '#f43f5e', '#f97316',
+    '#eab308', '#22c55e', '#06b6d4', '#3b82f6',
+    '#8b5cf6', '#ec4899', '#000000', '#1e293b',
+];
+const SIZES = [2, 5, 10, 18, 30];
 
 function normalizeArabic(text) {
     if (!text) return '';
@@ -61,6 +67,10 @@ export default function QuickDrawGame({ setView }) {
     const [guessAttemptsLeft, setGuessAttemptsLeft] = useState(3);
     const guessAttemptsRef = useRef(3);
     const [customWordInput, setCustomWordInput] = useState('');
+    const [receivedImageUrl, setReceivedImageUrl] = useState(null);
+    const [isEraser, setIsEraser] = useState(false);
+    const isEraserRef = useRef(false);
+    const canvasHistoryRef = useRef([]);
 
     const canvasRef = useRef(null);
     const isDrawing = useRef(false);
@@ -117,6 +127,10 @@ export default function QuickDrawGame({ setView }) {
         setGuessAttemptsLeft(3);
         guessAttemptsRef.current = 3;
         setCustomWordInput('');
+        setReceivedImageUrl(null);
+        setIsEraser(false);
+        isEraserRef.current = false;
+        canvasHistoryRef.current = [];
         clearCanvas();
 
         if (imDrawer) {
@@ -279,16 +293,8 @@ export default function QuickDrawGame({ setView }) {
                 });
                 currentWordRef.current = { word: msg.word, category: msg.category };
 
-                // Draw image on canvas
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = canvasRef.current;
-                    if (!canvas) return;
-                    const ctx = canvas.getContext('2d');
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                };
-                img.src = msg.imageData;
+                // Store image URL directly — avoids canvas mounting race condition
+                setReceivedImageUrl(msg.imageData || null);
 
                 setTimeLeft(GUESS_TIME_SEC);
                 setGameState('guessing');
@@ -460,6 +466,7 @@ export default function QuickDrawGame({ setView }) {
 
     // ── Canvas Interaction ───────────────────────────────────────────────────
     const clearCanvas = () => {
+        canvasHistoryRef.current = [];
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -494,10 +501,12 @@ export default function QuickDrawGame({ setView }) {
         const from = lastPos.current;
         if (!from) return;
 
-        ctx.strokeStyle = brushColor;
+        // Eraser paints with bg color; drawing uses selected color
+        ctx.strokeStyle = isEraserRef.current ? '#0f172a' : brushColor;
         ctx.lineWidth = SIZES[brushSize];
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
+        ctx.globalCompositeOperation = 'source-over';
         ctx.beginPath();
         ctx.moveTo(from.x, from.y);
         ctx.lineTo(pos.x, pos.y);
@@ -507,9 +516,30 @@ export default function QuickDrawGame({ setView }) {
     }, [isDrawer, gameState, brushColor, brushSize]);
 
     const endDraw = useCallback(() => {
+        if (isDrawing.current && canvasRef.current) {
+            // Save canvas snapshot for undo (up to 15 steps)
+            const canvas = canvasRef.current;
+            const ctx = canvas.getContext('2d');
+            const snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            canvasHistoryRef.current.push(snapshot);
+            if (canvasHistoryRef.current.length > 15) canvasHistoryRef.current.shift();
+        }
         isDrawing.current = false;
         lastPos.current = null;
     }, []);
+
+    const handleUndo = () => {
+        const canvas = canvasRef.current;
+        if (!canvas || canvasHistoryRef.current.length === 0) return;
+        canvasHistoryRef.current.pop(); // discard current
+        const ctx = canvas.getContext('2d');
+        if (canvasHistoryRef.current.length > 0) {
+            ctx.putImageData(canvasHistoryRef.current[canvasHistoryRef.current.length - 1], 0, 0);
+        } else {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+    };
 
     const handleRematch = () => {
         connRef.current?.send({ type: 'rematch' });
@@ -517,6 +547,10 @@ export default function QuickDrawGame({ setView }) {
         oppScoreRef.current = 0;
         setMyScore(0);
         setOppScore(0);
+        setReceivedImageUrl(null);
+        setIsEraser(false);
+        isEraserRef.current = false;
+        canvasHistoryRef.current = [];
         setGameState('role_select');
     };
 
@@ -720,62 +754,120 @@ export default function QuickDrawGame({ setView }) {
 
                     {/* Canvas Area */}
                     <div className="relative my-2 rounded-2xl overflow-hidden border-2 border-white/15 shadow-2xl bg-slate-900">
-                        <canvas
-                            ref={canvasRef}
-                            width={600}
-                            height={450}
-                            className={`w-full aspect-[4/3] block bg-slate-950 ${isDrawer ? 'cursor-crosshair touch-none' : 'cursor-default'}`}
-                            onMouseDown={startDraw}
-                            onMouseMove={doDraw}
-                            onMouseUp={endDraw}
-                            onMouseLeave={endDraw}
-                            onTouchStart={startDraw}
-                            onTouchMove={doDraw}
-                            onTouchEnd={endDraw}
-                        />
+                        {isDrawer ? (
+                            <canvas
+                                ref={canvasRef}
+                                width={600}
+                                height={450}
+                                className="w-full aspect-[4/3] block bg-slate-950 cursor-crosshair touch-none"
+                                onMouseDown={startDraw}
+                                onMouseMove={doDraw}
+                                onMouseUp={endDraw}
+                                onMouseLeave={endDraw}
+                                onTouchStart={startDraw}
+                                onTouchMove={doDraw}
+                                onTouchEnd={endDraw}
+                            />
+                        ) : receivedImageUrl ? (
+                            <img
+                                src={receivedImageUrl}
+                                alt="الرسمة"
+                                className="w-full aspect-[4/3] block object-cover bg-slate-950"
+                            />
+                        ) : (
+                            <div className="w-full aspect-[4/3] bg-slate-950 flex flex-col items-center justify-center gap-3 text-slate-500">
+                                <span className="text-3xl animate-pulse">🎨</span>
+                                <span className="text-xs font-bold">جاري إرسال الرسمة...</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Drawer Tools Palette */}
                     {isDrawer && (
                         <div className="flex flex-col gap-2">
-                            <div className="flex items-center justify-between glass-card p-2 rounded-2xl border border-white/10">
-                                {/* Colors */}
+
+                            {/* Color Palette Row */}
+                            <div className="glass-card p-2 rounded-2xl border border-white/10">
                                 <div className="flex items-center gap-1.5 overflow-x-auto">
                                     {COLORS.map(c => (
                                         <button
                                             key={c}
-                                            onClick={() => setBrushColor(c)}
+                                            onClick={() => { setBrushColor(c); setIsEraser(false); isEraserRef.current = false; }}
                                             style={{ backgroundColor: c }}
-                                            className={`w-6 h-6 rounded-full border border-white/30 transition-transform ${brushColor === c ? 'scale-125 ring-2 ring-amber-400' : 'hover:scale-110'}`}
+                                            className={`w-7 h-7 shrink-0 rounded-full border-2 transition-all ${
+                                                brushColor === c && !isEraser
+                                                    ? 'scale-125 border-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]'
+                                                    : 'border-white/20 hover:scale-110'
+                                            }`}
                                         />
                                     ))}
                                 </div>
+                            </div>
 
-                                {/* Brush sizes & clear */}
-                                <div className="flex items-center gap-2 shrink-0">
+                            {/* Controls Row: sizes + tools */}
+                            <div className="flex items-center gap-2 glass-card p-2 rounded-2xl border border-white/10">
+                                {/* Brush Sizes */}
+                                <div className="flex items-center gap-1.5 flex-1">
                                     {SIZES.map((s, idx) => (
                                         <button
                                             key={s}
                                             onClick={() => setBrushSize(idx)}
-                                            className={`w-6 h-6 rounded-lg flex items-center justify-center glass-card border transition-all ${brushSize === idx ? 'border-amber-400 bg-amber-500/20 text-amber-300' : 'border-white/10 text-slate-400'}`}
+                                            className={`w-7 h-7 rounded-lg flex items-center justify-center glass-card border transition-all ${
+                                                brushSize === idx && !isEraser
+                                                    ? 'border-amber-400 bg-amber-500/20'
+                                                    : 'border-white/10'
+                                            }`}
                                         >
-                                            <span style={{ width: s / 2, height: s / 2 }} className="rounded-full bg-current block" />
+                                            <span
+                                                style={{ width: Math.max(2, s * 0.38), height: Math.max(2, s * 0.38) }}
+                                                className="rounded-full bg-white block"
+                                            />
                                         </button>
                                     ))}
-                                    <button
-                                        onClick={clearCanvas}
-                                        className="w-7 h-7 rounded-lg glass-card flex items-center justify-center text-rose-400 hover:bg-rose-500/20 border border-white/10"
-                                        title="مسح اللوحة"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
                                 </div>
+
+                                <div className="w-px h-5 bg-white/10 shrink-0" />
+
+                                {/* Eraser */}
+                                <button
+                                    onClick={() => {
+                                        const next = !isEraser;
+                                        setIsEraser(next);
+                                        isEraserRef.current = next;
+                                    }}
+                                    className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all ${
+                                        isEraser
+                                            ? 'border-sky-400 bg-sky-500/20 text-sky-300'
+                                            : 'border-white/10 text-slate-400 hover:text-white glass-card'
+                                    }`}
+                                    title="ممحاة"
+                                >
+                                    <Eraser size={15} />
+                                </button>
+
+                                {/* Undo */}
+                                <button
+                                    onClick={handleUndo}
+                                    className="w-8 h-8 rounded-lg glass-card flex items-center justify-center border border-white/10 text-slate-400 hover:text-amber-300 hover:border-amber-400/50 transition-all"
+                                    title="تراجع"
+                                >
+                                    <Undo2 size={15} />
+                                </button>
+
+                                {/* Clear */}
+                                <button
+                                    onClick={clearCanvas}
+                                    className="w-8 h-8 rounded-lg glass-card flex items-center justify-center text-rose-400 hover:bg-rose-500/20 border border-white/10 transition-all"
+                                    title="مسح الكل"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
                             </div>
 
-                            {/* Send Drawing Button (Outside Canvas) */}
+                            {/* Send Drawing Button */}
                             <button
                                 onClick={handleSendDrawing}
-                                className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-sm rounded-2xl shadow-xl flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer mt-0.5"
+                                className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-sm rounded-2xl shadow-xl flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer"
                             >
                                 <Send size={16} /> إرسال الرسمة للخصم 🚀
                             </button>
