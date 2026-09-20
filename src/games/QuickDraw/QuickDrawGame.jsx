@@ -21,7 +21,7 @@ const DRAW_TIME_SEC = 60;
 const GUESS_TIME_SEC = 60;
 const WIN_SCORE = 5;
 const CANVAS_W = 800;
-const CANVAS_H = 600;
+const CANVAS_H = 800;
 
 // ── 50+ Premium Colors ────────────────────────────────────────────────────────
 const COLOR_PALETTE = [
@@ -706,42 +706,44 @@ export default function QuickDrawGame({ setView }) {
                         </div>
                     </div>
 
-                    {/* Canvas */}
-                    <div className="relative flex-1 min-h-0 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl"
-                         style={{ background: 'white' }}>
-                        {isDrawer ? (
-                            <canvas
-                                ref={canvasRef}
-                                width={CANVAS_W}
-                                height={CANVAS_H}
-                                className={`w-full h-full block touch-none ${activeTool === TOOL_FILL ? 'cursor-cell' : activeTool === TOOL_ERASER ? 'cursor-grab' : 'cursor-crosshair'}`}
-                                style={{ background: 'white' }}
-                                onMouseDown={startDraw}
-                                onMouseMove={doDraw}
-                                onMouseUp={endDraw}
-                                onMouseLeave={endDraw}
-                                onTouchStart={startDraw}
-                                onTouchMove={doDraw}
-                                onTouchEnd={endDraw}
-                            />
-                        ) : receivedImageUrl ? (
-                            <img src={receivedImageUrl} alt="الرسمة" className="w-full h-full object-contain bg-white" />
-                        ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-slate-400 bg-white">
-                                <span className="text-4xl animate-pulse">🎨</span>
-                                <span className="text-sm font-bold">جاري إرسال الرسمة...</span>
-                            </div>
-                        )}
-
-                        {/* Active tool indicator badge */}
-                        {isDrawer && (
-                            <div className="absolute top-2 right-2 pointer-events-none">
-                                <div className="glass-card px-2 py-1 rounded-lg text-[10px] font-black border border-white/20"
-                                     style={{ color: activeTool === TOOL_PEN ? brushColor : activeTool === TOOL_ERASER ? '#60a5fa' : '#4ade80' }}>
-                                    {activeTool === TOOL_PEN ? '🖊 قلم' : activeTool === TOOL_ERASER ? '⬜ ممحاة' : '🪣 تعبئة'} | {SIZES[brushSizeIdx].px}px
+                    {/* Canvas Container */}
+                    <div className="flex-1 min-h-0 w-full flex items-center justify-center">
+                        <div className="relative w-full aspect-square rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl bg-white shrink-0"
+                             style={{ maxWidth: 'min(100%, 62vh)' }}>
+                            {isDrawer ? (
+                                <canvas
+                                    ref={canvasRef}
+                                    width={CANVAS_W}
+                                    height={CANVAS_H}
+                                    className={`w-full h-full block touch-none ${activeTool === TOOL_FILL ? 'cursor-cell' : activeTool === TOOL_ERASER ? 'cursor-grab' : 'cursor-crosshair'}`}
+                                    style={{ background: 'white' }}
+                                    onMouseDown={startDraw}
+                                    onMouseMove={doDraw}
+                                    onMouseUp={endDraw}
+                                    onMouseLeave={endDraw}
+                                    onTouchStart={startDraw}
+                                    onTouchMove={doDraw}
+                                    onTouchEnd={endDraw}
+                                />
+                            ) : receivedImageUrl ? (
+                                <img src={receivedImageUrl} alt="الرسمة" className="w-full h-full object-cover bg-white" />
+                            ) : (
+                                <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-slate-400 bg-white">
+                                    <span className="text-4xl animate-pulse">🎨</span>
+                                    <span className="text-sm font-bold">جاري إرسال الرسمة...</span>
                                 </div>
-                            </div>
-                        )}
+                            )}
+
+                            {/* Active tool indicator badge */}
+                            {isDrawer && (
+                                <div className="absolute top-2 right-2 pointer-events-none">
+                                    <div className="glass-card px-2 py-1 rounded-lg text-[10px] font-black border border-slate-200/50 shadow-md bg-white/80 backdrop-blur-md"
+                                         style={{ color: activeTool === TOOL_PEN ? brushColor : activeTool === TOOL_ERASER ? '#3b82f6' : '#16a34a' }}>
+                                        {activeTool === TOOL_PEN ? '🖊 قلم' : activeTool === TOOL_ERASER ? '⬜ ممحاة' : '🪣 تعبئة'} | {SIZES[brushSizeIdx].px}px
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* ── DRAWER TOOLS PALETTE ────────────────────────────────────── */}
