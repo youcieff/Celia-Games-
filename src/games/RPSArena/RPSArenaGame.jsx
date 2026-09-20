@@ -4,6 +4,7 @@ import PlayerGameHeader from '../../components/PlayerGameHeader';
 import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
 import EmotesOverlay from '../../components/EmotesOverlay';
 import Logo from '../../components/Logo';
+import { IconRPSArena } from '../../components/icons/GameIcons';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Shield from 'lucide-react/dist/esm/icons/shield';
 import Zap from 'lucide-react/dist/esm/icons/zap';
@@ -274,7 +275,12 @@ export default function RPSArenaGame({ setView }) {
                 <div className="min-h-dvh max-w-lg mx-auto px-4 flex flex-col safe-area-pt overflow-x-hidden overflow-y-auto pb-6">
                     <div className="grid grid-cols-3 items-center py-4 mb-2">
                         <div><Logo size="small" /></div>
-                        <div className="flex justify-center"><span className="text-sm font-black opacity-70">حجر ورقة مقص</span></div>
+                        <div className="flex justify-center">
+                            <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
+                                <IconRPSArena size={18} className="text-[var(--accent)]" />
+                                <span className="text-xs font-black gradient-text">حجرة ورقة مقص</span>
+                            </div>
+                        </div>
                         <div className="flex justify-end"><button onClick={() => { connRef.current?.close?.(); setView('hub'); }} className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 active:scale-95 transition-transform text-white/90">الرئيسية</button></div>
                     </div>
 

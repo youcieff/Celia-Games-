@@ -4,6 +4,7 @@ import PlayerGameHeader from '../../components/PlayerGameHeader';
 import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
 import EmotesOverlay from '../../components/EmotesOverlay';
 import Logo from '../../components/Logo';
+import { IconTriviaDuel } from '../../components/icons/GameIcons';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Check from 'lucide-react/dist/esm/icons/check';
 import X from 'lucide-react/dist/esm/icons/x';
@@ -251,7 +252,12 @@ export default function TriviaGame({ setView }) {
                 ) : (
                     <div className="grid grid-cols-3 items-center py-4 mb-4">
                         <div><Logo size="small" /></div>
-                        <div className="flex justify-center"><span className="text-sm font-black opacity-70">حرب المعلومات</span></div>
+                        <div className="flex justify-center">
+                            <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
+                                <IconTriviaDuel size={18} className="text-[var(--accent)]" />
+                                <span className="text-xs font-black gradient-text">حرب المعلومات</span>
+                            </div>
+                        </div>
                         <div className="flex justify-end"><button onClick={() => setView('hub')} className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 transition-transform">الرئيسية</button></div>
                     </div>
                 )}

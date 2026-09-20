@@ -380,25 +380,8 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
         );
     }
 
-    // ── LOBBY STATE ────────────────────────────────────────────────────────────
     return (
         <div className="flex flex-col items-center justify-start w-full max-w-sm mx-auto gap-4 pt-2">
-            {typeof document !== 'undefined' && gameInfoMap[gameIdPrefix] && createPortal(
-                <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] pointer-events-none transition-all animate-pop-in">
-                    <div className="flex items-center gap-1.5 glass-card px-3.5 py-1.5 rounded-full border border-white/10 shadow-lg backdrop-blur-md">
-                        {(() => {
-                            const { name, Icon } = gameInfoMap[gameIdPrefix];
-                            return (
-                                <>
-                                    <Icon size={18} className="text-[var(--accent)] drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]" />
-                                    <span className="font-black text-xs gradient-text whitespace-nowrap">{name}</span>
-                                </>
-                            );
-                        })()}
-                    </div>
-                </div>,
-                document.body
-            )}
 
             {/* ── Your room code ── */}
             <div className="lobby-ticket w-full">

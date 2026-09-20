@@ -15,7 +15,7 @@ import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
 import MatchRecapModal from '../../components/MatchRecapModal';
 import { triggerVictoryEffects, triggerDefeatEffects } from '../../lib/effectsEngine';
 import useProfile from '../../hooks/useProfile';
-import { IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
+import {  IconTarget, IconHourglass, IconTrophy , IconSeaBattle } from '../../components/icons/GameIcons';
 
 const SIZE = 8;
 const TOTAL_HEALTH = 11;
@@ -392,7 +392,12 @@ export default function SeaBattleGame({ setView }) {
                 {gameState === 'lobby' && (
                     <div className="px-4 grid grid-cols-3 items-center py-4 mb-2">
                         <div><Logo size="small" /></div>
-                        <div className="flex justify-center"><span className="text-sm font-black opacity-70">حرب الغواصات</span></div>
+                        <div className="flex justify-center">
+                            <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
+                                <IconSeaBattle size={18} className="text-[var(--accent)]" />
+                                <span className="text-xs font-black gradient-text">حرب الغواصات</span>
+                            </div>
+                        </div>
                         <div className="flex justify-end"><button onClick={() => setView('hub')} className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 transition-transform">الرئيسية</button></div>
                     </div>
                 )}
