@@ -364,9 +364,8 @@ export default function DotsBoxesGame({ setView }) {
                             <div className="flex flex-col items-center justify-center shrink-0">
                                 {!isGameOver ? (
                                     <span
-                                        className={`text-xs font-black px-3 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${
-                                            isMyTurn ? 'bg-white/20 text-white shadow-md' : 'opacity-70 text-white/90'
-                                        }`}
+                                        className={`text-xs font-black px-3 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${isMyTurn ? 'bg-white/20 text-white shadow-md' : 'opacity-70 text-white/90'
+                                            }`}
                                         style={isMyTurn ? { backgroundColor: myColorObj?.hex, boxShadow: `0 0 16px ${myColorObj?.glow}` } : {}}
                                     >
                                         {isMyTurn ? (
@@ -474,13 +473,12 @@ export default function DotsBoxesGame({ setView }) {
                                                     }}
                                                 >
                                                     <div
-                                                        className={`w-[82%] h-[6px] rounded-full transition-all duration-300 ${
-                                                            lineHolder
+                                                        className={`w-[82%] h-[6px] rounded-full transition-all duration-300 ${lineHolder
                                                                 ? 'scale-100 opacity-100'
                                                                 : canClick
                                                                     ? 'bg-white/20 group-hover:bg-white/70 group-active:scale-105 group-hover:shadow-[0_0_8px_rgba(255,255,255,0.6)]'
                                                                     : 'bg-white/10'
-                                                        }`}
+                                                            }`}
                                                         style={lineHolder ? { backgroundColor: lColor.hex, boxShadow: `0 0 12px ${lColor.glow}, 0 0 4px ${lColor.hex}` } : {}}
                                                     />
                                                 </div>
@@ -507,13 +505,12 @@ export default function DotsBoxesGame({ setView }) {
                                                     }}
                                                 >
                                                     <div
-                                                        className={`w-[6px] h-[82%] rounded-full transition-all duration-300 ${
-                                                            lineHolder
+                                                        className={`w-[6px] h-[82%] rounded-full transition-all duration-300 ${lineHolder
                                                                 ? 'scale-100 opacity-100'
                                                                 : canClick
                                                                     ? 'bg-white/20 group-hover:bg-white/70 group-active:scale-105 group-hover:shadow-[0_0_8px_rgba(255,255,255,0.6)]'
                                                                     : 'bg-white/10'
-                                                        }`}
+                                                            }`}
                                                         style={lineHolder ? { backgroundColor: lColor.hex, boxShadow: `0 0 12px ${lColor.glow}, 0 0 4px ${lColor.hex}` } : {}}
                                                     />
                                                 </div>
