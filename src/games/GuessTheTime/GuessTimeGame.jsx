@@ -302,16 +302,28 @@ export default function GuessTimeGame({ setView }) {
         }
     }, [myResult, oppResult, bothDone, gameMode, hiderFinished, guesserFinished]); // eslint-disable-line
 
-    const doRestart = () => {
+    const doRestart = useCallback(() => {
         resetRound();
         setGameState(isHostRef.current ? 'picking-mode' : 'waiting-settings');
-    };
+    }, []); // eslint-disable-line
 
-    const handleRestart = () => {
+    const handleRestart = useCallback(() => {
         playSound('click');
         connRef.current?.send({ type: 'restart' });
         doRestart();
-    };
+    }, [doRestart]);
+
+    // Auto-restart after 5 seconds on result screens
+    useEffect(() => {
+        if (isHostRef.current && (gameState === 'result-target' || gameState === 'result-roles')) {
+            const timer = setTimeout(() => {
+                connRef.current?.send({ type: 'restart' });
+                doRestart();
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [gameState, doRestart]);
+
 
     const isMyTurn = gameState.startsWith('playing');
 
