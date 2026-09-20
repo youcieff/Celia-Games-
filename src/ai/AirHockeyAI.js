@@ -136,11 +136,21 @@ export default class AirHockeyAI {
 
             const puckBehindPaddle = puck.y < this.paddleY - 5; // puck above paddle (closer to AI goal)
 
-            if (puck.y <= Y_MIN + 8) {
-                // Puck pinned near top wall — sweep from the side
-                targetX = clamp(puck.x, X_MIN, X_MAX);
-                targetY = Y_MIN + 12;
-                this._stuckTicks = 0;
+            if (puck.y <= Y_MIN + 12) {
+                // Puck pinned near top wall — wiggle and sweep horizontally to dislodge it!
+                this._stuckTicks++;
+                const sweepPhase = Math.floor(this._stuckTicks / 15) % 2 === 0;
+
+                if (puck.x > TABLE_W / 2) {
+                    // Top-right corner
+                    targetX = sweepPhase ? X_MAX : Math.max(X_MIN, puck.x - 80);
+                    targetY = puck.y + 36; // Brush from below
+                } else {
+                    // Top-left corner
+                    targetX = sweepPhase ? X_MIN : Math.min(X_MAX, puck.x + 80);
+                    targetY = puck.y + 36;
+                }
+
 
             } else if (puckBehindPaddle || (paddleOnTopOfPuck && puck.vy >= -0.5)) {
                 // ── ESCAPE: Puck is behind/under us — pressing on it causes freeze!

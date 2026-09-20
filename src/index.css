@@ -185,17 +185,7 @@
 
 /* centre micro-orb */
 .bg-orb-3 {
-  position: absolute;
-  width: 320px;
-  height: 320px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
-  top: 40%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0.05;
-  animation: float-orb-3 16s ease-in-out infinite;
-  transition: background var(--theme-transition);
+  display: none;
 }
 
 @keyframes float-orb-1 {

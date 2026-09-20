@@ -203,7 +203,7 @@ export default function Connect4Game({ setView }) {
                         <div><Logo size="small" /></div>
                         <div className="flex justify-center">
                             <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
-                                <IconConnect size={18} className="text-[var(--accent)]" />
+                                <IconConnect4 size={18} className="text-[var(--accent)]" />
                                 <span className="text-xs font-black gradient-text">أربعة في صف</span>
                             </div>
                         </div>

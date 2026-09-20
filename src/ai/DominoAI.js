@@ -21,6 +21,7 @@ export default class DominoAI {
 
         switch (msg.type) {
             case 'init_dominoes':
+                this.conn._sendToPlayer({ type: 'dominoes_ack' });
                 this.hand = [...(msg.peerHand || [])];
                 this.boardChain = [];
                 this.boneyardCount = msg.boneyardCount !== undefined ? msg.boneyardCount : 14;

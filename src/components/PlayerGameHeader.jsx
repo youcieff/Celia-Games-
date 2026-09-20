@@ -104,12 +104,6 @@ export default function PlayerGameHeader({
                         <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden border border-white/10">
                             <AvatarDisplay avatarId={myProfile.avatar} size={28} />
                         </div>
-                        {(simultaneous || isMyTurn) && (
-                            <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-75" />
-                                <span className="relative inline-flex rounded-full h-3 w-3 bg-[var(--accent)]" />
-                            </span>
-                        )}
                     </div>
                     <div className="flex flex-col min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1">
@@ -143,12 +137,6 @@ export default function PlayerGameHeader({
                         <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden border border-white/10">
                             <AvatarDisplay avatarId={opp.avatar} size={28} />
                         </div>
-                        {(simultaneous || !isMyTurn) && (
-                            <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75" />
-                                <span className="relative inline-flex rounded-full h-3 w-3 bg-sky-500" />
-                            </span>
-                        )}
                     </div>
                     <div className="flex flex-col min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1">

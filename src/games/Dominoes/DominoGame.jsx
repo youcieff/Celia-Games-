@@ -388,6 +388,33 @@ export default function DominoGame({ setView }) {
         return myHand.some(t => canPlayTile(t));
     }, [myHand, canPlayTile]);
 
+    // Auto-pass: when it's my turn, I have no valid moves, and boneyard is empty → pass automatically
+    useEffect(() => {
+        if (gameState !== 'playing') return;
+        if (!isMyTurn) return;
+        if (boneyard.length > 0) return; // still can draw
+        if (myHand.some(t => canPlayTile(t))) return; // still can play
+        if (myHand.length === 0) return; // game already ending
+
+        // Short delay so UI shows "your turn" then auto-passes
+        const timer = setTimeout(() => {
+            playSound('tick');
+            consecutivePassesRef.current += 1;
+            connRef.current?.send({
+                type: 'pass_turn',
+                oppTiles: myHandRef.current,
+                remainingTilesSum: myHandRef.current.reduce((acc, t) => acc + t.sum, 0)
+            });
+            if (consecutivePassesRef.current >= 2) {
+                handleBlockedGame([]);
+            } else {
+                setCurrentTurn(isHostRef.current ? 'peer' : 'host');
+            }
+        }, 800);
+        return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isMyTurn, boneyard.length, myHand, gameState]);
+
     const handleGameStart = (conn, hostMode, oppProf) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
@@ -521,6 +548,8 @@ export default function DominoGame({ setView }) {
                 break;
 
             case 'play_tile': {
+                // Only reset consecutive passes when opponent plays — NOT when we play
+                // (we reset it in executePlay on our own turn)
                 consecutivePassesRef.current = 0;
                 const { tile, newChain } = msg;
                 if (!rootTileIdRef.current && newChain && newChain.length === 1) {
