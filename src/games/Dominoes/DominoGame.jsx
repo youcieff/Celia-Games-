@@ -363,6 +363,7 @@ export default function DominoGame({ setView }) {
     const myMatchScoreRef = useRef(0);
     const oppMatchScoreRef = useRef(0);
     const roundNumRef = useRef(1);
+    const lastRoundWinnerRef = useRef(null); // 'host' | 'peer' | null — winner goes first next round
 
     const isMyTurn = (isHostRef.current && currentTurn === 'host') || (!isHostRef.current && currentTurn === 'peer');
 
@@ -401,6 +402,7 @@ export default function DominoGame({ setView }) {
         myMatchScoreRef.current = 0;
         oppMatchScoreRef.current = 0;
         roundNumRef.current = 1;
+        lastRoundWinnerRef.current = null; // Reset for fresh match
         setMyMatchScore(0);
         setOppMatchScore(0);
         setRoundNum(1);
@@ -415,19 +417,27 @@ export default function DominoGame({ setView }) {
         const peerHand = deck.slice(7, 14);
         const bank = deck.slice(14);
 
+        // ── Determine who goes first ──
+        // Round 1: highest double goes first. Subsequent rounds: winner of last round goes first.
         let startTurn = 'host';
-        let highestDoubleHost = -1;
-        let highestDoublePeer = -1;
 
-        hostHand.forEach(t => { if (t.isDouble && t.top > highestDoubleHost) highestDoubleHost = t.top; });
-        peerHand.forEach(t => { if (t.isDouble && t.top > highestDoublePeer) highestDoublePeer = t.top; });
+        if (lastRoundWinnerRef.current !== null) {
+            // Winner of previous round starts
+            startTurn = lastRoundWinnerRef.current;
+        } else {
+            // First round: highest double determines starter
+            let highestDoubleHost = -1;
+            let highestDoublePeer = -1;
+            hostHand.forEach(t => { if (t.isDouble && t.top > highestDoubleHost) highestDoubleHost = t.top; });
+            peerHand.forEach(t => { if (t.isDouble && t.top > highestDoublePeer) highestDoublePeer = t.top; });
 
-        if (highestDoublePeer > highestDoubleHost) {
-            startTurn = 'peer';
-        } else if (highestDoubleHost === -1 && highestDoublePeer === -1) {
-            const maxSumH = Math.max(...hostHand.map(t => t.sum));
-            const maxSumP = Math.max(...peerHand.map(t => t.sum));
-            if (maxSumP > maxSumH) startTurn = 'peer';
+            if (highestDoublePeer > highestDoubleHost) {
+                startTurn = 'peer';
+            } else if (highestDoubleHost === -1 && highestDoublePeer === -1) {
+                const maxSumH = Math.max(...hostHand.map(t => t.sum));
+                const maxSumP = Math.max(...peerHand.map(t => t.sum));
+                if (maxSumP > maxSumH) startTurn = 'peer';
+            }
         }
 
         rootTileIdRef.current = null;
@@ -665,8 +675,14 @@ export default function DominoGame({ setView }) {
         }
 
         if (canLeft && canRight && left !== right) {
-            setSelectedTile(tile);
-            playSound('click');
+            // If this is the LAST tile, auto-play to left to end round instantly (no picker needed)
+            if (myHand.length === 1) {
+                const newLeftVal = tile.top === left ? tile.bottom : tile.top;
+                executePlay(tile, 'left', newLeftVal, left);
+            } else {
+                setSelectedTile(tile);
+                playSound('click');
+            }
         } else if (canLeft) {
             const newLeftVal = tile.top === left ? tile.bottom : tile.top;
             executePlay(tile, 'left', newLeftVal, left);
@@ -831,6 +847,12 @@ export default function DominoGame({ setView }) {
         setRoundWinner(winnerKey);
         setRoundPointsEarned(earnedPoints);
         setRoundOverReason(reason);
+
+        // Track who wins so next round starter is correct
+        // Host perspective: 'me'='host', 'opp'='peer'
+        if (winnerKey === 'me') lastRoundWinnerRef.current = 'host';
+        else if (winnerKey === 'opp') lastRoundWinnerRef.current = 'peer';
+        // draw: keep previous or null (will fall back to double rule)
 
         // Check if 151 Target is reached
         if (newMy >= TARGET_SCORE || newOpp >= TARGET_SCORE) {
