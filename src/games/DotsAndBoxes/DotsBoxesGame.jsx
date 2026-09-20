@@ -10,6 +10,8 @@ import useProfile from '../../hooks/useProfile';
 import { triggerVictoryEffects, triggerDefeatEffects, triggerDrawEffects } from '../../lib/effectsEngine';
 import { AvatarDisplay } from '../../components/icons/AvatarIcons';
 import { IconDotsBoxes, IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
+import { playSound, playHaptic } from '../../lib/audioEngine';
+import { recordMatch } from '../../lib/statsEngine';
 
 const ROWS = 4; // number of boxes vertically
 const COLS = 4; // number of boxes horizontally
@@ -69,15 +71,37 @@ export default function DotsBoxesGame({ setView }) {
         else overallWinner = isHost ? 'opp' : 'me';
     }
 
+    const recordedRef = useRef(false);
+
     useEffect(() => {
         if (isGameOver) {
             if (overallWinner === 'draw') {
                 triggerDrawEffects();
+                playSound('draw');
             } else if (overallWinner === 'me') {
                 triggerVictoryEffects();
+                playSound('win');
                 if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
             } else {
                 triggerDefeatEffects();
+                playSound('lose');
+            }
+
+            // Record match for leaderboard (once)
+            if (!recordedRef.current) {
+                recordedRef.current = true;
+                const myFinalScore = isHostRef.current ? stateRef.current.scores.host : stateRef.current.scores.opp;
+                const oppFinalScore = isHostRef.current ? stateRef.current.scores.opp : stateRef.current.scores.host;
+                recordMatch({
+                    gameId: 'dots-boxes',
+                    gameTitle: 'النقاط والصناديق',
+                    oppName: oppProfile?.nickname || 'الخصم',
+                    oppAvatar: oppProfile?.avatar || 'alien',
+                    isWin: overallWinner === 'me',
+                    myScore: myFinalScore,
+                    oppScore: oppFinalScore,
+                    isAI: false,
+                });
             }
         }
     }, [isGameOver, overallWinner]);
@@ -151,6 +175,15 @@ export default function DotsBoxesGame({ setView }) {
             newHostTurn = !newHostTurn;
         }
 
+        // Play sounds
+        if (boxGained) {
+            playSound('capture');
+            playHaptic([20, 10, 30]);
+        } else {
+            playSound('click');
+            playHaptic(10);
+        }
+
         // SYNCHRONOUSLY UPDATE STATEREF SO FAST MOVES DON'T CLOBBER
         stateRef.current = {
             hLines: newH,
@@ -182,6 +215,7 @@ export default function DotsBoxesGame({ setView }) {
     };
 
     const doRestart = () => {
+        recordedRef.current = false;
         setHLines(Array.from({ length: ROWS + 1 }, () => Array(COLS).fill(null)));
         setVLines(Array.from({ length: ROWS }, () => Array(COLS + 1).fill(null)));
         setBoxes(Array.from({ length: ROWS }, () => Array(COLS).fill(null)));

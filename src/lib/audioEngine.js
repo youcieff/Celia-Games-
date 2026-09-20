@@ -373,6 +373,74 @@ export function playSound(type) {
                 return;
             }
 
+            case 'capture': {
+                // Box claimed — satisfying glassy "ping" + sparkle
+                [523.25, 659.25, 783.99].forEach((freq, i) => {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.type = 'triangle';
+                    o.frequency.setValueAtTime(freq, t + i * 0.045);
+                    g.gain.setValueAtTime(0.28, t + i * 0.045);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.045 + 0.22);
+                    o.connect(g);
+                    g.connect(ctx.destination);
+                    o.start(t + i * 0.045);
+                    o.stop(t + i * 0.045 + 0.22);
+                });
+                return;
+            }
+
+            case 'win': {
+                // Victory fanfare — rising triumphant arpeggio
+                [261.63, 329.63, 392, 523.25, 659.25].forEach((freq, i) => {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.type = 'triangle';
+                    o.frequency.setValueAtTime(freq, t + i * 0.09);
+                    g.gain.setValueAtTime(0.3, t + i * 0.09);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.09 + 0.3);
+                    o.connect(g);
+                    g.connect(ctx.destination);
+                    o.start(t + i * 0.09);
+                    o.stop(t + i * 0.09 + 0.3);
+                });
+                return;
+            }
+
+            case 'lose': {
+                // Defeat — descending sad tones
+                [392, 349.23, 293.66, 261.63].forEach((freq, i) => {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.type = 'sine';
+                    o.frequency.setValueAtTime(freq, t + i * 0.1);
+                    g.gain.setValueAtTime(0.22, t + i * 0.1);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.28);
+                    o.connect(g);
+                    g.connect(ctx.destination);
+                    o.start(t + i * 0.1);
+                    o.stop(t + i * 0.1 + 0.28);
+                });
+                return;
+            }
+
+            case 'draw': {
+                // Draw — neutral balanced tone pair
+                [440, 440].forEach((freq, i) => {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.type = 'sine';
+                    o.frequency.setValueAtTime(freq, t + i * 0.14);
+                    g.gain.setValueAtTime(0.2, t + i * 0.14);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.14 + 0.25);
+                    o.connect(g);
+                    g.connect(ctx.destination);
+                    o.start(t + i * 0.14);
+                    o.stop(t + i * 0.14 + 0.25);
+                });
+                return;
+            }
+
             default:
                 break;
         }
