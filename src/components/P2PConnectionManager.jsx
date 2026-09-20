@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { db } from '../lib/firebase';
 import { ref, set, onValue, push, onChildAdded, remove, get, onDisconnect } from 'firebase/database';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 import Check from 'lucide-react/dist/esm/icons/check';
 import createAIConn from '../ai/createAIConn';
-import { IconCopy, IconJoin, IconChip, IconHourglass } from './icons/GameIcons';
+import { 
+    IconCopy, IconJoin, IconChip, IconHourglass,
+    IconBusComplete, IconConnect4, IconDotsBoxes, IconCodeGame, 
+    IconGuessTime, IconWordGame, IconMemoryGame, IconSeaBattle, 
+    IconXOGame, IconTriviaDuel, IconBigXOGame, IconRPSArena, 
+    IconAirHockey, IconQuickDraw, IconDominoGame 
+} from './icons/GameIcons';
 
 const genId = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
@@ -86,6 +93,25 @@ function CodeDigit({ char }) {
         <span className="lobby-digit">{char}</span>
     );
 }
+
+const gameInfoMap = {
+    'celia-bus': { name: 'أتوبيس كومبليت', Icon: IconBusComplete },
+    'celia-c4': { name: 'أربعة في صف', Icon: IconConnect4 },
+    'celia-db': { name: 'النقاط والصناديق', Icon: IconDotsBoxes },
+    'celia-code': { name: 'خمن الكود', Icon: IconCodeGame },
+    'celia-time': { name: 'خمن الوقت', Icon: IconGuessTime },
+    'celia-word': { name: 'خمن الكلمة', Icon: IconWordGame },
+    'celia-mem': { name: 'الذاكرة البصرية', Icon: IconMemoryGame },
+    'celia-sea': { name: 'حرب الغواصات', Icon: IconSeaBattle },
+    'celia-xo': { name: 'تيك تاك تو', Icon: IconXOGame },
+    'celia-trivia': { name: 'حرب المعلومات', Icon: IconTriviaDuel },
+    'celia-uxo': { name: 'إكس أو المطورة', Icon: IconBigXOGame },
+    'celia-rps': { name: 'حجر ورقة مقص', Icon: IconRPSArena },
+    'celia-hockey': { name: 'الهوكي الهوائي', Icon: IconAirHockey },
+    'celia-draw': { name: 'الرسم السريع', Icon: IconQuickDraw },
+    'celia-domino': { name: 'الدومينو', Icon: IconDominoGame }
+};
+
 
 export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
     const [myId] = useState(() => genId());
@@ -352,6 +378,22 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
     // ── LOBBY STATE ────────────────────────────────────────────────────────────
     return (
         <div className="flex flex-col items-center justify-start w-full max-w-sm mx-auto gap-4 pt-2">
+            {typeof document !== 'undefined' && gameInfoMap[gameIdPrefix] && createPortal(
+                <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] pointer-events-none transition-all animate-pop-in">
+                    <div className="flex items-center gap-1.5 glass-card px-3.5 py-1.5 rounded-full border border-white/10 shadow-lg backdrop-blur-md">
+                        {(() => {
+                            const { name, Icon } = gameInfoMap[gameIdPrefix];
+                            return (
+                                <>
+                                    <Icon size={18} className="text-[var(--accent)] drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]" />
+                                    <span className="font-black text-xs gradient-text whitespace-nowrap">{name}</span>
+                                </>
+                            );
+                        })()}
+                    </div>
+                </div>,
+                document.body
+            )}
 
             {/* ── Your room code ── */}
             <div className="lobby-ticket w-full">

@@ -181,6 +181,8 @@ export default function CodeGame({ setView }) {
         setOppConfirmed(oppConfirmedRef.current);
         setMyGuesses([]);
         setInput('');
+        turnRef.current = !isHostRef.current;
+        setIsMyTurn(!isHostRef.current);
         if (isHostRef.current) {
             setGameState('length-select');
         } else {
