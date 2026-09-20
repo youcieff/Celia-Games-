@@ -7,7 +7,7 @@ import { playSound } from '../lib/audioEngine';
 
 export default function ConnectionPauseOverlay({ conn, onLeave }) {
     const [isPaused, setIsPaused] = useState(false);
-    const [timeLeft, setTimeLeft] = useState(10);
+    const [timeLeft, setTimeLeft] = useState(30);
     const [isReconnected, setIsReconnected] = useState(false);
 
     useEffect(() => {
@@ -17,7 +17,7 @@ export default function ConnectionPauseOverlay({ conn, onLeave }) {
             playSound('lose');
             setIsPaused(true);
             setIsReconnected(false);
-            setTimeLeft(10);
+            setTimeLeft(30);
         };
 
         const handlePeerReconnect = () => {
@@ -35,7 +35,7 @@ export default function ConnectionPauseOverlay({ conn, onLeave }) {
         // Also check local network online/offline
         const handleOffline = () => {
             setIsPaused(true);
-            setTimeLeft(10);
+            setTimeLeft(30);
         };
         const handleOnline = () => {
             setIsReconnected(true);
@@ -98,29 +98,35 @@ export default function ConnectionPauseOverlay({ conn, onLeave }) {
                         </div>
 
                         <div className="text-2xl font-mono font-black text-amber-400 mb-6">
-                            00:0{timeLeft}
+                            {String(Math.floor(timeLeft / 60)).padStart(2,'0')}:{String(timeLeft % 60).padStart(2,'0')}
                         </div>
 
                         {timeLeft === 0 ? (
                             <div className="flex flex-col gap-2">
-                                <p className="text-xs text-rose-400 font-bold mb-2">انتهت مدة الانتظار (10 ثوانٍ)</p>
+                                <p className="text-xs text-rose-400 font-bold mb-2">انتهت مدة الانتظار</p>
                                 <button
-                                    onClick={() => setTimeLeft(15)}
+                                    onClick={() => setTimeLeft(20)}
                                     className="glass-card py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-white/10 transition-colors"
                                 >
-                                    <RefreshCw size={14} /> انتظر 15 ثانية إضافية
+                                    <RefreshCw size={14} /> انتظر 20 ثانية إضافية
                                 </button>
-                                {onLeave && (
-                                    <button
-                                        onClick={onLeave}
-                                        className="glow-button py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-2"
-                                    >
-                                        <Home size={14} /> العودة للقائمة الرئيسية
-                                    </button>
-                                )}
+                                <button
+                                    onClick={() => { conn?.close?.(); if (onLeave) { onLeave(); } else { window.location.hash = ''; window.location.reload(); } }}
+                                    className="glow-button py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-2"
+                                >
+                                    <Home size={14} /> العودة للقائمة الرئيسية
+                                </button>
                             </div>
                         ) : (
-                            <p className="text-[10px] opacity-40 font-bold">جاري محاولة المزامنة الفورية...</p>
+                            <div>
+                                <p className="text-[10px] opacity-40 font-bold mb-3">جاري محاولة المزامنة الفورية...</p>
+                                <button
+                                    onClick={() => { conn?.close?.(); if (onLeave) { onLeave(); } else { window.location.hash = ''; window.location.reload(); } }}
+                                    className="glass-card w-full py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-rose-500/10 text-rose-400 border border-rose-500/20 transition-colors"
+                                >
+                                    <Home size={12} /> الرجوع للقائمة الآن
+                                </button>
+                            </div>
                         )}
                     </div>
                 )}

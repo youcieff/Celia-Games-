@@ -163,11 +163,15 @@ export default function RPSArenaGame({ setView }) {
         setGameState('revealing');
         playSound('ding');
 
-        const myPow = activePowerRef.current;
+        let myPow = activePowerRef.current;
         let myWins = beats(myC, oppC);
         let oppWins = beats(oppC, myC);
         let isDraw = myC === oppC;
         let notice = null;
+
+        // Apply Freeze immediately to negate opponent's power
+        if (myPow === 'freeze') oppPow = null;
+        if (oppPow === 'freeze') myPow = null;
 
         // Shield: convert loss to draw
         if (!isDraw && !myWins && myPow === 'shield') {

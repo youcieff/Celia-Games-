@@ -447,7 +447,7 @@ export default function DominoGame({ setView }) {
         playSound('ding');
 
         if (conn) {
-            conn.send({
+            const setupMsg = {
                 type: 'init_dominoes',
                 peerHand: peerHand,
                 hostHandCount: 7,
@@ -456,7 +456,18 @@ export default function DominoGame({ setView }) {
                 roundNum: roundNumRef.current,
                 hostScore: myMatchScoreRef.current,
                 peerScore: oppMatchScoreRef.current
-            });
+            };
+            conn.send(setupMsg);
+
+            // Handshake: keep sending setup until ack is received
+            if (isHostRef.current) {
+                if (conn.setupInterval) clearInterval(conn.setupInterval);
+                conn.setupInterval = setInterval(() => {
+                    if (connRef.current) {
+                        connRef.current.send(setupMsg);
+                    }
+                }, 2000);
+            }
         }
     };
 
@@ -464,7 +475,15 @@ export default function DominoGame({ setView }) {
         if (!msg || !msg.type) return;
 
         switch (msg.type) {
+            case 'dominoes_ack':
+                if (connRef.current?.setupInterval) {
+                    clearInterval(connRef.current.setupInterval);
+                    connRef.current.setupInterval = null;
+                }
+                break;
+
             case 'init_dominoes':
+                connRef.current?.send({ type: 'dominoes_ack' });
                 rootTileIdRef.current = null;
                 consecutivePassesRef.current = 0;
                 setMyHand(msg.peerHand);

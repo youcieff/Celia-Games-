@@ -186,6 +186,9 @@ export default function AirHockeyGame({ setView }) {
     const lastSendRef = useRef(0);       // for paddle_move throttle
     const lastPuckSyncRef = useRef(0);   // for puck_sync throttle (independent!)
 
+    // Smooth interpolation: store received position as target, lerp each frame
+    const oppPaddleTargetRef = useRef({ x: TABLE_W / 2, y: 95 });
+
     const changeDifficulty = (level) => {
         setAiDifficulty(level);
         playSound('pop');
@@ -307,7 +310,8 @@ export default function AirHockeyGame({ setView }) {
 
         switch (msg.type) {
             case 'paddle_move': {
-                oppPaddleRef.current = {
+                // Store as target — game loop interpolates towards it for buttery smoothness
+                oppPaddleTargetRef.current = {
                     x: TABLE_W - msg.x,
                     y: TABLE_H - msg.y
                 };
@@ -668,6 +672,15 @@ export default function AirHockeyGame({ setView }) {
         if (goalFlashRef.current > 0) {
             goalFlashRef.current = Math.max(0, goalFlashRef.current - 0.04);
         }
+
+        // Lerp opponent paddle towards target — silky smooth regardless of P2P jitter
+        const LERP = 0.35;
+        const oTarget = oppPaddleTargetRef.current;
+        const oCur = oppPaddleRef.current;
+        oppPaddleRef.current = {
+            x: oCur.x + (oTarget.x - oCur.x) * LERP,
+            y: oCur.y + (oTarget.y - oCur.y) * LERP
+        };
 
         // Render frame
         drawFrame();

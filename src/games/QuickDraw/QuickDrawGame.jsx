@@ -285,6 +285,7 @@ export default function QuickDrawGame({ setView }) {
 
             case 'drawing_sent': {
                 // Guesser receives the finished drawing!
+                setIsDrawer(false); // Force false to prevent any state leakage
                 setCurrentWord({
                     word: msg.word,
                     category: msg.category,

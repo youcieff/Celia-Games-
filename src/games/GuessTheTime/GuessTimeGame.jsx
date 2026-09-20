@@ -8,6 +8,7 @@ import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Timer from 'lucide-react/dist/esm/icons/timer';
 import Users from 'lucide-react/dist/esm/icons/users';
 import Edit3 from 'lucide-react/dist/esm/icons/edit-3';
+import Trophy from 'lucide-react/dist/esm/icons/trophy';
 import { playSound, playHaptic } from '../../lib/audioEngine';
 import useProfile from '../../hooks/useProfile';
 import { triggerVictoryEffects, triggerDefeatEffects, triggerDrawEffects } from '../../lib/effectsEngine';
@@ -580,7 +581,7 @@ export default function GuessTimeGame({ setView }) {
                                     <div className={`glass-card rounded-3xl p-6 w-full max-w-sm text-center border shadow-2xl animate-pop-in ${winner === 'me' ? 'border-emerald-400/50' : winner === 'opp' ? 'border-rose-400/50' : 'border-amber-400/50'}`}>
                                         <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-3 bg-white/10">
                                             {winner === 'me' ? (
-                                                <IconTrophy size={36} className="text-yellow-400" />
+                                                <Trophy size={36} className="text-yellow-400" />
                                             ) : winner === 'opp' ? (
                                                 <Timer size={36} className="text-rose-400" />
                                             ) : (
@@ -628,7 +629,7 @@ export default function GuessTimeGame({ setView }) {
                                     <div className={`glass-card rounded-3xl p-6 w-full max-w-sm text-center border shadow-2xl animate-pop-in ${iWon ? 'border-emerald-400/50' : 'border-rose-400/50'}`}>
                                         <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-3 bg-white/10">
                                             {iWon ? (
-                                                <IconTrophy size={36} className="text-yellow-400" />
+                                                <Trophy size={36} className="text-yellow-400" />
                                             ) : (
                                                 <Timer size={36} className="text-rose-400" />
                                             )}
