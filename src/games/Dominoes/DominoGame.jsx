@@ -965,14 +965,10 @@ export default function DominoGame({ setView }) {
             <>
                 <div className="animated-bg"><div className="bg-orb-1" /><div className="bg-orb-2" /></div>
                 <div className="min-h-dvh max-w-lg mx-auto px-4 flex flex-col safe-area-pt overflow-x-hidden overflow-y-auto pb-6">
-                    <div className="flex justify-between items-center py-4 mb-2">
-                        <Logo size="small" />
-                        <button
-                            onClick={() => { connRef.current?.close?.(); setView('hub'); }}
-                            className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 active:scale-95 transition-transform text-white/90"
-                        >
-                            الرئيسية
-                        </button>
+                    <div className="grid grid-cols-3 items-center py-4 mb-2">
+                        <div><Logo size="small" /></div>
+                        <div className="flex justify-center"><span className="text-sm font-black opacity-70">الدومينو</span></div>
+                        <div className="flex justify-end"><button onClick={() => { connRef.current?.close?.(); setView('hub'); }} className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 active:scale-95 transition-transform text-white/90">الرئيسية</button></div>
                     </div>
 
                     <div className="flex-1 flex pb-16 safe-area-pb">

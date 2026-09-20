@@ -209,14 +209,10 @@ export default function DotsBoxesGame({ setView }) {
 
                 {/* Header: Lobby with Logo vs In-Game Header */}
                 {gameState === 'lobby' ? (
-                    <div className="px-4 flex justify-between items-center py-4 mb-2 w-full">
-                        <Logo size="small" />
-                        <button
-                            onClick={() => { connRef.current?.close(); setView('hub'); }}
-                            className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 active:scale-95 transition-transform text-white/90"
-                        >
-                            الرئيسية
-                        </button>
+                    <div className="px-4 grid grid-cols-3 items-center py-4 mb-2 w-full">
+                        <div><Logo size="small" /></div>
+                        <div className="flex justify-center"><span className="text-sm font-black opacity-70">النقاط والصناديق</span></div>
+                        <div className="flex justify-end"><button onClick={() => { connRef.current?.close(); setView('hub'); }} className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 active:scale-95 transition-transform text-white/90">الرئيسية</button></div>
                     </div>
                 ) : (
                     <header className="px-4 py-3 flex items-center justify-between gap-2 w-full z-20">
