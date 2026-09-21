@@ -189,13 +189,6 @@ export default function SeaBattleGame({ setView }) {
                 setCurrentTurn(nextTurn);
             }
 
-        } else if (msg.type === 'sync') {
-            // Heartbeat sync from host
-            if (!isHostRef.current) {
-                if (msg.currentTurn && msg.currentTurn !== cur.currentTurn) {
-                    setCurrentTurn(msg.currentTurn);
-                }
-            }
         } else if (msg.type === 'restart') {
             doRestart();
         }
@@ -229,22 +222,6 @@ export default function SeaBattleGame({ setView }) {
             }
         }, 1000);
         return () => clearInterval(interval);
-    }, [gameState, isHost]);
-
-    // Host heartbeat sync every 3.5s
-    useEffect(() => {
-        let interval;
-        if (gameState === 'playing' && isHost) {
-            interval = setInterval(() => {
-                connRef.current?.send({
-                    type: 'sync',
-                    currentTurn: stateRef.current.currentTurn,
-                    hitsOnHost: stateRef.current.hitsOnMe,
-                    hitsOnGuest: stateRef.current.hitsOnOpp
-                });
-            }, 3500);
-        }
-        return () => { if (interval) clearInterval(interval); };
     }, [gameState, isHost]);
 
     const handleToggleCell = (r, c) => {
