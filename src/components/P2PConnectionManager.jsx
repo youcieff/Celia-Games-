@@ -133,6 +133,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
     const connRef = useRef(null);
     const isHostRef = useRef(false);
     const isHandedOffRef = useRef(false);
+    const oppReadyRef = useRef(false);
     const roomPath = `rooms/${gameIdPrefix}-${myId}`;
 
     // HOST: write room to Firebase and wait for guest
@@ -144,15 +145,20 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
         const unsubStatus = onValue(ref(db, `${roomPath}/guestReady`), (snap) => {
             if (snap.val() === true && !isHandedOffRef.current) {
                 isHostRef.current = true;
-                const conn = createFirebaseConn(roomPath, true);
-                connRef.current = conn;
-                conn.on('data', (d) => {
-                    if (d?.type === 'global_ready') {
-                        setOppReady(true);
-                        if (d.profile) setOppProfile(d.profile);
-                    }
-                });
-                setLobbyState('connected');
+                // Wait briefly so guest's Firebase listeners are ready before we connect
+                setTimeout(() => {
+                    if (isHandedOffRef.current) return;
+                    const conn = createFirebaseConn(roomPath, true);
+                    connRef.current = conn;
+                    conn.on('data', (d) => {
+                        if (d?.type === 'global_ready') {
+                            oppReadyRef.current = true;
+                            setOppReady(true);
+                            if (d.profile) setOppProfile(d.profile);
+                        }
+                    });
+                    setLobbyState('connected');
+                }, 300);
             }
         });
 
@@ -190,6 +196,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
 
             conn.on('data', (d) => {
                 if (d?.type === 'global_ready') {
+                    oppReadyRef.current = true;
                     setOppReady(true);
                     if (d.profile) setOppProfile(d.profile);
                 }
@@ -295,6 +302,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
 
             conn.on('data', (d) => {
                 if (d?.type === 'global_ready') {
+                    oppReadyRef.current = true;
                     setOppReady(true);
                     if (d.profile) setOppProfile(d.profile);
                 }
