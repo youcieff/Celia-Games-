@@ -576,7 +576,7 @@ export default function QuickDrawGame({ setView }) {
                         <h1 className="text-3xl font-black text-white mb-1">الرسم السريع</h1>
                         <p className="text-sm text-slate-400">ارسم والخصم يخمّن — أول لاعب يوصل {WIN_SCORE} نقاط يكسب!</p>
                     </div>
-                    <P2PConnectionManager onGameStart={handleGameStart} gameName="quickdraw" />
+                    <P2PConnectionManager gameIdPrefix="celia-draw" onGameStart={handleGameStart} />
                 </div>
             </>
         );

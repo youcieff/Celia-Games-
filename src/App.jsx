@@ -36,7 +36,7 @@ function App() {
           'celia-word': 'word-game-online',
           'celia-xo': 'xo-game',
           'celia-big-xo': 'big-xo-game',
-          'celia-connect4': 'connect-4',
+          'celia-c4': 'connect-4',
           'celia-mem': 'memory-game',
           'celia-db': 'dots-boxes',
           'celia-sea': 'sea-battle',

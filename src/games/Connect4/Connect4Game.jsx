@@ -339,7 +339,7 @@ export default function Connect4Game({ setView }) {
                         </div>
 
                         {/* Connect 4 Board */}
-                        <div className="glass-card p-2 rounded-3xl shadow-2xl relative w-[95%]" dir="ltr"
+                        <div className="glass-card p-2 rounded-3xl shadow-2xl relative w-[95%] overflow-hidden" dir="ltr"
                             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
 
                             <div className="grid grid-cols-7 gap-1 md:gap-2 relative z-10 w-full aspect-[7/6]">
