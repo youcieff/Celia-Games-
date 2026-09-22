@@ -759,67 +759,80 @@ export default function QuickDrawGame({ setView }) {
                         </div>
                     </div>
 
-                    {/* ── DRAWER: Smart Compact Toolbar ─────────────────────────── */}
+                    {/* ── DRAWER: Smart Compact Toolbar (2 rows) ────────────────── */}
                     {isDrawer && (
-                        <div className="shrink-0 px-2 pb-2 pt-1.5">
-                            <div className="glass-card rounded-2xl border border-white/10 shadow-xl px-2 py-2 flex items-center gap-2">
+                        <div className="shrink-0 px-2 pb-2 pt-1">
+                            <div className="glass-card rounded-2xl border border-white/10 shadow-xl px-3 py-2 flex flex-col gap-1.5">
 
-                                {/* Color Circle - opens sheet */}
-                                <button
-                                    onClick={() => setShowColorSheet(s => !s)}
-                                    className="relative w-10 h-10 rounded-full border-3 border-white/40 shadow-lg shrink-0 transition-transform active:scale-90 hover:scale-110"
-                                    style={{ background: activeTool === TOOL_ERASER ? 'white' : brushColor, border: `3px solid ${activeTool === TOOL_PEN ? brushColor : 'rgba(255,255,255,0.3)'}`, boxShadow: `0 0 0 2px rgba(255,255,255,0.2), 0 0 12px ${brushColor}66` }}
-                                >
-                                    {showColorSheet && <span className="absolute inset-0 flex items-center justify-center text-sm">✕</span>}
-                                </button>
-
-                                <div className="w-px h-7 bg-white/10 shrink-0" />
-
-                                {/* Tool buttons */}
-                                <button onClick={() => { setActiveTool(TOOL_PEN); activeToolRef.current = TOOL_PEN; }}
-                                    className={`p-2.5 rounded-xl transition-all ${activeTool === TOOL_PEN ? 'bg-amber-500/25 text-amber-300 shadow-[0_0_10px_rgba(251,191,36,0.3)]' : 'text-slate-400 hover:text-white hover:bg-white/8'}`}>
-                                    <Paintbrush size={18} />
-                                </button>
-                                <button onClick={() => { setActiveTool(TOOL_ERASER); activeToolRef.current = TOOL_ERASER; }}
-                                    className={`p-2.5 rounded-xl transition-all ${activeTool === TOOL_ERASER ? 'bg-sky-500/25 text-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.3)]' : 'text-slate-400 hover:text-white hover:bg-white/8'}`}>
-                                    <Eraser size={18} />
-                                </button>
-                                <button onClick={() => { setActiveTool(TOOL_FILL); activeToolRef.current = TOOL_FILL; }}
-                                    className={`p-2.5 rounded-xl transition-all ${activeTool === TOOL_FILL ? 'bg-emerald-500/25 text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.3)]' : 'text-slate-400 hover:text-white hover:bg-white/8'}`}>
-                                    <Droplets size={18} />
-                                </button>
-
-                                <div className="w-px h-7 bg-white/10 shrink-0" />
-
-                                {/* Size dots */}
-                                {SIZES.map((s, idx) => (
-                                    <button key={idx} onClick={() => { setBrushSizeIdx(idx); brushSizeIdxRef.current = idx; }}
-                                        className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all ${brushSizeIdx === idx ? 'bg-white/15 ring-1 ring-white/40' : 'hover:bg-white/8'}`}>
-                                        <span className="rounded-full bg-white/90 block"
-                                              style={{ width: Math.max(4, s.px * 0.5), height: Math.max(4, s.px * 0.5), maxWidth: 20, maxHeight: 20 }} />
+                                {/* ROW 1: Color + Tools + Size + Undo/Clear */}
+                                <div className="flex items-center gap-1.5">
+                                    {/* Color Circle */}
+                                    <button
+                                        onClick={() => setShowColorSheet(s => !s)}
+                                        className="relative w-9 h-9 rounded-full shrink-0 transition-transform active:scale-90"
+                                        style={{ background: activeTool === TOOL_ERASER ? 'white' : brushColor, boxShadow: `0 0 0 2px rgba(255,255,255,0.25), 0 0 10px ${brushColor}55` }}
+                                    >
+                                        {showColorSheet && <span className="absolute inset-0 flex items-center justify-center text-xs font-black text-white/80 drop-shadow">✕</span>}
                                     </button>
-                                ))}
 
-                                <div className="flex-1" />
+                                    <div className="w-px h-6 bg-white/10 shrink-0" />
 
-                                {/* Undo */}
-                                <button onClick={handleUndo}
-                                    className="p-2.5 rounded-xl text-slate-400 hover:text-amber-300 hover:bg-white/8 transition-all">
-                                    <Undo2 size={18} />
-                                </button>
-                                {/* Clear */}
-                                <button onClick={clearCanvas}
-                                    className="p-2.5 rounded-xl text-rose-400/70 hover:text-rose-300 hover:bg-rose-500/15 transition-all">
-                                    <Trash2 size={17} />
-                                </button>
+                                    {/* Tools */}
+                                    <button onClick={() => { setActiveTool(TOOL_PEN); activeToolRef.current = TOOL_PEN; }}
+                                        className={`p-2 rounded-xl transition-all ${activeTool === TOOL_PEN ? 'bg-amber-500/25 text-amber-300' : 'text-slate-400'}`}>
+                                        <Paintbrush size={17} />
+                                    </button>
+                                    <button onClick={() => { setActiveTool(TOOL_ERASER); activeToolRef.current = TOOL_ERASER; }}
+                                        className={`p-2 rounded-xl transition-all ${activeTool === TOOL_ERASER ? 'bg-sky-500/25 text-sky-300' : 'text-slate-400'}`}>
+                                        <Eraser size={17} />
+                                    </button>
+                                    <button onClick={() => { setActiveTool(TOOL_FILL); activeToolRef.current = TOOL_FILL; }}
+                                        className={`p-2 rounded-xl transition-all ${activeTool === TOOL_FILL ? 'bg-emerald-500/25 text-emerald-300' : 'text-slate-400'}`}>
+                                        <Droplets size={17} />
+                                    </button>
 
-                                <div className="w-px h-7 bg-white/10 shrink-0" />
+                                    <div className="w-px h-6 bg-white/10 shrink-0" />
 
-                                {/* Send */}
-                                <button onClick={handleSendDrawing}
-                                    className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-black text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition-transform active:scale-95 shrink-0">
-                                    <Send size={15} /> إرسال
-                                </button>
+                                    {/* Size dots */}
+                                    {SIZES.map((s, idx) => (
+                                        <button key={idx} onClick={() => { setBrushSizeIdx(idx); brushSizeIdxRef.current = idx; }}
+                                            className={`flex items-center justify-center w-7 h-7 rounded-lg transition-all ${brushSizeIdx === idx ? 'bg-white/15 ring-1 ring-white/40' : ''}`}>
+                                            <span className="rounded-full bg-white/90 block"
+                                                  style={{ width: Math.max(3, s.px * 0.42), height: Math.max(3, s.px * 0.42), maxWidth: 18, maxHeight: 18 }} />
+                                        </button>
+                                    ))}
+
+                                    <div className="flex-1" />
+
+                                    {/* Undo + Clear */}
+                                    <button onClick={handleUndo} className="p-2 rounded-xl text-slate-400 hover:text-amber-300 transition-all">
+                                        <Undo2 size={17} />
+                                    </button>
+                                    <button onClick={clearCanvas} className="p-2 rounded-xl text-rose-400/70 hover:text-rose-300 transition-all">
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+
+                                {/* ROW 2: Recent colors (quick pick) + Send */}
+                                <div className="flex items-center gap-1.5">
+                                    {recentColors.map((c, i) => (
+                                        <button key={i} onClick={() => { pickColor(c); setShowColorSheet(false); }}
+                                            style={{ backgroundColor: c }}
+                                            className={`w-7 h-7 rounded-full border-2 shrink-0 transition-all ${brushColor === c && activeTool === TOOL_PEN ? 'border-white scale-110 shadow-[0_0_8px_rgba(255,255,255,0.4)]' : 'border-transparent hover:scale-105'}`}
+                                        />
+                                    ))}
+                                    <label className="w-7 h-7 rounded-full border-2 border-dashed border-white/30 cursor-pointer flex items-center justify-center text-xs bg-white/5 shrink-0 hover:scale-105 transition-all">
+                                        🎨
+                                        <input type="color" className="absolute opacity-0 w-0 h-0"
+                                            onChange={e => { pickColor(e.target.value); setShowColorSheet(false); }} />
+                                    </label>
+                                    <div className="flex-1" />
+                                    {/* Send Button - always visible */}
+                                    <button onClick={handleSendDrawing}
+                                        className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-black text-sm rounded-xl shadow-lg transition-transform active:scale-95 shrink-0">
+                                        <Send size={16} /> إرسال
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}

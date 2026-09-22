@@ -357,14 +357,14 @@ export default function Connect4Game({ setView }) {
                                             const cObj = cell ? getColorObj(cell) : null;
 
                                             return (
-                                                <div key={`${rIdx}-${cIdx}`} className="w-full flex-1 relative flex items-center justify-center overflow-hidden">
+                                                <div key={`${rIdx}-${cIdx}`} className="aspect-square w-full relative flex items-center justify-center overflow-hidden">
                                                     {/* Board Grid Cutout Trick using CSS shapes or simple borders */}
                                                     <div className="absolute inset-0 rounded-full border-4 md:border-[6px] border-[var(--bg-color)] z-20 pointer-events-none" />
                                                     <div className="absolute inset-[-10px] bg-sky-600/30 backdrop-blur-md z-10 pointer-events-none"
                                                         style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 10% 10%, 10% 90%, 90% 90%, 90% 10%, 10% 10%)' /* basic inverse hole approximation, but border overlay is better */ }} />
 
                                                     {/* Chip */}
-                                                    <div className={`absolute rounded-full transition-transform transform w-[90%] h-[90%] z-0
+                                                    <div className={`absolute rounded-full transition-transform transform z-0 inset-[5%]
                                           ${cell ? 'scale-100 translate-y-0' : 'scale-100 -translate-y-[150%]'}
                                           ${isWinningChip ? 'animate-pulse-glow z-30 ring-4 ring-white' : ''}
                                          `}
