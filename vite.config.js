@@ -14,8 +14,8 @@ export default defineConfig({
         name: 'ألعاب سيليا',
         short_name: 'Celia Games',
         description: 'ألعاب سيليا | Celia Games',
-        theme_color: '#ffffff',
-        background_color: '#ffffff',
+        theme_color: '#07163e',
+        background_color: '#07163e',
         display: 'standalone',
         icons: [
           {
