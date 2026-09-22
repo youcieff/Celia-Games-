@@ -48,13 +48,14 @@ export default function PlayerGameHeader({
         const handleOpened = () => setHasUnread(false);
         window.addEventListener('game-chat-unread', handleUnread);
         window.addEventListener('game-chat-opened', handleOpened);
-            const displayTitle = gameId && GAME_TITLES[gameId] ? GAME_TITLES[gameId] : title;
 
-    return () => {
+        return () => {
             window.removeEventListener('game-chat-unread', handleUnread);
             window.removeEventListener('game-chat-opened', handleOpened);
         };
     }, []);
+
+    const displayTitle = gameId && GAME_TITLES[gameId] ? GAME_TITLES[gameId] : title;
 
     const handleToggleMute = () => {
         const next = toggleMute();

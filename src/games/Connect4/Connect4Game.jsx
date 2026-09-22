@@ -358,20 +358,20 @@ export default function Connect4Game({ setView }) {
 
                                             return (
                                                 <div key={`${rIdx}-${cIdx}`} className="aspect-square w-full relative flex items-center justify-center overflow-hidden">
-                                                    {/* Board Grid Cutout Trick using CSS shapes or simple borders */}
-                                                    <div className="absolute inset-0 rounded-full border-4 md:border-[6px] border-[var(--bg-color)] z-20 pointer-events-none" />
-                                                    <div className="absolute inset-[-10px] bg-sky-600/30 backdrop-blur-md z-10 pointer-events-none"
-                                                        style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 10% 10%, 10% 90%, 90% 90%, 90% 10%, 10% 10%)' /* basic inverse hole approximation, but border overlay is better */ }} />
+                                                    {/* Board Background (the blue plastic with hole) */}
+                                                    <div className="absolute inset-[-1px] bg-sky-600/60 backdrop-blur-md shadow-[inset_0_4px_10px_rgba(0,0,0,0.3)] pointer-events-none z-10"
+                                                         style={{ maskImage: 'radial-gradient(circle, transparent 45%, black 46%)', WebkitMaskImage: 'radial-gradient(circle, transparent 45%, black 46%)' }} />
 
-                                                    {/* Chip */}
-                                                    <div className={`absolute rounded-full transition-transform transform z-0 inset-[5%]
-                                          ${cell ? 'scale-100 translate-y-0' : 'scale-100 -translate-y-[150%]'}
+                                                    {/* The Chip (falling behind the board) */}
+                                                    <div className={`absolute rounded-full transition-transform transform z-0 w-[85%] h-[85%]
+                                          ${cell ? 'scale-100 translate-y-0' : 'scale-100 -translate-y-[600%] opacity-0'}
                                           ${isWinningChip ? 'animate-pulse-glow z-30 ring-4 ring-white' : ''}
                                          `}
                                                         style={{
                                                             transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)', // Bouncy effect
                                                             transitionDuration: '500ms',
                                                             backgroundColor: cObj?.hex,
+                                                            opacity: cell ? 1 : 0,
                                                             boxShadow: isWinningChip ? `0 0 20px ${cObj?.glow}` : `inset -3px -3px 8px rgba(0,0,0,0.4), inset 3px 3px 8px rgba(255,255,255,0.4)`
                                                         }}
                                                     />
