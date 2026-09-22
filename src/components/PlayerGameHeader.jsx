@@ -9,6 +9,24 @@ import { AvatarDisplay } from './icons/AvatarIcons';
 import { GameIcon, IconTarget, IconHourglass } from './icons/GameIcons';
 import Logo from './Logo';
 
+const GAME_TITLES = {
+    'quick-draw': 'الرسم السريع',
+    'domino': 'الدومينو',
+    'rps-arena': 'حجرة ورقة مقص ⚡',
+    'trivia-duel': 'تحدي المعلومات',
+    'code-game': 'خمن الكود',
+    'word-game': 'خمن الكلمة',
+    'xo-game': 'إكس أو',
+    'big-xo-game': 'Big XO',
+    'connect-4': 'Connect 4',
+    'memory-game': 'Memory Match',
+    'dots-boxes': 'Dots & Boxes',
+    'sea-battle': 'حرب السفن',
+    'guess-time': 'خمن الوقت',
+    'bus-complete': 'أتوبيس كومبليت',
+    'air-hockey': 'Air Hockey'
+};
+
 export default function PlayerGameHeader({
     title = 'اللعبة',
     gameEmoji = null,
@@ -30,7 +48,9 @@ export default function PlayerGameHeader({
         const handleOpened = () => setHasUnread(false);
         window.addEventListener('game-chat-unread', handleUnread);
         window.addEventListener('game-chat-opened', handleOpened);
-        return () => {
+            const displayTitle = gameId && GAME_TITLES[gameId] ? GAME_TITLES[gameId] : title;
+
+    return () => {
             window.removeEventListener('game-chat-unread', handleUnread);
             window.removeEventListener('game-chat-opened', handleOpened);
         };
@@ -62,7 +82,7 @@ export default function PlayerGameHeader({
                     ) : gameEmoji && typeof gameEmoji === 'string' && gameEmoji.length > 2 ? (
                         <GameIcon gameId={gameEmoji} size={18} className="text-[var(--accent)]" />
                     ) : null}
-                    <span className="text-xs font-black gradient-text">{title}</span>
+                    <span className="text-xs font-black gradient-text">{displayTitle}</span>
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
