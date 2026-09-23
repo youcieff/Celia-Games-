@@ -85,6 +85,17 @@ function createFirebaseConn(roomPath, isHost, roomCode) {
                 listeners[event] = listeners[event].filter(h => h !== handler);
             }
         },
+        // Save game state to Firebase (host calls after every move so rejoiners can restore)
+        saveState(state) {
+            try { set(ref(db, `${roomPath}/gameState`), state); } catch (e) {}
+        },
+        // Get saved game state (called after rejoin to restore mid-game position)
+        async getState() {
+            try {
+                const snap = await get(ref(db, `${roomPath}/gameState`));
+                return snap.val() || null;
+            } catch (e) { return null; }
+        },
         close() {
             try {
                 set(myPresenceRef, 'offline');
@@ -144,6 +155,8 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
     const isHostRef = useRef(false);
     const isHandedOffRef = useRef(false);
     const oppReadyRef = useRef(false);
+    const isRejoinRef = useRef(false);
+    const savedStateRef = useRef(null);
     const roomPath = `rooms/${gameIdPrefix}-${myId}`;
 
     // HOST: write room to Firebase and wait for guest
@@ -233,9 +246,14 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
     // Both ready → start game
     useEffect(() => {
         if (myReady && oppReady && connRef.current) {
-            const timeout = setTimeout(() => {
+            const timeout = setTimeout(async () => {
                 isHandedOffRef.current = true;
-                onGameStart(connRef.current, isHostRef.current, oppProfile);
+                // On rejoin, fetch saved state and pass it to the game
+                let stateToRestore = savedStateRef.current;
+                if (isRejoinRef.current && !stateToRestore) {
+                    stateToRestore = await connRef.current.getState();
+                }
+                onGameStart(connRef.current, isHostRef.current, oppProfile, stateToRestore);
             }, 600);
             return () => clearTimeout(timeout);
         }
@@ -307,6 +325,18 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                 return;
             }
 
+            // Check if this is a rejoin (room was previously joined by us)
+            const isRejoin = codeToJoin.trim().toUpperCase() === rejoinCode;
+            isRejoinRef.current = isRejoin;
+
+            // Pre-fetch saved state if rejoining
+            if (isRejoin) {
+                try {
+                    const stateSnap = await get(ref(db, `${targetRoom}/gameState`));
+                    savedStateRef.current = stateSnap.val() || null;
+                } catch(e) { savedStateRef.current = null; }
+            }
+
             await set(ref(db, `${targetRoom}/guestReady`), true);
 
             isHostRef.current = false;
@@ -318,6 +348,10 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                     oppReadyRef.current = true;
                     setOppReady(true);
                     if (d.profile) setOppProfile(d.profile);
+                }
+                // Handle state_sync pushed by host on peer-reconnect
+                if (d?.type === 'state_sync' && d.state) {
+                    savedStateRef.current = d.state;
                 }
             });
 

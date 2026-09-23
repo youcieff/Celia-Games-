@@ -33,10 +33,47 @@ export default function WordGame({ setView, mode }) {
     const [lives, setLives] = useState(6);
     const [isHintRevealed, setIsHintRevealed] = useState(false);
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const saveGameState = () => {
+        if (!isHostRef.current || !connRef.current) return;
+        connRef.current.saveState({
+            gameState, secretWord, hint, guessedLetters, lives, isHintRevealed, isMyTurnToWrite
+        });
+    };
+
+    useEffect(() => {
+        saveGameState();
+    }, [gameState, secretWord, hint, guessedLetters, lives, isHintRevealed, isMyTurnToWrite]);
+
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         connRef.current = conn;
         isHostRef.current = hostMode;
         if (oppProf) setOppProfile(oppProf);
+
+        if (savedState && savedState.gameState) {
+            setGameState(savedState.gameState);
+            setSecretWord(savedState.secretWord || '');
+            setHint(savedState.hint || '');
+            setGuessedLetters(savedState.guessedLetters || []);
+            setLives(savedState.lives ?? 6);
+            setIsHintRevealed(savedState.isHintRevealed || false);
+            setIsMyTurnToWrite(hostMode ? savedState.isMyTurnToWrite : !savedState.isMyTurnToWrite);
+
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.send({ type: 'state_sync', state: savedState });
+                });
+            }
+            return;
+        }
+
+        if (hostMode) {
+            conn.on('peer-reconnect', () => {
+                conn.send({ type: 'state_sync', state: {
+                    gameState, secretWord, hint, guessedLetters, lives, isHintRevealed, isMyTurnToWrite
+                }});
+            });
+        }
+
         if (hostMode) {
             setGameState('role-select');
         } else {
@@ -67,6 +104,16 @@ export default function WordGame({ setView, mode }) {
                 const guestWrites = data.guestWrites;
                 setIsMyTurnToWrite(guestWrites);
                 setGameState(guestWrites ? 'setup' : 'waiting');
+            } else if (data.type === 'state_sync') {
+                if (data.state) {
+                    setGameState(data.state.gameState);
+                    setSecretWord(data.state.secretWord || '');
+                    setHint(data.state.hint || '');
+                    setGuessedLetters(data.state.guessedLetters || []);
+                    setLives(data.state.lives ?? 6);
+                    setIsHintRevealed(data.state.isHintRevealed || false);
+                    setIsMyTurnToWrite(!data.state.isMyTurnToWrite);
+                }
             } else if (data.type === 'start_game') {
                 setSecretWord(data.word);
                 setHint(data.hint);

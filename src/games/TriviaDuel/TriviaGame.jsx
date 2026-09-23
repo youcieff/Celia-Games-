@@ -42,17 +42,41 @@ export default function TriviaGame({ setView }) {
     const oppScoreRef = useRef(0);
 
     // ── Start Match ───────────────────────────────────────────────────────────
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const saveGameState = (q, cIdx, mScore, oScore, st) => {
+        if (!isHostRef.current || !connRef.current) return;
+        connRef.current.saveState({ questions: q, currentIdx: cIdx, myScore: mScore, oppScore: oScore, gameState: st });
+    };
+
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
+
+        if (savedState && savedState.questions) {
+            setQuestions(savedState.questions);
+            setCurrentIdx(savedState.currentIdx);
+            setMyScore(savedState.myScore);
+            setOppScore(savedState.oppScore);
+            myScoreRef.current = savedState.myScore;
+            oppScoreRef.current = savedState.oppScore;
+            setGameState(savedState.gameState);
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.send({ type: 'state_sync', state: { questions: savedState.questions, currentIdx: savedState.currentIdx, hostScore: myScoreRef.current, oppScore: oppScoreRef.current, gameState: savedState.gameState } });
+                });
+            }
+            return;
+        }
 
         if (hostMode) {
             const quiz = getRandomTriviaQuiz(10);
             setQuestions(quiz);
             conn.send({ type: 'start_match', questions: quiz });
             startQuiz(quiz);
+            conn.on('peer-reconnect', () => {
+                conn.send({ type: 'state_sync', state: { questions: quiz, currentIdx: 0, hostScore: myScoreRef.current, oppScore: oppScoreRef.current, gameState: 'playing' } });
+            });
         }
     };
 
@@ -99,6 +123,17 @@ export default function TriviaGame({ setView }) {
         if (!msg || !msg.type) return;
 
         switch (msg.type) {
+            case 'state_sync':
+                if (msg.state && msg.state.questions) {
+                    setQuestions(msg.state.questions);
+                    setCurrentIdx(msg.state.currentIdx);
+                    setMyScore(isHostRef.current ? msg.state.hostScore : msg.state.oppScore);
+                    setOppScore(isHostRef.current ? msg.state.oppScore : msg.state.hostScore);
+                    myScoreRef.current = isHostRef.current ? msg.state.hostScore : msg.state.oppScore;
+                    oppScoreRef.current = isHostRef.current ? msg.state.oppScore : msg.state.hostScore;
+                    setGameState(msg.state.gameState);
+                }
+                break;
             case 'start_match':
                 setQuestions(msg.questions);
                 startQuiz(msg.questions);

@@ -249,8 +249,8 @@ export default class Connect4AI {
 
         // 3. Minimax (depth 2) - medium difficulty with occasional randomness
         if (chosenCol === null) {
-            // 25% chance of a random move to make it feel more human and beatable
-            if (Math.random() < 0.25) {
+            // 45% chance of a random move to make it feel more human and beatable
+            if (Math.random() < 0.45) {
                 chosenCol = valid[Math.floor(Math.random() * valid.length)];
             } else {
                 const res = this.minimax(this.board, 2, -Infinity, Infinity, true);

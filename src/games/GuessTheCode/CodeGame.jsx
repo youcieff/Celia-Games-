@@ -40,21 +40,90 @@ export default function CodeGame({ setView }) {
     // Tracking opponent's progress on YOUR secret code
     const oppConfirmedRef = useRef([]);
     const [oppConfirmed, setOppConfirmed] = useState([]);
+    const myGuessesRef = useRef([]); // keep ref in sync for state saving
+    const isMyTurnRef = useRef(false);
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    // ── save game state (host only) ─────────────────────────────────
+    const saveGameState = (overrides = {}) => {
+        if (!isHostRef.current || !connRef.current) return;
+        connRef.current.saveState({
+            gameState: 'playing',
+            codeLength: codeLengthRef.current,
+            myGuesses: myGuessesRef.current,      // host's guesses
+            oppConfirmed: oppConfirmedRef.current, // opp's confirmed digits on host's secret
+            hostTurn: isMyTurnRef.current,         // true = host's turn
+            secret: secretRef.current,             // host's secret (only host stores)
+            ...overrides,
+        });
+    };
+
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         connRef.current = conn;
         isHostRef.current = hostMode;
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
 
-        // Host sets code length, client waits for it
-        turnRef.current = !hostMode;
-        setIsMyTurn(!hostMode);
+        // Restore mid-game state on rejoin
+        if (savedState && savedState.gameState === 'playing') {
+            const len = savedState.codeLength || 4;
+            codeLengthRef.current = len;
+            setCodeLength(len);
 
-        if (hostMode) {
-            setGameState('length-select');
+            const gs = savedState.myGuesses || [];
+            const oc = savedState.oppConfirmed || Array(len).fill(false);
+            myGuessesRef.current = gs;
+            oppConfirmedRef.current = oc;
+            setMyGuesses(gs);
+            setOppConfirmed(oc);
+
+            const myTurn = hostMode ? (savedState.hostTurn ?? false) : !(savedState.hostTurn ?? false);
+            isMyTurnRef.current = myTurn;
+            turnRef.current = myTurn;
+            setIsMyTurn(myTurn);
+
+            // Restore host's secret
+            if (hostMode && savedState.secret) {
+                secretRef.current = savedState.secret;
+                oppReadyRef.current = true; // treat opp as ready so we stay in playing
+            }
+
+            setGameState('playing');
+
+            // Host: on peer-reconnect, resend state_sync
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.send({ type: 'state_sync', state: {
+                        gameState: 'playing',
+                        codeLength: codeLengthRef.current,
+                        myGuesses: myGuessesRef.current,
+                        oppConfirmed: oppConfirmedRef.current,
+                        hostTurn: isMyTurnRef.current,
+                    }});
+                });
+            }
         } else {
-            setGameState('waiting-length');
+            // Fresh game
+            turnRef.current = !hostMode;
+            isMyTurnRef.current = !hostMode;
+            setIsMyTurn(!hostMode);
+
+            if (hostMode) {
+                setGameState('length-select');
+                // Host: on peer-reconnect during a live game, push state_sync
+                conn.on('peer-reconnect', () => {
+                    if (secretRef.current) { // only if game has started
+                        conn.send({ type: 'state_sync', state: {
+                            gameState: 'playing',
+                            codeLength: codeLengthRef.current,
+                            myGuesses: myGuessesRef.current,
+                            oppConfirmed: oppConfirmedRef.current,
+                            hostTurn: isMyTurnRef.current,
+                        }});
+                    }
+                });
+            } else {
+                setGameState('waiting-length');
+            }
         }
     };
 
@@ -94,17 +163,42 @@ export default function CodeGame({ setView }) {
                     triggerDefeatEffects();
                 } else {
                     turnRef.current = true;
+                    isMyTurnRef.current = true;
                     setIsMyTurn(true);
+                    saveGameState({ hostTurn: isHostRef.current });
                 }
                 break;
             }
             case 'guess_result': {
                 const { code, result } = msg;
-                setMyGuesses(prev => [...prev, { code: code.split(''), result }]);
+                const newGuess = { code: code.split(''), result };
+                const newGuesses = [...myGuessesRef.current, newGuess];
+                myGuessesRef.current = newGuesses;
+                setMyGuesses(newGuesses);
                 if (result.every(r => r === 'green')) {
                     setGameState('won');
                     triggerVictoryEffects();
                     if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
+                } else {
+                    isMyTurnRef.current = false;
+                    saveGameState({ hostTurn: false });
+                }
+                break;
+            }
+            case 'state_sync': {
+                const s = msg.state;
+                if (s && s.gameState === 'playing') {
+                    const len = s.codeLength || codeLengthRef.current;
+                    codeLengthRef.current = len;
+                    setCodeLength(len);
+                    const oc = s.oppConfirmed || Array(len).fill(false);
+                    oppConfirmedRef.current = oc;
+                    setOppConfirmed(oc);
+                    const myTurn = !(s.hostTurn ?? false);
+                    isMyTurnRef.current = myTurn;
+                    turnRef.current = myTurn;
+                    setIsMyTurn(myTurn);
+                    setGameState('playing');
                 }
                 break;
             }

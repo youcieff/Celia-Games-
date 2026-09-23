@@ -54,23 +54,66 @@ export default function TicTacToeGame({ setView }) {
 
     const boardRef = useRef(Array(9).fill(null));
     const xIsNextRef = useRef(true);
+    const scoresRef = useRef({ me: 0, opp: 0 });
 
     useEffect(() => {
         boardRef.current = board;
         xIsNextRef.current = xIsNext;
-    }, [board, xIsNext]);
+        scoresRef.current = scores;
+    }, [board, xIsNext, scores]);
 
     const isHost = isHostRef.current;
     const mySymbol = isHost ? hostSymbol : (hostSymbol === 'X' ? 'O' : 'X');
     const isMyTurn = (mySymbol === 'X' && xIsNext) || (mySymbol === 'O' && !xIsNext);
     const winData = calculateWinner(board);
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
-        setGameState(hostMode ? 'choosing-symbol' : 'waiting-start');
+        
+        if (savedState && savedState.gameState === 'playing') {
+            const b = savedState.board || Array(9).fill(null);
+            boardRef.current = b;
+            setBoard(b);
+            xIsNextRef.current = savedState.xIsNext;
+            setXIsNext(savedState.xIsNext);
+            setHostSymbolConfig(savedState.hostSymbol || 'X');
+            setHostSymbol(savedState.hostSymbol || 'X');
+            const myS = hostMode ? (savedState.myScore || 0) : (savedState.oppScore || 0);
+            const opS = hostMode ? (savedState.oppScore || 0) : (savedState.myScore || 0);
+            scoresRef.current = { me: myS, opp: opS };
+            setScores({ me: myS, opp: opS });
+            setGameState('playing');
+
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.send({ type: 'state_sync', state: {
+                        gameState: 'playing',
+                        board: boardRef.current,
+                        xIsNext: xIsNextRef.current,
+                        hostSymbol: savedState.hostSymbol || 'X',
+                        myScore: scoresRef.current.me,
+                        oppScore: scoresRef.current.opp
+                    }});
+                });
+            }
+        } else {
+            setGameState(hostMode ? 'choosing-symbol' : 'waiting-start');
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.send({ type: 'state_sync', state: {
+                        gameState: 'playing',
+                        board: boardRef.current,
+                        xIsNext: xIsNextRef.current,
+                        hostSymbol,
+                        myScore: scoresRef.current.me,
+                        oppScore: scoresRef.current.opp
+                    }});
+                });
+            }
+        }
     };
 
     const onData = (msg) => {
@@ -107,6 +150,21 @@ export default function TicTacToeGame({ setView }) {
         } else if (msg.type === 'restart') {
             if (boardRef.current.every(cell => cell === null)) return;
             doRestart();
+        } else if (msg.type === 'state_sync' && msg.state) {
+            const s = msg.state;
+            if (s.gameState === 'playing') {
+                const b = s.board || Array(9).fill(null);
+                boardRef.current = b;
+                setBoard(b);
+                xIsNextRef.current = s.xIsNext;
+                setXIsNext(s.xIsNext);
+                setHostSymbol(s.hostSymbol || 'X');
+                const myS = s.oppScore || 0;
+                const opS = s.myScore || 0;
+                scoresRef.current = { me: myS, opp: opS };
+                setScores({ me: myS, opp: opS });
+                setGameState('playing');
+            }
         }
     };
 
@@ -139,6 +197,17 @@ export default function TicTacToeGame({ setView }) {
         }
 
         connRef.current?.send({ type: 'play', index, symbol: mySymbol });
+        
+        if (isHostRef.current) {
+            connRef.current?.saveState({
+                gameState: 'playing',
+                board: newBoard,
+                xIsNext: !xIsNext,
+                hostSymbol,
+                myScore: win && win.winner === mySymbol ? scoresRef.current.me + 1 : scoresRef.current.me,
+                oppScore: win && win.winner !== 'draw' && win.winner !== mySymbol ? scoresRef.current.opp + 1 : scoresRef.current.opp
+            });
+        }
     };
 
     const handleChooseSymbol = (choice) => {
@@ -154,6 +223,14 @@ export default function TicTacToeGame({ setView }) {
         playSound('ding');
         setGameState('playing');
         connRef.current?.send({ type: 'start', hostSymbol: hostSymbolConfig, xIsNext: newXIsNext });
+        connRef.current?.saveState({
+            gameState: 'playing',
+            board: Array(9).fill(null),
+            xIsNext: newXIsNext,
+            hostSymbol: hostSymbolConfig,
+            myScore: 0,
+            oppScore: 0
+        });
     };
 
     const doRestart = () => {

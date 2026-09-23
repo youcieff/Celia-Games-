@@ -74,16 +74,59 @@ export default function UltimateGame({ setView }) {
         }
     }, [overallWinner, mySymbol]);
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const saveGameState = () => {
+        if (!isHostRef.current || !connRef.current) return;
+        connRef.current.saveState({
+            gameState, boards, bigBoard, activeBoardIdx, hostSymbol, xIsNext
+        });
+    };
+
+    useEffect(() => {
+        saveGameState();
+    }, [gameState, boards, bigBoard, activeBoardIdx, hostSymbol, xIsNext]);
+
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
+
+        if (savedState && savedState.gameState) {
+            setGameState(savedState.gameState);
+            setBoards(savedState.boards);
+            setBigBoard(savedState.bigBoard);
+            setActiveBoardIdx(savedState.activeBoardIdx);
+            setHostSymbol(savedState.hostSymbol);
+            setXIsNext(savedState.xIsNext);
+
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.send({ type: 'state_sync', state: savedState });
+                });
+            }
+            return;
+        }
+
+        if (hostMode) {
+            conn.on('peer-reconnect', () => {
+                conn.send({ type: 'state_sync', state: {
+                    gameState, boards, bigBoard, activeBoardIdx, hostSymbol, xIsNext
+                }});
+            });
+        }
+
         setGameState(hostMode ? 'choosing-symbol' : 'waiting-start');
     };
 
     const onData = (msg) => {
-        if (msg.type === 'global_ready' && msg.profile) {
+        if (msg.type === 'state_sync' && msg.state) {
+            setGameState(msg.state.gameState);
+            setBoards(msg.state.boards);
+            setBigBoard(msg.state.bigBoard);
+            setActiveBoardIdx(msg.state.activeBoardIdx);
+            setHostSymbol(msg.state.hostSymbol);
+            setXIsNext(msg.state.xIsNext);
+        } else if (msg.type === 'global_ready' && msg.profile) {
             setOppProfile(msg.profile);
         } else if (msg.type === 'play') {
             applyMove(msg.boardIdx, msg.cellIdx, msg.symbol);

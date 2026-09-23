@@ -176,13 +176,47 @@ export default function MemoryGame({ setView }) {
     const cardOrderRef = useRef([]);
     const resendRef = useRef(null);
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const saveGameState = (st) => {
+        if (!isHostRef.current || !connRef.current) return;
+        connRef.current.saveState(st);
+    };
+
+    // Automatically save state whenever it changes
+    useEffect(() => {
+        if (gameState === 'playing') {
+            saveGameState(stateRef.current);
+        }
+    }, [cards, flippedIndices, hostTurn, isProcessing, gameState]);
+
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', (msg) => {
             if (onDataRef.current) onDataRef.current(msg);
         });
+
+        if (savedState && savedState.cards) {
+            setCards(savedState.cards);
+            setFlippedIndices(savedState.flippedIndices || []);
+            setHostTurn(savedState.hostTurn);
+            setIsProcessing(savedState.isProcessing || false);
+            setGameState(savedState.gameState || 'playing');
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.send({ type: 'state_sync', state: stateRef.current });
+                });
+            }
+            return;
+        }
+
+        if (hostMode) {
+            conn.on('peer-reconnect', () => {
+                if (stateRef.current.gameState === 'playing') {
+                    conn.send({ type: 'state_sync', state: stateRef.current });
+                }
+            });
+        }
         setGameState(hostMode ? 'setup' : 'waiting-start');
     };
 
@@ -215,6 +249,14 @@ export default function MemoryGame({ setView }) {
             setScores({ host: 0, client: 0 });
             setGameState('playing');
             playSound('ding');
+        } else if (msg.type === 'state_sync') {
+            if (msg.state && msg.state.cards) {
+                setCards(msg.state.cards);
+                setFlippedIndices(msg.state.flippedIndices || []);
+                setHostTurn(msg.state.hostTurn);
+                setIsProcessing(msg.state.isProcessing || false);
+                setGameState(msg.state.gameState || 'playing');
+            }
         } else if (msg.type === 'start_ack') {
             // Guest confirmed receipt — stop retrying
             if (resendRef.current) {

@@ -84,12 +84,20 @@ export default function GuessTimeGame({ setView }) {
         myResultRef.current = null;
     };
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
+        if (savedState && savedState.scores) {
+            setScores(savedState.scores);
+        }
         setGameState(hostMode ? 'picking-mode' : 'waiting-settings');
+        if (hostMode) {
+            conn.on('peer-reconnect', () => {
+                conn.send({ type: 'state_sync', state: { scores: scores } });
+            });
+        }
     };
 
     const onData = useCallback((msg) => {
@@ -141,6 +149,9 @@ export default function GuessTimeGame({ setView }) {
                 break;
             case 'restart':
                 doRestart();
+                break;
+            case 'state_sync':
+                if (msg.state && msg.state.scores) setScores(msg.state.scores);
                 break;
             default: break;
         }

@@ -97,7 +97,7 @@ export default function SeaBattleGame({ setView }) {
         }
     }, [hitsOnMe, hitsOnOpp, gameState]);
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         if (oppProf) setOppProfile(oppProf);

@@ -368,6 +368,22 @@ export default function DominoGame({ setView }) {
 
     const isMyTurn = (isHostRef.current && currentTurn === 'host') || (!isHostRef.current && currentTurn === 'peer');
 
+    const saveGameState = () => {
+        if (!isHostRef.current || !connRef.current) return;
+        connRef.current.saveState({
+            gameState, hostScore: myMatchScoreRef.current, oppScore: oppMatchScoreRef.current, roundNum: roundNumRef.current,
+            hostHand: isHostRef.current ? myHand : peerHandRef.current,
+            peerHand: isHostRef.current ? peerHandRef.current : myHand,
+            boneyard, boardChain, currentTurn, rootTileId: rootTileIdRef.current
+        });
+    };
+
+    useEffect(() => {
+        if (gameState === 'playing' || gameState === 'round_over' || gameState === 'gameover') {
+            saveGameState();
+        }
+    }, [gameState, myMatchScore, oppMatchScore, roundNum, myHand, boneyard, boardChain, currentTurn]);
+
     const getChainEnds = useCallback(() => {
         if (boardChain.length === 0) return { left: null, right: null };
         const left = boardChain[0].left;
@@ -415,7 +431,7 @@ export default function DominoGame({ setView }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isMyTurn, boneyard.length, myHand, gameState]);
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         if (oppProf) setOppProfile(oppProf);

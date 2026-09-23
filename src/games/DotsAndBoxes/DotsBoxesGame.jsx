@@ -49,10 +49,10 @@ export default function DotsBoxesGame({ setView }) {
     const [hostTurn, setHostTurn] = useState(true);
     const [scores, setScores] = useState({ host: 0, opp: 0 });
 
-    const stateRef = useRef({ hLines, vLines, boxes, hostTurn, scores });
+    const stateRef = useRef({ hLines, vLines, boxes, hostTurn, scores, gameState, hostColor, oppColor, clientConfig });
     useEffect(() => {
-        stateRef.current = { hLines, vLines, boxes, hostTurn, scores };
-    }, [hLines, vLines, boxes, hostTurn, scores]);
+        stateRef.current = { hLines, vLines, boxes, hostTurn, scores, gameState, hostColor, oppColor, clientConfig };
+    }, [hLines, vLines, boxes, hostTurn, scores, gameState, hostColor, oppColor, clientConfig]);
 
     // Derived properties
     const isHost = isHostRef.current;
@@ -106,12 +106,36 @@ export default function DotsBoxesGame({ setView }) {
         }
     }, [isGameOver, overallWinner]);
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
-        setGameState(hostMode ? 'setup' : 'waiting-start');
+
+        if (savedState && savedState.gameState === 'playing') {
+            setHLines(savedState.hLines);
+            setVLines(savedState.vLines);
+            setBoxes(savedState.boxes);
+            setScores(savedState.scores);
+            setHostTurn(savedState.hostTurn);
+            setHostColor(savedState.hostColor);
+            setOppColor(savedState.oppColor);
+            setClientConfig(savedState.clientConfig);
+            setGameState('playing');
+
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.send({ type: 'state_sync', state: stateRef.current });
+                });
+            }
+        } else {
+            setGameState(hostMode ? 'setup' : 'waiting-start');
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.send({ type: 'state_sync', state: stateRef.current });
+                });
+            }
+        }
     };
 
     const onData = (msg) => {
@@ -126,6 +150,17 @@ export default function DotsBoxesGame({ setView }) {
         } else if (msg.type === 'restart') {
             if (stateRef.current.gameState === 'playing') return; // already restarted
             doRestart();
+        } else if (msg.type === 'state_sync' && msg.state) {
+            const s = msg.state;
+            if (s.gameState === 'playing') {
+                setHLines(s.hLines);
+                setVLines(s.vLines);
+                setBoxes(s.boxes);
+                setScores(s.scores);
+                setHostTurn(s.hostTurn);
+                setClientConfig(s.clientConfig);
+                setGameState('playing');
+            }
         }
     };
 
@@ -135,6 +170,17 @@ export default function DotsBoxesGame({ setView }) {
         setGameState('playing');
         setHostTurn(true); // Host always starts
         connRef.current?.send({ type: 'start', config });
+        connRef.current?.saveState({
+            gameState: 'playing',
+            hLines: Array.from({ length: ROWS + 1 }, () => Array(COLS).fill(null)),
+            vLines: Array.from({ length: ROWS }, () => Array(COLS + 1).fill(null)),
+            boxes: Array.from({ length: ROWS }, () => Array(COLS).fill(null)),
+            hostTurn: true,
+            scores: { host: 0, opp: 0 },
+            hostColor,
+            oppColor,
+            clientConfig: config
+        });
     };
 
     const applyMove = (lineType, r, c, byHost) => {
@@ -184,20 +230,30 @@ export default function DotsBoxesGame({ setView }) {
             playHaptic(10);
         }
 
-        // SYNCHRONOUSLY UPDATE STATEREF SO FAST MOVES DON'T CLOBBER
-        stateRef.current = {
+        const newState = {
             hLines: newH,
             vLines: newV,
             boxes: newBoxes,
             hostTurn: newHostTurn,
-            scores: { host: newHostScore, opp: newOppScore }
+            scores: { host: newHostScore, opp: newOppScore },
+            gameState: cur.gameState,
+            hostColor: cur.hostColor,
+            oppColor: cur.oppColor,
+            clientConfig: cur.clientConfig
         };
+
+        // SYNCHRONOUSLY UPDATE STATEREF SO FAST MOVES DON'T CLOBBER
+        stateRef.current = newState;
 
         setHLines(newH);
         setVLines(newV);
         setBoxes(newBoxes);
         setScores({ host: newHostScore, opp: newOppScore });
         setHostTurn(newHostTurn);
+
+        if (isHostRef.current) {
+            connRef.current?.saveState(newState);
+        }
     };
 
     const handleLineClick = (lineType, r, c) => {

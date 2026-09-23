@@ -292,13 +292,71 @@ export default function BusCompleteGame({ setView }) {
     };
 
     // ── network ───────────────────────────────────────────────────────────
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const saveGameState = () => {
+        if (!isHostRef.current || !connRef.current) return;
+        connRef.current.saveState({
+            gameState, letter: currentLetterRef.current, mode: modeRef.current, round: roundRef.current,
+            scores: scoresRef.current, myAnswers: myAnswersRef.current, oppAnswers: oppAnswersRef.current,
+            busCallerName, inputsLocked: inputsLockedRef.current, usedLetters: usedLettersRef.current
+        });
+    };
+
+    useEffect(() => {
+        saveGameState();
+    }, [gameState, letter, mode, round, scores, myAnswers, oppAnswers, busCallerName, inputsLocked]);
+
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current   = conn;
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', (msg) => {
             if (onDataRef.current) onDataRef.current(msg);
         });
+
+        if (savedState && savedState.gameState) {
+            setGameState(savedState.gameState);
+            setLetter(savedState.letter || '');
+            currentLetterRef.current = savedState.letter || '';
+            setMode(savedState.mode || 'ar');
+            modeRef.current = savedState.mode || 'ar';
+            setRound(savedState.round || 1);
+            roundRef.current = savedState.round || 1;
+
+            const myScores = hostMode ? savedState.scores : { me: savedState.scores.opp, opp: savedState.scores.me };
+            setScores(myScores);
+            scoresRef.current = myScores;
+
+            const myAns = hostMode ? savedState.myAnswers : savedState.oppAnswers;
+            setMyAnswers(myAns || EMPTY_ANSWERS());
+            myAnswersRef.current = myAns || EMPTY_ANSWERS();
+
+            const oppAns = hostMode ? savedState.oppAnswers : savedState.myAnswers;
+            setOppAnswers(oppAns || null);
+            oppAnswersRef.current = oppAns || null;
+
+            setBusCallerName(savedState.busCallerName || '');
+            setInputsLocked(savedState.inputsLocked || false);
+            inputsLockedRef.current = savedState.inputsLocked || false;
+            usedLettersRef.current = savedState.usedLetters || [];
+
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.send({ type: 'state_sync', state: savedState });
+                });
+            }
+            return;
+        }
+
+        if (hostMode) {
+            conn.on('peer-reconnect', () => {
+                conn.send({ type: 'state_sync', state: {
+                    gameState, letter: currentLetterRef.current, mode: modeRef.current, round: roundRef.current,
+                    scores: scoresRef.current, myAnswers: myAnswersRef.current, oppAnswers: oppAnswersRef.current,
+                    busCallerName, inputsLocked: inputsLockedRef.current, usedLetters: usedLettersRef.current
+                }});
+            });
+        }
+
         if (hostMode) {
             setGameState('setup');
         } else {

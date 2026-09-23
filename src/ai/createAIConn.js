@@ -47,6 +47,12 @@ export default function createAIConn(gameIdPrefix) {
             if (aiInstance && aiInstance.close) aiInstance.close();
             aiInstance = null;
         },
+        saveState(state) {
+            // AI games don't save state to Firebase
+        },
+        async getState() {
+            return null;
+        },
         _sendToPlayer(data) {
             if (data && data.type === 'global_ready' && !data.profile) {
                 data.profile = { nickname: 'الذكاء الاصطناعي', avatar: 'robot' };

@@ -62,11 +62,49 @@ export default function RPSArenaGame({ setView }) {
     const oppScoreRef = useRef(0);
     const isResolvingRef = useRef(false);
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const saveGameState = () => {
+        if (!isHostRef.current || !connRef.current) return;
+        connRef.current.saveState({
+            gameState, hostScore: myScoreRef.current, oppScore: oppScoreRef.current, roundNum
+        });
+    };
+
+    useEffect(() => {
+        saveGameState();
+    }, [gameState, myScore, oppScore, roundNum]);
+
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
+
+        if (savedState && savedState.gameState) {
+            setGameState(savedState.gameState);
+            setMyScore(hostMode ? savedState.hostScore : savedState.oppScore);
+            setOppScore(hostMode ? savedState.oppScore : savedState.hostScore);
+            myScoreRef.current = hostMode ? savedState.hostScore : savedState.oppScore;
+            oppScoreRef.current = hostMode ? savedState.oppScore : savedState.hostScore;
+            setRoundNum(savedState.roundNum || 1);
+
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.send({ type: 'state_sync', state: {
+                        gameState: savedState.gameState, hostScore: myScoreRef.current, oppScore: oppScoreRef.current, roundNum: savedState.roundNum
+                    }});
+                });
+            }
+            return;
+        }
+
+        if (hostMode) {
+            conn.on('peer-reconnect', () => {
+                conn.send({ type: 'state_sync', state: {
+                    gameState, hostScore: myScoreRef.current, oppScore: oppScoreRef.current, roundNum
+                }});
+            });
+        }
+
         startNewGame();
     };
 

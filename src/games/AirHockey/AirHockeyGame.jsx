@@ -207,13 +207,48 @@ export default function AirHockeyGame({ setView }) {
         connRef.current?.send({ type: 'set_theme', theme: nextTheme });
     };
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const saveGameState = () => {
+        if (!isHostRef.current || !connRef.current) return;
+        connRef.current.saveState({
+            gameState, hostScore: myScoreRef.current, oppScore: oppScoreRef.current
+        });
+    };
+
+    useEffect(() => {
+        saveGameState();
+    }, [gameState, myScore, oppScore]);
+
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         const isAIPlayer = !!conn.isAI;
         setIsAI(isAIPlayer);
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
+
+        if (savedState && savedState.gameState) {
+            setGameState(savedState.gameState);
+            setMyScore(hostMode ? savedState.hostScore : savedState.oppScore);
+            setOppScore(hostMode ? savedState.oppScore : savedState.hostScore);
+            myScoreRef.current = hostMode ? savedState.hostScore : savedState.oppScore;
+            oppScoreRef.current = hostMode ? savedState.oppScore : savedState.hostScore;
+
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.send({ type: 'state_sync', state: savedState });
+                });
+            }
+            return;
+        }
+
+        if (hostMode) {
+            conn.on('peer-reconnect', () => {
+                conn.send({ type: 'state_sync', state: {
+                    gameState, hostScore: myScoreRef.current, oppScore: oppScoreRef.current
+                }});
+            });
+        }
+
         if (isAIPlayer) {
             conn.send({ type: 'set_difficulty', level: aiDifficulty });
             setGameState('setup');

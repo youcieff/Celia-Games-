@@ -131,7 +131,6 @@ export default function QuickDrawGame({ setView }) {
     const [showColorSheet, setShowColorSheet] = useState(false);
 
     const canvasRef = useRef(null);
-    const receivedCanvasRef = useRef(null); // Safari-safe canvas for received image
     const isDrawing = useRef(false);
     const lastPos = useRef(null);
     const timerRef = useRef(null);
@@ -166,19 +165,7 @@ export default function QuickDrawGame({ setView }) {
         }
     }, [gameState, initCanvas]);
 
-    // Draw received image onto canvas (Safari-safe - avoids data URL img display bugs)
-    useEffect(() => {
-        if (!receivedImageUrl || !receivedCanvasRef.current) return;
-        const canvas = receivedCanvasRef.current;
-        const ctx = canvas.getContext('2d');
-        const img = new Image();
-        img.onload = () => {
-            canvas.width = img.naturalWidth || img.width;
-            canvas.height = img.naturalHeight || img.height;
-            ctx.drawImage(img, 0, 0);
-        };
-        img.src = receivedImageUrl;
-    }, [receivedImageUrl]);
+    // Removed Safari-safe canvas logic in favor of standard img tag to fix black screen bug
 
     // ── Save history snapshot ─────────────────────────────────────────────────
     const saveSnapshot = useCallback(() => {
@@ -191,11 +178,50 @@ export default function QuickDrawGame({ setView }) {
     }, []);
 
     // ── Game Handlers ─────────────────────────────────────────────────────────
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const saveGameState = () => {
+        if (!isHostRef.current || !connRef.current) return;
+        connRef.current.saveState({
+            gameState, hostScore: myScoreRef.current, oppScore: oppScoreRef.current, round, firstDrawerRole
+        });
+    };
+
+    useEffect(() => {
+        saveGameState();
+    }, [gameState, myScore, oppScore, round, firstDrawerRole]);
+
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', (msg) => { if (onDataRef.current) onDataRef.current(msg); });
+
+        if (savedState && savedState.gameState) {
+            setGameState(savedState.gameState);
+            setMyScore(hostMode ? savedState.hostScore : savedState.oppScore);
+            setOppScore(hostMode ? savedState.oppScore : savedState.hostScore);
+            myScoreRef.current = hostMode ? savedState.hostScore : savedState.oppScore;
+            oppScoreRef.current = hostMode ? savedState.oppScore : savedState.hostScore;
+            setRound(savedState.round || 0);
+            roundRef.current = savedState.round || 0;
+            setFirstDrawerRole(savedState.firstDrawerRole || 'me');
+            firstDrawerRoleRef.current = savedState.firstDrawerRole || 'me';
+
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.send({ type: 'state_sync', state: savedState });
+                });
+            }
+            return;
+        }
+
+        if (hostMode) {
+            conn.on('peer-reconnect', () => {
+                conn.send({ type: 'state_sync', state: {
+                    gameState, hostScore: myScoreRef.current, oppScore: oppScoreRef.current, round: roundRef.current, firstDrawerRole: firstDrawerRoleRef.current
+                }});
+            });
+        }
+
         if (hostMode) setGameState('role_select');
         else setGameState('role_select');
     };
@@ -753,9 +779,9 @@ export default function QuickDrawGame({ setView }) {
                                     onTouchEnd={endDraw}
                                 />
                             ) : receivedImageUrl ? (
-                                // Safari-safe: draw on canvas instead of <img> to avoid data URL black screen
-                                <canvas
-                                    ref={receivedCanvasRef}
+                                <img
+                                    src={receivedImageUrl}
+                                    alt="رسمة الخصم"
                                     className="w-full h-full object-contain bg-white"
                                     style={{ display: 'block', background: 'white' }}
                                 />

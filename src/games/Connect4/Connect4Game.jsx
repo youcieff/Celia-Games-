@@ -82,13 +82,20 @@ export default function Connect4Game({ setView }) {
     const [clientConfig, setClientConfig] = useState(null);
     const [hostTurn, setHostTurn] = useState(true); // Tracks turn, true: host, false: opp
 
+    const [myScore, setMyScore] = useState(0);
+    const [oppScore, setOppScore] = useState(0);
+
     const boardRef = useRef(board);
     const hostTurnRef = useRef(true);
+    const myScoreRef = useRef(0);
+    const oppScoreRef = useRef(0);
 
     useEffect(() => {
         boardRef.current = board;
         hostTurnRef.current = hostTurn;
-    }, [board, hostTurn]);
+        myScoreRef.current = myScore;
+        oppScoreRef.current = oppScore;
+    }, [board, hostTurn, myScore, oppScore]);
 
     // Derived
     const isHost = isHostRef.current;
@@ -110,12 +117,65 @@ export default function Connect4Game({ setView }) {
         }
     }, [winData, isHost]);
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
-        setGameState(hostMode ? 'setup' : 'waiting-start');
+
+        // Restore mid-game state on rejoin
+        if (savedState && savedState.gameState === 'playing') {
+            const b = savedState.board || Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+            boardRef.current = b;
+            setBoard(b);
+            hostTurnRef.current = savedState.hostTurn;
+            setHostTurn(savedState.hostTurn);
+            setHostColor(savedState.hostColor || 'red');
+            setOppColor(savedState.oppColor || 'yellow');
+            setHostPlaysFirst(savedState.hostPlaysFirst ?? true);
+            if (!hostMode) {
+                setClientConfig({ hostColor: savedState.hostColor, oppColor: savedState.oppColor, hostPlaysFirst: savedState.hostPlaysFirst });
+            }
+            const ms = hostMode ? (savedState.myScore || 0) : (savedState.oppScore || 0);
+            const os = hostMode ? (savedState.oppScore || 0) : (savedState.myScore || 0);
+            myScoreRef.current = ms; oppScoreRef.current = os;
+            setMyScore(ms); setOppScore(os);
+            setGameState('playing');
+
+            // Host: on peer-reconnect, resend state_sync so guest can restore
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.send({ type: 'state_sync', state: {
+                        gameState: 'playing',
+                        board: boardRef.current,
+                        hostTurn: hostTurnRef.current,
+                        hostColor: savedState.hostColor,
+                        oppColor: savedState.oppColor,
+                        hostPlaysFirst: savedState.hostPlaysFirst,
+                        myScore: myScoreRef.current,
+                        oppScore: oppScoreRef.current,
+                    }});
+                });
+            }
+        } else {
+            setGameState(hostMode ? 'setup' : 'waiting-start');
+            // Host: on peer-reconnect, resend state_sync
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    const currentState = {
+                        gameState: 'playing',
+                        board: boardRef.current,
+                        hostTurn: hostTurnRef.current,
+                        hostColor,
+                        oppColor,
+                        hostPlaysFirst,
+                        myScore: myScoreRef.current,
+                        oppScore: oppScoreRef.current,
+                    };
+                    conn.send({ type: 'state_sync', state: currentState });
+                });
+            }
+        }
     };
 
     const onData = (msg) => {
@@ -128,8 +188,25 @@ export default function Connect4Game({ setView }) {
         } else if (msg.type === 'play') {
             dropCoin(msg.colIdx, !isHostRef.current);
         } else if (msg.type === 'restart') {
-            if (boardRef.current.every(row => row.every(c => !c))) return; // already restarted
+            if (boardRef.current.every(row => row.every(c => !c))) return;
             doRestart();
+        } else if (msg.type === 'state_sync' && msg.state) {
+            // Guest received state sync from host - restore full game state
+            const s = msg.state;
+            if (s.gameState === 'playing') {
+                const b = s.board || Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+                boardRef.current = b;
+                setBoard(b);
+                hostTurnRef.current = s.hostTurn;
+                setHostTurn(s.hostTurn);
+                setClientConfig({ hostColor: s.hostColor, oppColor: s.oppColor, hostPlaysFirst: s.hostPlaysFirst });
+                // From guest's perspective: host's myScore = oppScore, host's oppScore = myScore
+                const myS = s.oppScore || 0;
+                const opS = s.myScore || 0;
+                myScoreRef.current = myS; oppScoreRef.current = opS;
+                setMyScore(myS); setOppScore(opS);
+                setGameState('playing');
+            }
         }
     };
 
@@ -137,7 +214,6 @@ export default function Connect4Game({ setView }) {
         const newBoard = boardRef.current.map(row => [...row]);
         let droppedRow = -1;
 
-        // Find lowest empty slot
         for (let r = ROWS - 1; r >= 0; r--) {
             if (!newBoard[r][colIdx]) {
                 newBoard[r][colIdx] = isHostMove ? 'host' : 'opp';
@@ -147,14 +223,32 @@ export default function Connect4Game({ setView }) {
         }
 
         if (droppedRow !== -1) {
+            boardRef.current = newBoard;
             setBoard(newBoard);
-            setHostTurn(!hostTurnRef.current);
+            const nextTurn = !hostTurnRef.current;
+            hostTurnRef.current = nextTurn;
+            setHostTurn(nextTurn);
+
+            // Host saves state after every move for potential rejoin
+            if (isHostRef.current) {
+                connRef.current?.saveState({
+                    gameState: 'playing',
+                    board: newBoard,
+                    hostTurn: nextTurn,
+                    hostColor,
+                    oppColor,
+                    hostPlaysFirst,
+                    myScore: myScoreRef.current,
+                    oppScore: oppScoreRef.current,
+                });
+            }
+
             setTimeout(() => {
                 import('../../lib/audioEngine').then(({ playSound, playHaptic }) => {
                     playSound('pop');
                     playHaptic(20);
                 });
-            }, 300); // Delay sound to match when coin lands
+            }, 300);
         }
     };
 
@@ -171,6 +265,14 @@ export default function Connect4Game({ setView }) {
         setHostTurn(hostPlaysFirst);
         setGameState('playing');
         connRef.current?.send({ type: 'start', config });
+        // Save initial state
+        connRef.current?.saveState({
+            gameState: 'playing',
+            board: Array.from({ length: ROWS }, () => Array(COLS).fill(null)),
+            hostTurn: hostPlaysFirst,
+            hostColor, oppColor, hostPlaysFirst,
+            myScore: 0, oppScore: 0,
+        });
     };
 
     const doRestart = () => {
