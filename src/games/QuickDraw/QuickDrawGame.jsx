@@ -377,7 +377,8 @@ export default function QuickDrawGame({ setView }) {
                 break;
             }
             case 'chat_guess': {
-                setChatGuesses(prev => [...prev.slice(-4), { sender: oppProfile?.nickname || 'الخصم', text: msg.guess, isCorrect: msg.isCorrect }]);
+                const guessSender = msg.sender || oppProfile?.nickname || 'الخصم';
+                setChatGuesses(prev => [...prev.slice(-4), { sender: guessSender, text: msg.guess, isCorrect: msg.isCorrect }]);
                 playSound(msg.isCorrect ? 'win' : 'tap');
                 break;
             }
@@ -407,8 +408,13 @@ export default function QuickDrawGame({ setView }) {
             case 'next_round': { startRound(msg.roundIdx); break; }
             case 'rematch': {
                 myScoreRef.current = 0; oppScoreRef.current = 0;
+                roundRef.current = 0;
+                setRound(0);
                 setMyScore(0); setOppScore(0);
-                setGameState('role_select');
+                if (!isHostRef.current) {
+                    // Guest resets and waits for host to pick roles
+                    setGameState('role_select');
+                }
                 break;
             }
             default: break;
@@ -426,7 +432,7 @@ export default function QuickDrawGame({ setView }) {
         const isCorrect = Boolean(normalizeArabic(currentWordRef.current?.word) === normalizeArabic(rawGuess));
 
         setChatGuesses(prev => [...prev.slice(-4), { sender: 'أنت', text: rawGuess, isCorrect }]);
-        connRef.current?.send({ type: 'chat_guess', guess: rawGuess, isCorrect });
+        connRef.current?.send({ type: 'chat_guess', guess: rawGuess, isCorrect, sender: myProfile?.nickname || 'أنا' });
 
         if (isCorrect) {
             if (timerRef.current) clearInterval(timerRef.current);
@@ -458,8 +464,12 @@ export default function QuickDrawGame({ setView }) {
         setGameState('round_over');
         setTimeout(() => {
             const nextTurn = roundRef.current + 1;
-            if (isHostRef.current) connRef.current?.send({ type: 'next_round', roundIdx: nextTurn });
-            startRound(nextTurn);
+            if (isHostRef.current) {
+                // Host drives turn progression - sends to guest AND starts locally
+                connRef.current?.send({ type: 'next_round', roundIdx: nextTurn });
+                startRound(nextTurn);
+            }
+            // Guest does NOT call startRound here - waits for 'next_round' message from host
         }, 3000);
     };
 
@@ -589,6 +599,8 @@ export default function QuickDrawGame({ setView }) {
     const handleRematch = () => {
         connRef.current?.send({ type: 'rematch' });
         myScoreRef.current = 0; oppScoreRef.current = 0;
+        roundRef.current = 0;
+        setRound(0);
         setMyScore(0); setOppScore(0);
         setReceivedImageUrl(null);
         setActiveTool(TOOL_PEN);

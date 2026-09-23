@@ -188,8 +188,12 @@ export default function Connect4Game({ setView }) {
         } else if (msg.type === 'play') {
             dropCoin(msg.colIdx, !isHostRef.current);
         } else if (msg.type === 'restart') {
-            if (boardRef.current.every(row => row.every(c => !c))) return;
-            doRestart();
+            // From guest perspective: host's myScore is our oppScore and vice versa
+            const hostMyScore = msg.myScore !== undefined ? msg.myScore : myScoreRef.current;
+            const hostOppScore = msg.oppScore !== undefined ? msg.oppScore : oppScoreRef.current;
+            const guestMyScore = isHostRef.current ? hostMyScore : hostOppScore;
+            const guestOppScore = isHostRef.current ? hostOppScore : hostMyScore;
+            doRestart(guestMyScore, guestOppScore);
         } else if (msg.type === 'state_sync' && msg.state) {
             // Guest received state sync from host - restore full game state
             const s = msg.state;
@@ -275,15 +279,36 @@ export default function Connect4Game({ setView }) {
         });
     };
 
-    const doRestart = () => {
-        setBoard(Array.from({ length: ROWS }, () => Array(COLS).fill(null)));
-        setHostTurn(isHostRef.current ? hostPlaysFirst : (clientConfig?.hostPlaysFirst ?? true));
-        setGameState(isHostRef.current ? 'setup' : 'waiting-start');
+    const doRestart = (newMyScore, newOppScore) => {
+        const emptyBoard = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+        boardRef.current = emptyBoard;
+        setBoard(emptyBoard);
+        // Alternate who goes first each game
+        const nextFirst = !hostPlaysFirst;
+        setHostPlaysFirst(nextFirst);
+        hostTurnRef.current = nextFirst;
+        setHostTurn(nextFirst);
+        if (newMyScore !== undefined) {
+            myScoreRef.current = newMyScore;
+            oppScoreRef.current = newOppScore;
+            setMyScore(newMyScore);
+            setOppScore(newOppScore);
+        }
+        setGameState('playing');
     };
 
     const handleRestart = () => {
-        doRestart();
-        connRef.current?.send({ type: 'restart' });
+        // Score update based on winner
+        const result = checkWin(boardRef.current);
+        let newMyScore = myScoreRef.current;
+        let newOppScore = oppScoreRef.current;
+        if (result && result.winner !== 'draw') {
+            const iWon = result.winner === (isHostRef.current ? 'host' : 'opp');
+            if (iWon) newMyScore++;
+            else newOppScore++;
+        }
+        doRestart(newMyScore, newOppScore);
+        connRef.current?.send({ type: 'restart', myScore: newMyScore, oppScore: newOppScore });
     };
 
     const getColorObj = (type) => {
@@ -509,7 +534,10 @@ export default function Connect4Game({ setView }) {
                                     />
                                 </div>
                                 <div className="flex flex-col min-w-0 flex-1 text-right">
-                                    <span className="text-xs font-black truncate">{myProfile.nickname || 'أنت'}</span>
+                                    <div className="flex items-center justify-between gap-1">
+                                        <span className="text-xs font-black truncate">{myProfile.nickname || 'أنت'}</span>
+                                        <span className="text-xs font-black font-mono px-1.5 py-0.5 rounded-md" style={{ color: myColorObj?.hex, background: `${myColorObj?.hex}22` }}>{myScore}</span>
+                                    </div>
                                     <span className={`text-[10px] font-bold leading-tight mt-0.5 flex items-center gap-1 ${isMyTurn ? 'text-[var(--accent)] font-black' : 'opacity-40'}`}>
                                         {isMyTurn ? (
                                             <>
@@ -545,7 +573,10 @@ export default function Connect4Game({ setView }) {
                                     />
                                 </div>
                                 <div className="flex flex-col min-w-0 flex-1 text-right">
-                                    <span className="text-xs font-black truncate">{opp.nickname || 'الخصم'}</span>
+                                    <div className="flex items-center justify-between gap-1">
+                                        <span className="text-xs font-black truncate">{opp.nickname || 'الخصم'}</span>
+                                        <span className="text-xs font-black font-mono px-1.5 py-0.5 rounded-md" style={{ color: oppColorObj?.hex, background: `${oppColorObj?.hex}22` }}>{oppScore}</span>
+                                    </div>
                                     <span className={`text-[10px] font-bold leading-tight mt-0.5 flex items-center gap-1 ${!isMyTurn ? 'text-sky-400 font-black' : 'opacity-40'}`}>
                                         {!isMyTurn ? (
                                             <>

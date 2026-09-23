@@ -205,7 +205,7 @@ export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneB
     return (
         <>
             {/* ── Floating Notification Bubbles Layer (Pointer-events-none) ── */}
-            <div className="fixed inset-x-0 top-20 pointer-events-none z-[110] overflow-hidden flex flex-col items-center px-4">
+            <div className="fixed inset-x-0 top-32 pointer-events-none z-[110] overflow-hidden flex flex-col items-center px-4">
                 <div className="flex flex-col gap-2.5 max-w-sm w-full">
                     {floatingItems.map(item => (
                         <div
