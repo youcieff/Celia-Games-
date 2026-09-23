@@ -22,12 +22,17 @@ const genId = () => {
 };
 
 // Creates a virtual "connection" object that mimics PeerJS API using Firebase
-function createFirebaseConn(roomPath, isHost) {
+function createFirebaseConn(roomPath, isHost, roomCode) {
     const listeners = { data: [], 'peer-disconnect': [], 'peer-reconnect': [] };
     const outbox = isHost ? 'h2g' : 'g2h';
     const inbox = isHost ? 'g2h' : 'h2g';
     const myRole = isHost ? 'host' : 'guest';
     const oppRole = isHost ? 'guest' : 'host';
+
+    // Save room info for potential rejoin
+    if (roomCode) {
+        try { sessionStorage.setItem('celia_last_room', roomCode); } catch(e) {}
+    }
 
     // Presence & connection health monitoring
     const myPresenceRef = ref(db, `${roomPath}/presence/${myRole}`);
@@ -86,6 +91,8 @@ function createFirebaseConn(roomPath, isHost) {
                 set(ref(db, `${roomPath}/status`), 'closed');
                 unsubConnected();
                 unsubOppPresence();
+                // Clear rejoin on intentional close
+                try { sessionStorage.removeItem('celia_last_room'); } catch(e) {}
             } catch (e) { }
         },
         _unsubscribe: unsubscribe,
@@ -124,6 +131,9 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
     const [copied, setCopied] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const [rejoinCode, setRejoinCode] = useState(() => {
+        try { return sessionStorage.getItem('celia_last_room') || null; } catch(e) { return null; }
+    });
 
     const [lobbyState, setLobbyState] = useState('lobby'); // 'lobby' | 'connected'
     const [myReady, setMyReady] = useState(false);
@@ -148,7 +158,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                 // Wait briefly so guest's Firebase listeners are ready before we connect
                 setTimeout(() => {
                     if (isHandedOffRef.current) return;
-                    const conn = createFirebaseConn(roomPath, true);
+                    const conn = createFirebaseConn(roomPath, true, myId);
                     connRef.current = conn;
                     conn.on('data', (d) => {
                         if (d?.type === 'global_ready') {
@@ -191,7 +201,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
             await set(ref(db, `${targetRoom}/guestReady`), true);
 
             isHostRef.current = false;
-            const conn = createFirebaseConn(targetRoom, false);
+            const conn = createFirebaseConn(targetRoom, false, joinId.trim().toUpperCase());
             connRef.current = conn;
 
             conn.on('data', (d) => {
@@ -290,6 +300,9 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
             const snap = await get(statusRef);
             if (!snap.exists() || snap.val() === 'closed') {
                 setErrorMsg('الغرفة دي مش موجودة أو اتقفلت. اتأكد من الكود أو خلي صاحبك يعمل غرفة جديدة.');
+                // Clear invalid rejoin code
+                setRejoinCode(null);
+                try { sessionStorage.removeItem('celia_last_room'); } catch(e) {}
                 setIsConnecting(false);
                 return;
             }
@@ -297,7 +310,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
             await set(ref(db, `${targetRoom}/guestReady`), true);
 
             isHostRef.current = false;
-            const conn = createFirebaseConn(targetRoom, false);
+            const conn = createFirebaseConn(targetRoom, false, codeToJoin.trim().toUpperCase());
             connRef.current = conn;
 
             conn.on('data', (d) => {
@@ -390,6 +403,30 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
 
     return (
         <div className="flex flex-col items-center justify-start w-full max-w-sm mx-auto gap-4 pt-2">
+
+            {/* ── Rejoin previous room ── */}
+            {rejoinCode && (
+                <div className="w-full glass-card rounded-2xl border border-amber-500/40 bg-amber-500/8 px-4 py-3 flex items-center gap-3 shadow-[0_0_20px_rgba(245,158,11,0.15)]">
+                    <span className="text-2xl shrink-0">⚡</span>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-xs font-black text-amber-300">لقيت غرفة قديمة!</p>
+                        <p className="text-[10px] opacity-60 font-bold">كود: <span className="font-mono text-amber-400">{rejoinCode}</span></p>
+                    </div>
+                    <button
+                        onClick={() => handleJoinWithId(rejoinCode)}
+                        disabled={isConnecting}
+                        className="shrink-0 px-3 py-2 rounded-xl bg-amber-500 text-slate-900 font-black text-xs hover:bg-amber-400 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                        ارجع!
+                    </button>
+                    <button
+                        onClick={() => { setRejoinCode(null); try { sessionStorage.removeItem('celia_last_room'); } catch(e) {} }}
+                        className="shrink-0 text-white/30 hover:text-white/60 text-sm font-bold transition-colors"
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
 
             {/* ── Your room code ── */}
             <div className="lobby-ticket w-full">

@@ -131,6 +131,7 @@ export default function QuickDrawGame({ setView }) {
     const [showColorSheet, setShowColorSheet] = useState(false);
 
     const canvasRef = useRef(null);
+    const receivedCanvasRef = useRef(null); // Safari-safe canvas for received image
     const isDrawing = useRef(false);
     const lastPos = useRef(null);
     const timerRef = useRef(null);
@@ -164,6 +165,20 @@ export default function QuickDrawGame({ setView }) {
             initCanvas();
         }
     }, [gameState, initCanvas]);
+
+    // Draw received image onto canvas (Safari-safe - avoids data URL img display bugs)
+    useEffect(() => {
+        if (!receivedImageUrl || !receivedCanvasRef.current) return;
+        const canvas = receivedCanvasRef.current;
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.onload = () => {
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+            ctx.drawImage(img, 0, 0);
+        };
+        img.src = receivedImageUrl;
+    }, [receivedImageUrl]);
 
     // ── Save history snapshot ─────────────────────────────────────────────────
     const saveSnapshot = useCallback(() => {
@@ -738,7 +753,12 @@ export default function QuickDrawGame({ setView }) {
                                     onTouchEnd={endDraw}
                                 />
                             ) : receivedImageUrl ? (
-                                <img src={receivedImageUrl} alt="الرسمة" className="w-full h-full object-contain bg-white" />
+                                // Safari-safe: draw on canvas instead of <img> to avoid data URL black screen
+                                <canvas
+                                    ref={receivedCanvasRef}
+                                    className="w-full h-full object-contain bg-white"
+                                    style={{ display: 'block', background: 'white' }}
+                                />
                             ) : (
                                 <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-slate-400 bg-white">
                                     <span className="text-4xl animate-pulse">🎨</span>

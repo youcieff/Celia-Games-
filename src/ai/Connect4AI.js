@@ -247,10 +247,15 @@ export default class Connect4AI {
             }
         }
 
-        // 3. Minimax (depth 4) with alpha-beta pruning (blazing fast, zero garbage collection pauses)
+        // 3. Minimax (depth 2) - medium difficulty with occasional randomness
         if (chosenCol === null) {
-            const res = this.minimax(this.board, 4, -Infinity, Infinity, true);
-            chosenCol = res.col !== undefined && valid.includes(res.col) ? res.col : valid[0];
+            // 25% chance of a random move to make it feel more human and beatable
+            if (Math.random() < 0.25) {
+                chosenCol = valid[Math.floor(Math.random() * valid.length)];
+            } else {
+                const res = this.minimax(this.board, 2, -Infinity, Infinity, true);
+                chosenCol = res.col !== undefined && valid.includes(res.col) ? res.col : valid[0];
+            }
         }
 
         // Apply AI move
