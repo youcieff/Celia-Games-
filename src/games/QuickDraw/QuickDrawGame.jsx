@@ -667,6 +667,7 @@ export default function QuickDrawGame({ setView }) {
             <div className="animated-bg"><div className="bg-orb-1" /><div className="bg-orb-2" /></div>
 
             <PlayerGameHeader
+                gameId="quick-draw"
                 myProfile={myProfile}
                 oppProfile={oppProfile}
                 myScore={myScore}

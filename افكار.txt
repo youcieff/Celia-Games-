@@ -11,3 +11,11 @@
 🧩 سودوكو المواجهة (Speed Sudoku 1v1):
 
 شبكة سودوكو تنافسية سريعة؛ من يحل الخانات بشكل أسرع وأصح يجمع نقاطاً أكثر قبل انتهاء الوقت.
+
+
+ cmdkey /delete:LegacyGeneric:target=git:https://github.com
+
+
+
+
+ 

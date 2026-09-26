@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import P2PConnectionManager from '../../components/P2PConnectionManager';
 import PlayerGameHeader from '../../components/PlayerGameHeader';
 import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
