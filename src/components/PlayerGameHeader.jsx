@@ -121,20 +121,21 @@ export default function PlayerGameHeader({
                     className={`glass-card p-2.5 rounded-2xl flex items-center gap-2.5 transition-all duration-300 relative overflow-hidden
                     ${(simultaneous || isMyTurn) ? 'border-2 border-[var(--accent)] bg-[var(--accent-soft)] shadow-[0_0_20px_var(--accent-glow)]' : 'border border-white/5 opacity-75'}`}
                 >
+                    {/* Score Badge */}
+                    {myScore !== null && (
+                        <span className="text-sm font-black text-[var(--accent)] font-mono bg-[var(--accent-soft)] px-2 py-1 rounded-xl shrink-0 min-w-[28px] text-center">
+                            {myScore}
+                        </span>
+                    )}
+                    {/* Avatar */}
                     <div className="relative shrink-0">
                         <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden border border-white/10">
                             <AvatarDisplay avatarId={myProfile.avatar} size={28} />
                         </div>
                     </div>
+                    {/* Name + Status */}
                     <div className="flex flex-col min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1">
-                            <span className="text-xs font-black truncate">{myProfile.nickname || 'أنت'}</span>
-                            {myScore !== null && (
-                                <span className="text-xs font-black text-[var(--accent)] font-mono bg-[var(--accent-soft)] px-1.5 py-0.5 rounded-md">
-                                    {myScore}
-                                </span>
-                            )}
-                        </div>
+                        <span className="text-xs font-black truncate">{myProfile.nickname || 'أنت'}</span>
                         <span className={`text-[10px] font-bold leading-tight mt-0.5 flex items-center gap-1 ${
                             (simultaneous || isMyTurn) ? 'text-[var(--accent)] font-black' : 'opacity-40'
                         }`}>
@@ -154,32 +155,33 @@ export default function PlayerGameHeader({
                     className={`glass-card p-2.5 rounded-2xl flex items-center gap-2.5 transition-all duration-300 relative overflow-hidden
                     ${(simultaneous || !isMyTurn) ? 'border-2 border-sky-400/80 bg-sky-500/10 shadow-[0_0_20px_rgba(56,189,248,0.25)]' : 'border border-white/5 opacity-75'}`}
                 >
-                    <div className="relative shrink-0">
-                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden border border-white/10">
-                            <AvatarDisplay avatarId={opp.avatar} size={28} />
-                        </div>
-                    </div>
-                    <div className="flex flex-col min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1">
-                            <span className="text-xs font-black truncate">{opp.nickname || 'الخصم'}</span>
-                            {oppScore !== null && (
-                                <span className="text-xs font-black text-sky-400 font-mono bg-sky-400/10 px-1.5 py-0.5 rounded-md">
-                                    {oppScore}
-                                </span>
-                            )}
-                        </div>
+                    {/* Name + Status */}
+                    <div className="flex flex-col min-w-0 flex-1 items-end text-right">
+                        <span className="text-xs font-black truncate">{opp.nickname || 'الخصم'}</span>
                         <span className={`text-[10px] font-bold leading-tight mt-0.5 flex items-center gap-1 ${
                             (simultaneous || !isMyTurn) ? 'text-sky-400 font-black' : 'opacity-40'
                         }`}>
                             {simultaneous ? (
-                                <><IconTarget size={11} className="shrink-0" /><span>بيكتب الآن</span></>
+                                <><span>بيكتب الآن</span><IconTarget size={11} className="shrink-0" /></>
                             ) : !isMyTurn ? (
-                                <><IconHourglass size={11} className="shrink-0" /><span>دور {opp.nickname || 'الخصم'}</span></>
+                                <><span>دوره الآن</span><IconHourglass size={11} className="shrink-0" /></>
                             ) : (
                                 <span>مستعد</span>
                             )}
                         </span>
                     </div>
+                    {/* Avatar */}
+                    <div className="relative shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden border border-white/10">
+                            <AvatarDisplay avatarId={opp.avatar} size={28} />
+                        </div>
+                    </div>
+                    {/* Score Badge */}
+                    {oppScore !== null && (
+                        <span className="text-sm font-black text-sky-400 font-mono bg-sky-400/10 px-2 py-1 rounded-xl shrink-0 min-w-[28px] text-center">
+                            {oppScore}
+                        </span>
+                    )}
                 </div>
             </div>
 
