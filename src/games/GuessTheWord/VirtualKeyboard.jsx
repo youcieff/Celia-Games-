@@ -60,12 +60,12 @@ export default function VirtualKeyboard({ onLetterPress, guessedLetters, disable
                     {ENGLISH_ROWS.map((row, ri) => (
                         <div key={ri} className="flex gap-1.5">
                             {row.map(letter => {
-                                const isGuessed = guessedLetters.includes(letter);
+                                const isGuessed = guessedLetters.includes(letter.toUpperCase());
                                 return (
                                     <button
                                         key={letter}
                                         disabled={isGuessed || disabled}
-                                        onClick={() => onLetterPress(letter)}
+                                        onClick={() => onLetterPress(letter.toUpperCase())}
                                         className="key-btn w-[34px] h-[44px] text-sm uppercase rounded-xl"
                                     >
                                         {letter.toUpperCase()}

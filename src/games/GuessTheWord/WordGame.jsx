@@ -1,438 +1,479 @@
-import { useRef } from 'react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import P2PConnectionManager from '../../components/P2PConnectionManager';
-import SecretSetup from './SecretSetup';
+import PlayerGameHeader from '../../components/PlayerGameHeader';
 import VirtualKeyboard from './VirtualKeyboard';
 import Visualizer from './Visualizer';
 import Logo from '../../components/Logo';
-import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
-import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
-import GlobalMuteButton from '../../components/GlobalMuteButton';
 import useProfile from '../../hooks/useProfile';
+import { playSound } from '../../lib/audioEngine';
 import { triggerVictoryEffects, triggerDefeatEffects } from '../../lib/effectsEngine';
 import { AvatarDisplay } from '../../components/icons/AvatarIcons';
 import EmotesOverlay, { ChatTriggerButton } from '../../components/EmotesOverlay';
-import { IconWordGame, IconEdit, IconTrophy, IconHourglass } from '../../components/icons/GameIcons';
+import { IconWordGame, IconTrophy } from '../../components/icons/GameIcons';
+import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
+import Play from 'lucide-react/dist/esm/icons/play';
+import Eye from 'lucide-react/dist/esm/icons/eye';
+import EyeOff from 'lucide-react/dist/esm/icons/eye-off';
+
+function SecretSetup({ title, subtitle, onStart }) {
+    const [secretWord, setSecretWord] = useState('');
+    const [isHidden, setIsHidden] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleStart = () => {
+        const word = secretWord.trim();
+        if (!word) { setError('لازم تكتب كلمة سرية الأول!'); return; }
+        if (!/^[\u0600-\u06FFa-zA-Z\s]+$/.test(word)) {
+            setError('الكلمة لازم تكون حروف عربية أو إنجليزية فقط!');
+            return;
+        }
+        setError('');
+        onStart(word.toUpperCase());
+    };
+
+    return (
+        <div className="glass-card rounded-3xl p-6 w-full max-w-sm mx-auto mt-10">
+            <h2 className="text-2xl font-black mb-1 text-center">{title}</h2>
+            <p className="opacity-50 text-sm text-center mb-6">{subtitle}</p>
+
+            <div className="space-y-4">
+                <div className="relative">
+                    <input
+                        type={isHidden ? 'password' : 'text'}
+                        value={secretWord}
+                        onChange={(e) => setSecretWord(e.target.value)}
+                        placeholder="الكلمة السرية..."
+                        className="glass-input w-full rounded-2xl px-5 py-4 pr-14 text-center text-xl font-black"
+                        dir="auto"
+                    />
+                    <button
+                        onClick={() => setIsHidden(!isHidden)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-80 transition-opacity p-1"
+                    >
+                        {isHidden ? <EyeOff size={22} /> : <Eye size={22} />}
+                    </button>
+                </div>
+                {error && <p className="text-red-400 text-sm font-bold text-center">{error}</p>}
+            </div>
+
+            <button
+                onClick={handleStart}
+                className="glow-button w-full h-14 rounded-2xl font-black text-lg flex items-center justify-center gap-2 mt-6"
+            >
+                <Play size={20} /> تأكيد
+            </button>
+        </div>
+    );
+}
 
 export default function WordGame({ setView, mode }) {
     const isOnline = mode === 'online';
-
     const connRef = useRef(null);
     const isHostRef = useRef(false);
-    const [isMyTurnToWrite, setIsMyTurnToWrite] = useState(false);
+    const isAIRef = useRef(false);
+    const p1WordRef = useRef('');
+    const p2WordRef = useRef('');
+    const dataHandlerRef = useRef(null);
 
     const [myProfile] = useProfile();
     const [oppProfile, setOppProfile] = useState(null);
     const opp = oppProfile || { nickname: 'الخصم', avatar: 'alien' };
 
-    // lobby | role-select | role-waiting | setup | waiting | playing | won | lost
-    const [gameState, setGameState] = useState(isOnline ? 'lobby' : 'role-select');
-    const [secretWord, setSecretWord] = useState('');
-    const [hint, setHint] = useState('');
-    const [guessedLetters, setGuessedLetters] = useState([]);
-    const [lives, setLives] = useState(6);
-    const [isHintRevealed, setIsHintRevealed] = useState(false);
+    // States: lobby | setup | setup_wait | playing | game_over
+    const [gameState, setGameState] = useState(isOnline ? 'lobby' : 'setup_p1');
+    const [turn, setTurn] = useState('host');
 
-    const saveGameState = () => {
-        if (!isHostRef.current || !connRef.current) return;
-        connRef.current.saveState({
-            gameState, secretWord, hint, guessedLetters, lives, isHintRevealed, isMyTurnToWrite
-        });
-    };
+    const [p1Word, setP1Word] = useState(''); // Word P1 sets for P2
+    const [p2Word, setP2Word] = useState(''); // Word P2 sets for P1
 
-    useEffect(() => {
-        saveGameState();
-    }, [gameState, secretWord, hint, guessedLetters, lives, isHintRevealed, isMyTurnToWrite]);
+    const [p1GuessedLetters, setP1GuessedLetters] = useState([]);
+    const [p2GuessedLetters, setP2GuessedLetters] = useState([]);
+    const [p1Mistakes, setP1Mistakes] = useState(0);
+    const [p2Mistakes, setP2Mistakes] = useState(0);
 
-    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
+    const [winner, setWinner] = useState(null);
+    const maxMistakes = 7;
+
+    const handleGameStart = (conn, hostMode, oppProf) => {
         connRef.current = conn;
         isHostRef.current = hostMode;
+        isAIRef.current = !!oppProf?.isAI;
         if (oppProf) setOppProfile(oppProf);
-
-        if (savedState && savedState.gameState) {
-            setGameState(savedState.gameState);
-            setSecretWord(savedState.secretWord || '');
-            setHint(savedState.hint || '');
-            setGuessedLetters(savedState.guessedLetters || []);
-            setLives(savedState.lives ?? 6);
-            setIsHintRevealed(savedState.isHintRevealed || false);
-            setIsMyTurnToWrite(hostMode ? savedState.isMyTurnToWrite : !savedState.isMyTurnToWrite);
-
-            if (hostMode) {
-                conn.on('peer-reconnect', () => {
-                    conn.send({ type: 'state_sync', state: savedState });
-                });
-            }
-            return;
-        }
-
-        if (hostMode) {
-            conn.on('peer-reconnect', () => {
-                conn.send({ type: 'state_sync', state: {
-                    gameState, secretWord, hint, guessedLetters, lives, isHintRevealed, isMyTurnToWrite
-                }});
-            });
-        }
-
-        if (hostMode) {
-            setGameState('role-select');
-        } else {
-            setGameState('role-waiting');
-        }
+        conn.on('data', data => dataHandlerRef.current?.(data));
+        setGameState('setup');
     };
 
-    const handleOfflineRoleSelect = (iAmWriter) => {
-        setIsMyTurnToWrite(iAmWriter);
-        setGameState(iAmWriter ? 'setup' : 'waiting-offline');
-    };
-
-    const handleOnlineRoleSelect = (hostWrites) => {
-        setIsMyTurnToWrite(hostWrites);
-        setGameState(hostWrites ? 'setup' : 'waiting');
-        if (connRef.current) {
-            connRef.current.send({ type: 'roles_set', guestWrites: !hostWrites });
-        }
-    };
-
-    useEffect(() => {
-        const conn = connRef.current;
-        if (!conn) return;
-        const handler = (data) => {
-            if (data.type === 'global_ready' && data.profile) {
-                setOppProfile(data.profile);
-            } else if (data.type === 'roles_set') {
-                const guestWrites = data.guestWrites;
-                setIsMyTurnToWrite(guestWrites);
-                setGameState(guestWrites ? 'setup' : 'waiting');
-            } else if (data.type === 'state_sync') {
-                if (data.state) {
-                    setGameState(data.state.gameState);
-                    setSecretWord(data.state.secretWord || '');
-                    setHint(data.state.hint || '');
-                    setGuessedLetters(data.state.guessedLetters || []);
-                    setLives(data.state.lives ?? 6);
-                    setIsHintRevealed(data.state.isHintRevealed || false);
-                    setIsMyTurnToWrite(!data.state.isMyTurnToWrite);
+    const onData = (data) => {
+        if (data.type === 'human_word' && isHostRef.current && isAIRef.current) {
+            p1WordRef.current = data.word;
+            setP1Word(data.word);
+        } else if (data.type === 'ai_word' && isAIRef.current) {
+            p2WordRef.current = data.word;
+            setP2Word(data.word);
+            setP1GuessedLetters([]);
+            setP2GuessedLetters([]);
+            setP1Mistakes(0);
+            setP2Mistakes(0);
+            setTurn('host');
+            setWinner(null);
+            setGameState('playing');
+        } else if (data.type === 'word_set') {
+            if (isHostRef.current) {
+                p2WordRef.current = data.word;
+                setP2Word(data.word);
+                if (p1WordRef.current) {
+                    startGame(p1WordRef.current, data.word);
                 }
-            } else if (data.type === 'start_game') {
-                setSecretWord(data.word);
-                setHint(data.hint);
-                setGameState('playing');
-            } else if (data.type === 'guess') {
-                makeGuessOnState(data.letter, data.wordContext);
-            } else if (data.type === 'restart') {
-                const newTurn = data.youWillWrite;
-                setIsMyTurnToWrite(newTurn);
-                resetGame(newTurn);
-            } else if (data.type === 'reveal_hint') {
-                setIsHintRevealed(true);
+            } else {
+                p1WordRef.current = data.word;
+                setP1Word(data.word);
             }
-        };
-        conn.on('data', handler);
-        return () => conn.off('data', handler);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [connRef.current]);
-
-    const handleStartHost = (word, providedHint) => {
-        setSecretWord(word);
-        setHint(providedHint);
-        setGameState('playing');
-        if (isOnline && connRef.current) connRef.current.send({ type: 'start_game', word, hint: providedHint });
-    };
-
-    const makeGuessOnState = (letter, wordParam) => {
-        const currentWord = secretWord || wordParam;
-        if (!guessedLetters.includes(letter)) {
-            if (!currentWord.includes(letter)) {
-                setLives(l => l - 1);
-            }
-            setGuessedLetters(prev => [...prev, letter]);
+        } else if (data.type === 'start_game') {
+            p1WordRef.current = data.p1Word;
+            p2WordRef.current = data.p2Word;
+            setP1Word(data.p1Word);
+            setP2Word(data.p2Word);
+            setP1GuessedLetters([]);
+            setP2GuessedLetters([]);
+            setP1Mistakes(0);
+            setP2Mistakes(0);
+            setTurn('host');
+            setWinner(null);
+            setGameState('playing');
+        } else if (data.type === 'guess') {
+            applyGuess(data.player, data.letter);
+        } else if (data.type === 'restart') {
+            resetGame();
         }
     };
 
-    const handleKeyboardPress = (letter) => {
-        if (gameState !== 'playing' || (isOnline && isMyTurnToWrite)) return;
-        makeGuessOnState(letter, secretWord);
-        if (isOnline && connRef.current) connRef.current.send({ type: 'guess', letter, wordContext: secretWord });
+    const startGame = (w1, w2) => {
+        p1WordRef.current = w1;
+        p2WordRef.current = w2;
+        setP1Word(w1);
+        setP2Word(w2);
+        setGameState('playing');
+        if (isHostRef.current && isOnline && connRef.current) {
+            connRef.current.send({ type: 'start_game', p1Word: w1, p2Word: w2 });
+        }
     };
 
-    const handleRevealHint = () => {
-        setIsHintRevealed(true);
-        if (isOnline && !isMyTurnToWrite && connRef.current) connRef.current.send({ type: 'reveal_hint' });
+    const handleWordSubmit = (word) => {
+        playSound('click');
+        if (isOnline) {
+            if (isAIRef.current) {
+                p1WordRef.current = word;
+                setP1Word(word);
+                setGameState('setup_wait');
+                connRef.current?.send({ type: 'human_word', word });
+                return;
+            }
+
+            if (isHostRef.current) {
+                p1WordRef.current = word;
+                setP1Word(word);
+            } else {
+                p2WordRef.current = word;
+                setP2Word(word);
+            }
+            setGameState('setup_wait');
+            
+            if (connRef.current) {
+                connRef.current.send({ type: 'word_set', word });
+            }
+            // The host owns the handshake and starts only after both words arrived.
+            if (isHostRef.current && p2WordRef.current) startGame(word, p2WordRef.current);
+        } else {
+            if (gameState === 'setup_p1') {
+                p1WordRef.current = word;
+                setP1Word(word);
+                setGameState('setup_p2');
+            } else {
+                p2WordRef.current = word;
+                setP2Word(word);
+                setGameState('playing');
+            }
+        }
     };
+
+    const applyGuess = (player, letter) => {
+        if (!letter) return;
+        playSound('tap');
+        if (player === 'host') {
+            setP1GuessedLetters(prev => [...prev, letter]);
+            if (!p2WordRef.current.includes(letter)) setP1Mistakes(m => m + 1);
+        } else {
+            setP2GuessedLetters(prev => [...prev, letter]);
+            if (!p1WordRef.current.includes(letter)) setP2Mistakes(m => m + 1);
+        }
+        setTurn(player === 'host' ? 'guest' : 'host');
+    };
+
+    const handleLetterGuess = (letter) => {
+        const isMyTurn = isOnline ? (isHostRef.current ? turn === 'host' : turn === 'guest') : true;
+        if (!isMyTurn || gameState !== 'playing') return;
+
+        const activePlayer = isOnline ? (isHostRef.current ? 'host' : 'guest') : turn;
+        
+        // Prevent duplicate guess
+        const letters = activePlayer === 'host' ? p1GuessedLetters : p2GuessedLetters;
+        if (letters.includes(letter)) return;
+
+        applyGuess(activePlayer, letter);
+        
+        if (isOnline && connRef.current) {
+            connRef.current.send({ type: 'guess', player: activePlayer, letter });
+        }
+    };
+
+    // Win/Lose Condition checking
+    useEffect(() => {
+        if (gameState !== 'playing') return;
+
+        const hostWon = p2Word && p2Word.split('').every(c => c === ' ' || p1GuessedLetters.includes(c));
+        const guestWon = p1Word && p1Word.split('').every(c => c === ' ' || p2GuessedLetters.includes(c));
+        const hostLost = p1Mistakes >= maxMistakes;
+        const guestLost = p2Mistakes >= maxMistakes;
+
+        let curWinner = null;
+
+        if (hostWon && guestWon) curWinner = 'draw';
+        else if (hostWon) curWinner = 'host';
+        else if (guestWon) curWinner = 'guest';
+        else if (hostLost && guestLost) curWinner = 'draw';
+        else if (hostLost) curWinner = 'guest';
+        else if (guestLost) curWinner = 'host';
+
+        if (curWinner) {
+            setWinner(curWinner);
+            setGameState('game_over');
+            
+            if (isOnline) {
+                const iWon = (isHostRef.current && curWinner === 'host') || (!isHostRef.current && curWinner === 'guest');
+                const isDraw = curWinner === 'draw';
+                if (iWon) triggerVictoryEffects();
+                else if (!isDraw) triggerDefeatEffects();
+            } else {
+                triggerVictoryEffects(); // Offline always victory effect
+            }
+        }
+    }, [p1GuessedLetters, p2GuessedLetters, p1Mistakes, p2Mistakes, p1Word, p2Word, gameState]);
+
+    const resetGame = () => {
+        p1WordRef.current = '';
+        p2WordRef.current = '';
+        setP1Word('');
+        setP2Word('');
+        setP1GuessedLetters([]);
+        setP2GuessedLetters([]);
+        setP1Mistakes(0);
+        setP2Mistakes(0);
+        setTurn('host');
+        setWinner(null);
+        setGameState(isOnline ? 'setup' : 'setup_p1');
+    };
+
+    const handleRestart = () => {
+        resetGame();
+        if (isOnline && connRef.current) {
+            connRef.current.send({ type: 'restart' });
+        }
+    };
+
+    dataHandlerRef.current = onData;
 
     useEffect(() => {
-        if (gameState !== 'playing' || !secretWord) return;
-        const isWin = secretWord.split('').every(char => char === ' ' || guessedLetters.includes(char));
-        if (isWin) {
-            setGameState('won');
-            triggerVictoryEffects();
-            if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
+        if (isOnline && isAIRef.current && gameState === 'game_over') {
+            connRef.current?.send({ type: 'game_finished' });
         }
-        else if (lives <= 0) {
-            setGameState('lost');
-            triggerDefeatEffects();
-        }
-    }, [guessedLetters, lives, gameState, secretWord]);
+    }, [gameState, isOnline]);
 
-    const resetGame = (newMyTurnToWrite) => {
-        setGuessedLetters([]);
-        setLives(6);
-        setSecretWord('');
-        setHint('');
-        setIsHintRevealed(false);
-        setGameState(isOnline ? (newMyTurnToWrite ? 'setup' : 'waiting') : 'role-select');
+    const getWordOutcome = (player) => {
+        if (gameState !== 'game_over') return 'active';
+        if (winner === 'draw') return 'draw';
+        return winner === player ? 'winner' : 'loser';
     };
 
-    const handleRestartAction = () => {
-        const newMyTurnToWrite = isOnline ? !isMyTurnToWrite : true;
-        setIsMyTurnToWrite(newMyTurnToWrite);
-        resetGame(newMyTurnToWrite);
-        if (isOnline && connRef.current) {
-            connRef.current.send({ type: 'restart', youWillWrite: !newMyTurnToWrite });
-        }
+    const renderWord = (word, guessed, isMuted, outcome = 'active') => {
+        const revealedTileClass = {
+            winner: 'border-emerald-300 bg-emerald-500/25 text-emerald-50 shadow-[0_0_16px_rgba(16,185,129,0.35)]',
+            loser: 'border-rose-300 bg-rose-500/25 text-rose-50 shadow-[0_0_16px_rgba(244,63,94,0.28)]',
+            draw: 'border-amber-200 bg-amber-400/20 text-amber-50 shadow-[0_0_14px_rgba(251,191,36,0.2)]',
+            active: 'border-[var(--accent)] bg-[var(--accent)] text-white shadow-[0_0_15px_var(--accent-glow)]'
+        }[outcome];
+
+        return (
+            <div className="flex flex-wrap justify-center gap-2 mx-auto w-full mb-4 mt-2" dir="rtl">
+                {word.split('').map((char, index) => {
+                    if (char === ' ') return <div key={index} className="w-4 h-10" />;
+                    const isRevealed = guessed.includes(char) || gameState === 'game_over';
+                    return (
+                        <div
+                            key={index}
+                            className={`w-10 h-10 flex items-center justify-center text-lg font-black rounded-lg border transition-all duration-300
+                                ${isRevealed ? revealedTileClass : 'glass-card border-white/10 text-transparent'}
+                            `}
+                        >
+                            {isRevealed ? char : ''}
+                        </div>
+                    );
+                })}
+            </div>
+        );
     };
 
+    if (gameState === 'lobby') {
+        return (
+            <div className="min-h-dvh max-w-md mx-auto px-4 flex flex-col safe-area-pt overflow-x-hidden overflow-y-auto pb-6">
+                <div className="grid grid-cols-3 items-center py-4 mb-4">
+                    <div><Logo size="small" /></div>
+                    <div className="flex justify-center">
+                        <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
+                            <IconWordGame size={18} className="text-[var(--accent)]" />
+                            <span className="text-xs font-black gradient-text">خمن الكلمة</span>
+                        </div>
+                    </div>
+                    <div className="flex justify-end">
+                        <button onClick={() => setView('hub')} className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 transition-transform">
+                            الرئيسية
+                        </button>
+                    </div>
+                </div>
+                <div className="flex-1 flex pb-16 safe-area-pb">
+                    <P2PConnectionManager gameIdPrefix="celia-word" onGameStart={handleGameStart} />
+                </div>
+            </div>
+        );
+    }
+
+    const hostProfile = isHostRef.current ? myProfile : opp;
+    const guestProfile = isHostRef.current ? opp : myProfile;
+    const p1Name = isOnline ? hostProfile.nickname : 'اللاعب الأول';
+    const p2Name = isOnline ? guestProfile.nickname : 'اللاعب الثاني';
+
+    const p1Letters = isOnline ? (isHostRef.current ? p1GuessedLetters : p2GuessedLetters) : p1GuessedLetters;
+    
     return (
         <>
             <div className="animated-bg"><div className="bg-orb-3"></div></div>
-            <div className="min-h-dvh max-w-md mx-auto px-4 flex flex-col safe-area-pt overflow-x-hidden overflow-y-auto">
-                {/* Header: Lobby with Logo vs In-Game Header */}
-                {(isOnline && gameState === 'lobby') ? (
-                    <div className="px-4 grid grid-cols-3 items-center py-4 mb-2 w-full">
-                        <div><Logo size="small" /></div>
-                        <div className="flex justify-center">
-                            <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
-                                <IconWordGame size={18} className="text-[var(--accent)]" />
-                                <span className="text-xs font-black gradient-text">خمن الكلمة</span>
-                            </div>
-                        </div>
-                        <div className="flex justify-end"><button onClick={() => { if (connRef.current) connRef.current.close(); setView('hub'); }} className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 active:scale-95 transition-transform text-white/90">الرئيسية</button></div>
-                    </div>
-                ) : (
-                    <header className="px-2 py-3 flex items-center justify-between gap-2 w-full z-20">
-                        <button
-                            onClick={() => { if (connRef.current) connRef.current.close(); setView('hub'); }}
-                            className="glass-card w-10 h-10 flex items-center justify-center rounded-2xl hover:scale-105 active:scale-95 transition-all text-white/80 shrink-0"
-                            title="الرجوع للرئيسية"
-                        >
-                            <ArrowRight size={18} />
-                        </button>
+            <div className="min-h-dvh max-w-md mx-auto px-4 flex flex-col safe-area-pt overflow-x-hidden overflow-y-auto pb-6">
+                
+                <PlayerGameHeader 
+                    onLeave={() => setView('hub')} 
+                    title="خمن الكلمة"
+                    gameId="word-game"
+                />
 
-                        <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
-                            <Logo size="mini" />
-                            <IconWordGame size={18} className="text-[var(--accent)]" />
-                            <span className="text-xs font-black gradient-text">خمن الكلمة</span>
-                            {isOnline && !['lobby', 'role-select', 'role-waiting'].includes(gameState) && (
-                                <span className="text-[10px] text-[var(--accent)] font-bold">
-                                    {isMyTurnToWrite ? '(الكاتب)' : '(المخمن)'}
-                                </span>
-                            )}
-                            {!isOnline && !['role-select', 'waiting-offline'].includes(gameState) && (
-                                <span className="text-[10px] opacity-60 font-bold">موبايل واحد</span>
-                            )}
-                        </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                            {isOnline && !['lobby', 'role-select', 'role-waiting'].includes(gameState) && (
-                                <ChatTriggerButton onClick={() => window.dispatchEvent(new CustomEvent('toggle-game-chat'))} />
-                            )}
-                            <GlobalMuteButton className="w-10 h-10 !rounded-2xl shrink-0" />
-                        </div>
-                    </header>
+                {gameState === 'setup_p1' && (
+                    <SecretSetup title="اللاعب الأول" subtitle="اكتب كلمة سرية ليخمنها اللاعب الثاني" onStart={handleWordSubmit} />
                 )}
-
-                {/* Lobby */}
-                {isOnline && gameState === 'lobby' && (
-                    <div className="flex-1 flex pb-20 safe-area-pb">
-                        <P2PConnectionManager gameIdPrefix="celia-word" onGameStart={handleGameStart} />
-                    </div>
+                {gameState === 'setup_p2' && (
+                    <SecretSetup title="اللاعب الثاني" subtitle="اكتب كلمة سرية ليخمنها اللاعب الأول" onStart={handleWordSubmit} />
                 )}
-
-                {/* Role Selection */}
-                {gameState === 'role-select' && (
-                    <div className="flex-1 flex items-center justify-center -mt-6">
-                        <div className="glass-card rounded-3xl p-7 w-full max-w-sm text-center animate-pop-in border border-white/10 shadow-2xl">
-                            <div className="w-12 h-12 rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)] mx-auto flex items-center justify-center mb-3">
-                                <IconEdit size={24} />
-                            </div>
-                            <h2 className="text-xl font-black mb-2 gradient-text">مين يكتب؟</h2>
-                            <p className="opacity-60 text-xs mb-6 font-bold">
-                                {isOnline ? 'اختار مين هيفكر في كلمة ومين هيخمن' : 'اختار مين هيكتب الكلمة السرية'}
-                            </p>
-                            <div className="grid grid-cols-2 gap-3">
-                                <button
-                                    onClick={() => isOnline ? handleOnlineRoleSelect(true) : handleOfflineRoleSelect(true)}
-                                    className="glass-card glass-card-hover rounded-2xl py-5 flex flex-col items-center gap-2 border border-white/10 hover:border-[var(--accent)] transition-all"
-                                >
-                                    <IconEdit size={26} className="text-[var(--accent)]" />
-                                    <span className="text-xs font-black gradient-text">
-                                        {isOnline ? 'أنا (الهوست) أكتب' : 'اللاعب الأول يكتب'}
-                                    </span>
-                                </button>
-                                <button
-                                    onClick={() => isOnline ? handleOnlineRoleSelect(false) : handleOfflineRoleSelect(false)}
-                                    className="glass-card glass-card-hover rounded-2xl py-5 flex flex-col items-center gap-2 border border-white/10 hover:border-[var(--accent)] transition-all"
-                                >
-                                    <IconWordGame size={26} className="text-[var(--accent)]" />
-                                    <span className="text-xs font-black gradient-text">
-                                        {isOnline ? 'الطرف الآخر يكتب' : 'اللاعب الثاني يكتب'}
-                                    </span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Guest waiting for host to assign roles */}
-                {isOnline && gameState === 'role-waiting' && (
-                    <div className="flex-1 flex items-center justify-center -mt-6">
-                        <div className="glass-card rounded-3xl p-8 text-center animate-pulse-glow border border-white/10">
-                            <IconHourglass size={36} className="text-[var(--accent)] mx-auto mb-3" />
-                            <h2 className="text-xl font-black mb-2 gradient-text">الهوست يحدد الأدوار...</h2>
-                            <p className="opacity-60 text-xs font-bold">لحظات قليلة ونبدأ!</p>
-                        </div>
-                    </div>
-                )}
-
-                {/* Offline waiting screen */}
-                {!isOnline && gameState === 'waiting-offline' && (
-                    <div className="flex-1 flex items-center justify-center -mt-6">
-                        <div className="glass-card rounded-3xl p-8 text-center animate-pop-in border border-white/10">
-                            <h2 className="text-xl font-black mb-2 gradient-text">اللاعب الثاني يكتب الكلمة</h2>
-                            <p className="opacity-60 text-xs mb-6 font-bold">الطرف المخمن يبعد عن الشاشة قليلاً</p>
-                            <button
-                                onClick={() => { setIsMyTurnToWrite(true); setGameState('setup'); }}
-                                className="glow-button w-full h-12 rounded-2xl text-base font-black"
-                            >
-                                جاهز للبدء
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Waiting (Online) */}
-                {isOnline && gameState === 'waiting' && (
-                    <div className="flex-1 flex items-center justify-center -mt-6">
-                        <div className="glass-card rounded-3xl p-8 text-center animate-pulse-glow border border-white/10">
-                            <IconHourglass size={36} className="text-[var(--accent)] mx-auto mb-3" />
-                            <h2 className="text-xl font-black mb-2 gradient-text">في الانتظار...</h2>
-                            <p className="opacity-60 text-xs">الطرف الآخر يقوم بكتابة الكلمة السرية.</p>
-                        </div>
-                    </div>
-                )}
-
-                {/* Secret Setup */}
                 {gameState === 'setup' && (
-                    <div className="flex-1 flex items-center justify-center">
-                        <SecretSetup onStart={handleStartHost} />
+                    <SecretSetup
+                        title={isAIRef.current ? 'اكتب كلمة للذكاء الاصطناعي' : 'كلمتك السرية'}
+                        subtitle={isAIRef.current ? 'الكمبيوتر هيختار كلمة تلقائيًا، وأنت اكتب كلمة يحاول هو يخمنها' : 'اكتب كلمة ليخمنها الخصم'}
+                        onStart={handleWordSubmit}
+                    />
+                )}
+                {gameState === 'setup_wait' && (
+                    <div className="flex-1 flex flex-col items-center justify-center">
+                        <div className="glass-card rounded-3xl p-8 text-center w-full max-w-xs animate-pulse">
+                            <h2 className="text-xl font-black mb-2">{isAIRef.current ? 'جاري اختيار كلمة الخصم...' : 'في انتظار الخصم...'}</h2>
+                            <p className="opacity-60 text-sm">{isAIRef.current ? 'كلمتك محفوظة، والكمبيوتر بيجهز كلمته' : 'تم حفظ كلمتك، ننتظر كلمة الخصم'}</p>
+                        </div>
                     </div>
                 )}
 
-                {/* Playing / Won / Lost */}
-                {(gameState === 'playing' || gameState === 'won' || gameState === 'lost') && (
-                    <div className="flex-1 flex flex-col">
-                        {/* Duel bar for Word Game */}
-                        {isOnline && (
-                            <div className="grid grid-cols-2 gap-2 w-full max-w-sm mx-auto mb-2 px-1">
-                                <div className={`glass-card p-2 rounded-xl flex items-center gap-2 border transition-all ${!isMyTurnToWrite ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-white/10 opacity-70'}`}>
-                                    <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden border border-white/10 shrink-0">
-                                        <AvatarDisplay avatarId={myProfile.avatar} size={18} />
+                {(gameState === 'playing' || gameState === 'game_over') && (
+                    <div className="flex-1 flex flex-col mt-4">
+                        <div className="flex flex-col gap-4 mb-4">
+                            
+                            {/* Host (P1) Box - Guessing P2's word */}
+                            <div className={`glass-card p-3 rounded-2xl border transition-all ${turn === 'host' && gameState === 'playing' ? 'border-[var(--accent)] shadow-[0_0_20px_var(--accent-glow)]' : 'border-white/10'}`}>
+                                <div className="flex justify-between items-center mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <AvatarDisplay avatarId={isOnline ? hostProfile.avatar : 'boy'} size={24} />
+                                        <span className="text-sm font-black">{p1Name}</span>
                                     </div>
-                                    <div className="flex flex-col min-w-0 flex-1 text-right">
-                                        <span className="text-[10px] font-black truncate">{myProfile.nickname || 'أنت'}</span>
-                                        <span className="text-[9px] font-bold text-emerald-400">{isMyTurnToWrite ? 'الكاتب' : 'المخمن (دورك)'}</span>
-                                    </div>
+                                    <span className="text-xs opacity-60">
+                                        {p1GuessedLetters.filter(l => p2Word.includes(l)).length} من {Array.from(new Set(p2Word.replace(/\s/g, ''))).length} حروف
+                                    </span>
                                 </div>
-                                <div className={`glass-card p-2 rounded-xl flex items-center gap-2 border transition-all ${isMyTurnToWrite ? 'border-sky-400 bg-sky-500/10' : 'border-white/10 opacity-70'}`}>
-                                    <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden border border-white/10 shrink-0">
-                                        <AvatarDisplay avatarId={opp.avatar} size={18} />
+                                <div className="flex gap-4 items-center">
+                                    <div className="flex-1">
+                                        <div className="text-xs opacity-60 text-center mb-1">{isAIRef.current ? 'كلمة الكمبيوتر' : `كلمة ${p2Name}`}</div>
+                                        {gameState === 'game_over' && (
+                                            <div className={`text-center text-[10px] font-black ${getWordOutcome('host') === 'winner' ? 'text-emerald-300' : getWordOutcome('host') === 'loser' ? 'text-rose-300' : 'text-amber-200'}`}>
+                                                {getWordOutcome('host') === 'winner' ? 'فاز بهذه الكلمة' : getWordOutcome('host') === 'loser' ? 'لم يحل الكلمة' : 'تعادل'}
+                                            </div>
+                                        )}
+                                        {renderWord(p2Word, p1GuessedLetters, false, getWordOutcome('host'))}
                                     </div>
-                                    <div className="flex flex-col min-w-0 flex-1 text-right">
-                                        <span className="text-[10px] font-black truncate">{opp.nickname || 'الخصم'}</span>
-                                        <span className="text-[9px] font-bold text-sky-400">{!isMyTurnToWrite ? 'الكاتب' : 'المخمن'}</span>
-                                    </div>
+                                    <Visualizer mistakes={p1Mistakes} maxMistakes={maxMistakes} isOpponent={!isHostRef.current && isOnline} />
                                 </div>
                             </div>
-                        )}
 
-                        <Visualizer lives={lives} maxLives={6} />
-
-                        <div className="text-center mb-4 h-14 flex items-center justify-center">
-                            {hint && lives <= 2 && gameState === 'playing' && !isHintRevealed && (
-                                <button
-                                    onClick={handleRevealHint}
-                                    disabled={isOnline && isMyTurnToWrite}
-                                    className="glow-button px-6 py-3 rounded-full text-sm font-black disabled:opacity-40 animate-pulse-glow"
-                                >
-                                    {(isOnline && isMyTurnToWrite) ? 'الطرف التاني يقدر يفتح التلميح دلوقتي' : 'محتاج تلميح؟'}
-                                </button>
-                            )}
-                            {isHintRevealed && hint && (
-                                <div className="glass-card rounded-2xl py-2 px-6 animate-pop-in">
-                                    <span className="opacity-50 text-xs block">تلميح</span>
-                                    <span className="font-black">{hint}</span>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex flex-wrap justify-center gap-2 mx-auto w-full max-w-sm mb-4" dir="rtl">
-                            {secretWord.split('').map((char, index) => {
-                                if (char === ' ') return <div key={index} className="w-4 h-12" />;
-                                const isRevealed = guessedLetters.includes(char) || gameState !== 'playing' || (isOnline && isMyTurnToWrite);
-                                const isMissed = gameState === 'lost' && !guessedLetters.includes(char);
-                                const showChar = isOnline
-                                    ? ((isRevealed && !isMyTurnToWrite) || isMyTurnToWrite)
-                                    : isRevealed;
-
-                                return (
-                                    <div
-                                        key={index}
-                                        className={`letter-tile w-11 h-12 flex items-center justify-center text-xl font-black rounded-xl transition-all duration-400
-                      ${isRevealed ? 'revealed' : ''} ${isMissed ? 'wrong' : ''}
-                    `}
-                                    >
-                                        {showChar ? (
-                                            <span className={isMyTurnToWrite && !guessedLetters.includes(char) && gameState === 'playing' ? 'opacity-20' : ''}>
-                                                {char}
-                                            </span>
-                                        ) : ''}
+                            {/* Guest (P2) Box - Guessing P1's word */}
+                            <div className={`glass-card p-3 rounded-2xl border transition-all ${turn === 'guest' && gameState === 'playing' ? 'border-[var(--accent)] shadow-[0_0_20px_var(--accent-glow)]' : 'border-white/10'}`}>
+                                <div className="flex justify-between items-center mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <AvatarDisplay avatarId={isOnline ? guestProfile.avatar : 'girl'} size={24} />
+                                        <span className="text-sm font-black">{p2Name}</span>
                                     </div>
-                                );
-                            })}
+                                    <span className="text-xs opacity-60">
+                                        {p2GuessedLetters.filter(l => p1Word.includes(l)).length} من {Array.from(new Set(p1Word.replace(/\s/g, ''))).length} حروف
+                                    </span>
+                                </div>
+                                <div className="flex gap-4 items-center">
+                                    <div className="flex-1">
+                                        <div className="text-xs opacity-60 text-center mb-1">كلمة {p1Name}</div>
+                                        {gameState === 'game_over' && (
+                                            <div className={`text-center text-[10px] font-black ${getWordOutcome('guest') === 'winner' ? 'text-emerald-300' : getWordOutcome('guest') === 'loser' ? 'text-rose-300' : 'text-amber-200'}`}>
+                                                {getWordOutcome('guest') === 'winner' ? 'فاز بهذه الكلمة' : getWordOutcome('guest') === 'loser' ? 'لم يحل الكلمة' : 'تعادل'}
+                                            </div>
+                                        )}
+                                        {renderWord(p1Word, p2GuessedLetters, false, getWordOutcome('guest'))}
+                                    </div>
+                                    <Visualizer mistakes={p2Mistakes} maxMistakes={maxMistakes} isOpponent={isHostRef.current && isOnline} />
+                                </div>
+                            </div>
                         </div>
 
                         {gameState === 'playing' && (
-                            <div className="mt-auto pb-6">
-                                <VirtualKeyboard
-                                    onLetterPress={handleKeyboardPress}
-                                    guessedLetters={guessedLetters}
-                                    disabled={isOnline && isMyTurnToWrite}
+                            <div className="mt-auto">
+                                <div className="text-center mb-3 text-sm font-bold text-[var(--accent)]">
+                                    {isOnline ? (
+                                        (isHostRef.current ? turn === 'host' : turn === 'guest') ? 'دورك - اختار حرف' : 'دور الخصم...'
+                                    ) : (
+                                        `دور ${turn === 'host' ? p1Name : p2Name} - اختار حرف`
+                                    )}
+                                </div>
+                                <VirtualKeyboard 
+                                    onLetterPress={handleLetterGuess}
+                                    guessedLetters={isOnline ? (isHostRef.current ? p1GuessedLetters : p2GuessedLetters) : (turn === 'host' ? p1GuessedLetters : p2GuessedLetters)}
+                                    disabled={isOnline ? (isHostRef.current ? turn !== 'host' : turn !== 'guest') : false}
                                 />
                             </div>
                         )}
 
-                        {(gameState === 'won' || gameState === 'lost') && (
-                            <div className="flex-1 flex items-center justify-center pb-10">
-                                <div className="glass-card rounded-3xl p-8 text-center w-full animate-pop-in border border-white/10 shadow-2xl"
-                                    style={{ boxShadow: gameState === 'won' ? '0 0 40px rgba(52,211,153,0.25)' : '0 0 40px rgba(239,68,68,0.2)' }}>
-                                    <div className="flex items-center justify-center gap-2 mb-3">
-                                        <IconTrophy size={32} className={gameState === 'won' ? 'text-amber-400' : 'text-rose-400'} />
-                                    </div>
-                                    <h2 className={`text-2xl font-black mb-3 ${gameState === 'won' ? 'text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.8)]' : 'text-rose-400 drop-shadow-[0_0_20px_rgba(239,68,68,0.6)]'}`}>
-                                        {gameState === 'won' ? 'أنت الفائز البطل!' : 'انتهت اللعبة!'}
-                                    </h2>
-                                    <p className="opacity-60 mb-6 font-bold text-sm">الكلمة كانت: <span style={{ color: 'var(--accent)' }} className="text-base font-black">{secretWord}</span></p>
-                                    <button onClick={handleRestartAction} className="glow-button w-full h-12 rounded-2xl text-base font-black flex items-center justify-center gap-2">
-                                        <RotateCcw size={18} /> العبوا دور جديد
-                                    </button>
-                                </div>
+                        {gameState === 'game_over' && (
+                            <div className="mt-auto glass-card rounded-3xl p-6 text-center w-full animate-pop-in border border-[var(--accent)] shadow-[0_0_40px_var(--accent-glow)]">
+                                <IconTrophy size={40} className="mx-auto mb-3 text-[var(--accent)]" />
+                                <h2 className="text-2xl font-black mb-2 text-white">
+                                    {winner === 'draw' ? 'تعادل!' : `الفائز: ${winner === 'host' ? p1Name : p2Name}`}
+                                </h2>
+                                <button onClick={handleRestart} className="glow-button w-full h-12 rounded-2xl text-base font-black flex items-center justify-center gap-2 mt-4">
+                                    <RotateCcw size={18} /> العب مرة أخرى
+                                </button>
                             </div>
                         )}
                     </div>
                 )}
             </div>
-            {isOnline && ['playing', 'won', 'lost'].includes(gameState) && (
+            
+            {isOnline && ['playing', 'game_over'].includes(gameState) && (
                 <EmotesOverlay conn={connRef.current} oppProfile={opp} showStandaloneButton={false} />
             )}
         </>

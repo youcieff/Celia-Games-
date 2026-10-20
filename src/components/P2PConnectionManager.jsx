@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../lib/firebase';
-import { ref, set, onValue, push, onChildAdded, remove, get, onDisconnect } from 'firebase/database';
+import { ref, set, onValue, push, onChildAdded, remove, get, onDisconnect, runTransaction } from 'firebase/database';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 import Check from 'lucide-react/dist/esm/icons/check';
@@ -11,7 +11,7 @@ import {
     IconBusComplete, IconConnect4, IconDotsBoxes, IconCodeGame, 
     IconGuessTime, IconWordGame, IconMemoryGame, IconSeaBattle, 
     IconXOGame, IconTriviaDuel, IconBigXOGame, IconRPSArena, 
-    IconAirHockey, IconQuickDraw, IconDominoGame 
+    IconAirHockey, IconQuickDraw, IconDominoGame, IconWhoAmI, IconTaboo
 } from './icons/GameIcons';
 
 const genId = () => {
@@ -22,8 +22,8 @@ const genId = () => {
 };
 
 // Creates a virtual "connection" object that mimics PeerJS API using Firebase
-function createFirebaseConn(roomPath, isHost, roomCode) {
-    const listeners = { data: [], 'peer-disconnect': [], 'peer-reconnect': [] };
+function createFirebaseConn(roomPath, isHost, roomCode, gameIdPrefix, clientId, ignoreHistory = false) {
+    const listeners = { data: [], 'peer-disconnect': [], 'peer-reconnect': [], 'peer-online': [] };
     const outbox = isHost ? 'h2g' : 'g2h';
     const inbox = isHost ? 'g2h' : 'h2g';
     const myRole = isHost ? 'host' : 'guest';
@@ -31,7 +31,13 @@ function createFirebaseConn(roomPath, isHost, roomCode) {
 
     // Save room info for potential rejoin
     if (roomCode) {
-        try { sessionStorage.setItem('celia_last_room', roomCode); } catch(e) {}
+        try {
+            sessionStorage.setItem(`celia_last_room:${gameIdPrefix}`, roomCode);
+            sessionStorage.setItem(`celia_last_room_role:${gameIdPrefix}`, myRole);
+            sessionStorage.setItem('celia_last_room', roomCode); // migrate older builds
+            sessionStorage.setItem('celia_last_game', gameIdPrefix);
+        } catch(e) {}
+        set(ref(db, `${roomPath}/profiles/${myRole}`), readLocalProfile()).catch(() => {});
     }
 
     // Presence & connection health monitoring
@@ -49,27 +55,52 @@ function createFirebaseConn(roomPath, isHost, roomCode) {
     });
 
     let hasEverConnected = false;
+    let hasPresenceSnapshot = false;
+    let previousPresence = null;
+    let closed = false;
     let unsubOppPresence = onValue(oppPresenceRef, (snap) => {
         const val = snap.val();
         if (val === 'online') {
-            if (hasEverConnected) {
+            if (!hasPresenceSnapshot || previousPresence !== 'online') {
+                listeners['peer-online']?.forEach(cb => cb());
+            }
+            if (hasPresenceSnapshot && previousPresence !== 'online' && hasEverConnected) {
                 listeners['peer-reconnect']?.forEach(cb => cb());
             }
             hasEverConnected = true;
         } else if (val === 'offline' && hasEverConnected) {
             listeners['peer-disconnect']?.forEach(cb => cb());
         }
+        previousPresence = val;
+        hasPresenceSnapshot = true;
     });
 
     // Listen for incoming messages
     const inboxRef = ref(db, `${roomPath}/${inbox}`);
-    const unsubscribe = onChildAdded(inboxRef, (snapshot) => {
-        const msg = snapshot.val();
-        if (msg) listeners.data?.forEach(cb => cb(msg));
-    });
+    let unsubscribe = () => {};
+    const attachInbox = (lastExistingKey = null) => {
+        if (closed) return;
+        unsubscribe = onChildAdded(inboxRef, (snapshot) => {
+            // Firebase replays the whole inbox to a new listener. On a room rejoin,
+            // discard old turns/readiness, but retain snapshots that can restore a game
+            // when the active peer sent one as soon as it noticed the reconnection.
+            const msg = snapshot.val();
+            if (ignoreHistory && lastExistingKey && snapshot.key <= lastExistingKey && msg?.type !== 'state_sync') return;
+            if (msg) listeners.data?.forEach(cb => cb(msg));
+        });
+    };
+    if (ignoreHistory) {
+        get(inboxRef).then((snap) => {
+            const keys = Object.keys(snap.val() || {}).sort();
+            attachInbox(keys.at(-1) || null);
+        }).catch(() => attachInbox());
+    } else {
+        attachInbox();
+    }
 
     return {
         send(data) {
+            if (closed) return;
             try {
                 push(ref(db, `${roomPath}/${outbox}`), data);
             } catch (e) {
@@ -96,17 +127,50 @@ function createFirebaseConn(roomPath, isHost, roomCode) {
                 return snap.val() || null;
             } catch (e) { return null; }
         },
+        async isPeerOnline() {
+            try {
+                const snap = await get(oppPresenceRef);
+                return snap.val() === 'online';
+            } catch (e) { return false; }
+        },
+        async getOpponentProfile() {
+            try {
+                const snap = await get(ref(db, `${roomPath}/profiles/${oppRole}`));
+                return snap.val() || null;
+            } catch (e) { return null; }
+        },
         close() {
+            if (closed) return;
+            closed = true;
             try {
                 set(myPresenceRef, 'offline');
                 set(ref(db, `${roomPath}/status`), 'closed');
+                if (roomCode) {
+                    try {
+                        if (sessionStorage.getItem(`celia_last_room:${gameIdPrefix}`) === roomCode) {
+                            sessionStorage.removeItem(`celia_last_room:${gameIdPrefix}`);
+                            sessionStorage.removeItem(`celia_last_room_role:${gameIdPrefix}`);
+                        }
+                        if (sessionStorage.getItem('celia_last_room') === roomCode) {
+                            sessionStorage.removeItem('celia_last_room');
+                            sessionStorage.removeItem('celia_last_game');
+                        }
+                    } catch(e) {}
+                    if (clientId) {
+                        const claimRef = ref(db, `${roomPath}/rejoinClaims/${myRole}`);
+                        runTransaction(claimRef, (entry) => {
+                            const owner = typeof entry === 'string' ? entry : entry?.clientId;
+                            return owner === clientId ? null : entry;
+                        }).catch(() => {});
+                    }
+                }
                 unsubConnected();
                 unsubOppPresence();
-                // Clear rejoin on intentional close
-                try { sessionStorage.removeItem('celia_last_room'); } catch(e) {}
+                unsubscribe();
+                Object.keys(listeners).forEach((event) => { listeners[event] = []; });
             } catch (e) { }
         },
-        _unsubscribe: unsubscribe,
+        _unsubscribe() { unsubscribe(); },
     };
 }
 
@@ -115,6 +179,113 @@ function CodeDigit({ char }) {
     return (
         <span className="lobby-digit">{char}</span>
     );
+}
+
+async function copyTextToClipboard(value) {
+    try {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(value);
+            return true;
+        }
+    } catch {
+        // Use the textarea fallback below when clipboard permission is unavailable.
+    }
+
+    const field = document.createElement('textarea');
+    field.value = value;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.left = '-9999px';
+    document.body.appendChild(field);
+    field.select();
+    let copied = false;
+    try {
+        copied = document.execCommand('copy');
+    } catch {
+        copied = false;
+    }
+    field.remove();
+    return copied;
+}
+
+function readLocalProfile() {
+    let profile = { nickname: 'لاعب عظيم', avatar: 'cool' };
+    try {
+        const stored = localStorage.getItem('celia_games_profile');
+        if (stored) profile = JSON.parse(stored);
+    } catch (e) { }
+    return profile;
+}
+
+async function claimRejoinRole(roomPath, preferredRole, clientId) {
+    const presenceRef = ref(db, `${roomPath}/presence`);
+    const presenceSnap = await get(presenceRef).catch(() => null);
+    const presence = presenceSnap?.val() || {};
+    let wantedRole = preferredRole === 'host' || preferredRole === 'guest' ? preferredRole : null;
+    if (!wantedRole && presence.host === 'online' && presence.guest !== 'online') wantedRole = 'guest';
+    if (!wantedRole && presence.guest === 'online' && presence.host !== 'online') wantedRole = 'host';
+
+    const claimsRef = ref(db, `${roomPath}/rejoinClaims`);
+    const result = await runTransaction(claimsRef, (current) => {
+        const claims = current && typeof current === 'object' ? current : {};
+        const ownerOf = (entry) => typeof entry === 'string' ? entry : entry?.clientId;
+        const stale = (role) => {
+            const entry = claims[role];
+            if (!entry || presence[role] === 'online') return false;
+            const claimedAt = typeof entry === 'object' ? Number(entry.claimedAt) : 0;
+            return !claimedAt || Date.now() - claimedAt > 30_000;
+        };
+        const existingRole = ownerOf(claims.host) === clientId ? 'host'
+            : ownerOf(claims.guest) === clientId ? 'guest' : null;
+        if (existingRole) {
+            return { ...claims, [existingRole]: { clientId, claimedAt: Date.now() } };
+        }
+
+        let role = wantedRole && (!ownerOf(claims[wantedRole]) || stale(wantedRole)) ? wantedRole : null;
+        if (!role) role = !ownerOf(claims.host) || stale('host') ? 'host'
+            : (!ownerOf(claims.guest) || stale('guest') ? 'guest' : null);
+        if (!role) return;
+        return { ...claims, [role]: { clientId, claimedAt: Date.now() } };
+    }, { applyLocally: false });
+
+    if (!result.committed) throw new Error('No free rejoin role');
+    const claims = result.snapshot.val() || {};
+    const ownerOf = (entry) => typeof entry === 'string' ? entry : entry?.clientId;
+    if (ownerOf(claims.host) === clientId) return 'host';
+    if (ownerOf(claims.guest) === clientId) return 'guest';
+    throw new Error('Could not claim a rejoin role');
+}
+
+function getRoomConnectionError(error, action = 'join') {
+    const details = `${error?.code || ''} ${error?.message || ''}`.toLowerCase();
+    if (details.includes('permission_denied') || details.includes('permission denied')) {
+        return 'الإنترنت شغال، لكن خدمة غرف اللعب رفضت الاتصال. إعدادات الغرف محتاجة مراجعة.';
+    }
+    if (details.includes('network') || details.includes('unavailable') || details.includes('disconnected')
+        || details.includes('timeout') || details.includes('timed out') || details.includes('failed to fetch')) {
+        return 'مش قادر أوصل لخادم الغرف حاليًا. اتأكد إن اتصال Firebase مسموح وجرب تاني.';
+    }
+    if (details.includes('no free rejoin role')) {
+        return 'الغرفة ممتلئة أو رجوع اللاعبين لها قيد التنفيذ. جرّب بعد لحظات.';
+    }
+    return action === 'create'
+        ? 'تعذر إنشاء غرفة اللعب. جرّب تاني، ولو استمرت المشكلة راجع إعدادات قاعدة بيانات Firebase.'
+        : 'تعذر الانضمام للغرفة. راجع الكود ومود اللعبة، ثم حاول مرة أخرى.';
+}
+
+async function getWhoAmIModeMismatch(code, currentPrefix) {
+    const prefixes = ['celia-whoami', 'celia-whoami-together'];
+    if (!prefixes.includes(currentPrefix)) return null;
+    const otherPrefix = prefixes.find(prefix => prefix !== currentPrefix);
+    try {
+        const snapshot = await get(ref(db, `rooms/${otherPrefix}-${code}/status`));
+        if (!snapshot.exists() || snapshot.val() === 'closed') return null;
+        return otherPrefix === 'celia-whoami'
+            ? 'الكود ده لمود «عن بُعد بالدردشة». اختاروا نفس المود عندكم أو استخدموا كود الغرفة الصحيح.'
+            : 'الكود ده لمود «سوا بدون دردشة». اختاروا نفس المود عندكم أو استخدموا كود الغرفة الصحيح.';
+    } catch {
+        return null;
+    }
 }
 
 const gameInfoMap = {
@@ -132,24 +303,55 @@ const gameInfoMap = {
     'celia-rps': { name: 'حجر ورقة مقص', Icon: IconRPSArena },
     'celia-hockey': { name: 'الهوكي الهوائي', Icon: IconAirHockey },
     'celia-draw': { name: 'الرسم السريع', Icon: IconQuickDraw },
-    'celia-domino': { name: 'الدومينو', Icon: IconDominoGame }
+    'celia-domino': { name: 'الدومينو', Icon: IconDominoGame },
+    'celia-brick': { name: 'كسار الطوب', Icon: IconAirHockey },
+    'celia-math': { name: 'حرب الحساب', Icon: IconGuessTime },
+    'celia-sudoku': { name: 'سودوكو', Icon: IconCodeGame },
+    'celia-whoami': { name: 'أنا مين', Icon: IconWhoAmI },
+    'celia-whoami-together': { name: 'أنا مين · سوا', Icon: IconWhoAmI },
+    'celia-taboo': { name: 'الكلمة الممنوعة', Icon: IconTaboo },
+    'celia-taboo-together': { name: 'الكلمة الممنوعة · سوا', Icon: IconTaboo }
 };
 
 
-export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
+export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = gameIdPrefix, onGameStart, allowAI = true }) {
     const [myId] = useState(() => genId());
+    const roomCodeStorageKey = `celia_last_room:${gameIdPrefix}`;
+    const roomRoleStorageKey = `celia_last_room_role:${gameIdPrefix}`;
     const [joinId, setJoinId] = useState('');
     const [copied, setCopied] = useState(false);
+    const [copiedCode, setCopiedCode] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
+    const [roomCreated, setRoomCreated] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [rejoinCode, setRejoinCode] = useState(() => {
-        try { return sessionStorage.getItem('celia_last_room') || null; } catch(e) { return null; }
+        try {
+            const scoped = sessionStorage.getItem(`celia_last_room:${gameIdPrefix}`);
+            if (scoped) return scoped;
+            // Older builds used one unscoped key. Keep it available for its original game.
+            if (sessionStorage.getItem('celia_last_game') === gameIdPrefix) return sessionStorage.getItem('celia_last_room') || null;
+            return sessionStorage.getItem('celia_last_game') ? null : sessionStorage.getItem('celia_last_room') || null;
+        } catch(e) { return null; }
+    });
+    const [rejoinRole, setRejoinRole] = useState(() => {
+        try { return sessionStorage.getItem(`celia_last_room_role:${gameIdPrefix}`) || null; } catch(e) { return null; }
+    });
+    const [clientId] = useState(() => {
+        try {
+            let id = sessionStorage.getItem('celia_rejoin_client_id');
+            if (!id) {
+                id = `${genId()}${Date.now().toString(36)}`;
+                sessionStorage.setItem('celia_rejoin_client_id', id);
+            }
+            return id;
+        } catch(e) { return `${genId()}${Date.now().toString(36)}`; }
     });
 
     const [lobbyState, setLobbyState] = useState('lobby'); // 'lobby' | 'connected'
     const [myReady, setMyReady] = useState(false);
     const [oppReady, setOppReady] = useState(false);
     const [oppProfile, setOppProfile] = useState(null);
+    const oppProfileRef = useRef(null);
 
     const connRef = useRef(null);
     const isHostRef = useRef(false);
@@ -159,40 +361,87 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
     const savedStateRef = useRef(null);
     const roomPath = `rooms/${gameIdPrefix}-${myId}`;
 
+    const updateOpponentProfile = (profile) => {
+        if (!profile) return;
+        oppProfileRef.current = profile;
+        setOppProfile(profile);
+    };
+
+    const attachLobbyData = (conn, isRejoin = false) => {
+        conn.on('data', (d) => {
+            if (d?.type === 'global_ready' || d?.type === 'rejoin_hello') {
+                oppReadyRef.current = true;
+                setOppReady(true);
+                updateOpponentProfile(d.profile);
+            }
+            if (isRejoin && d?.type === 'state_sync' && d.state) savedStateRef.current = d.state;
+        });
+    };
+
+    const startRejoinedGame = async () => {
+        const conn = connRef.current;
+        if (!isRejoinRef.current || !conn || isHandedOffRef.current) return false;
+        if (!(await conn.isPeerOnline())) return false;
+        isHandedOffRef.current = true;
+        if (!oppProfileRef.current) updateOpponentProfile(await conn.getOpponentProfile());
+        let stateToRestore = savedStateRef.current;
+        if (!stateToRestore) {
+            const persistedState = await conn.getState();
+            stateToRestore = savedStateRef.current || persistedState;
+        }
+        onGameStart(conn, isHostRef.current, oppProfileRef.current, stateToRestore);
+        return true;
+    };
+
     // HOST: write room to Firebase and wait for guest
     useEffect(() => {
         const hostRoomRef = ref(db, `${roomPath}/status`);
-        set(hostRoomRef, 'waiting');
+        let cancelled = false;
+        let unsubStatus = () => {};
+        setRoomCreated(false);
 
-        // Listen for guest joining
-        const unsubStatus = onValue(ref(db, `${roomPath}/guestReady`), (snap) => {
-            if (snap.val() === true && !isHandedOffRef.current) {
-                isHostRef.current = true;
-                // Wait briefly so guest's Firebase listeners are ready before we connect
-                setTimeout(() => {
-                    if (isHandedOffRef.current) return;
-                    const conn = createFirebaseConn(roomPath, true, myId);
-                    connRef.current = conn;
-                    conn.on('data', (d) => {
-                        if (d?.type === 'global_ready') {
-                            oppReadyRef.current = true;
-                            setOppReady(true);
-                            if (d.profile) setOppProfile(d.profile);
-                        }
-                    });
-                    setLobbyState('connected');
-                }, 300);
-            }
-        });
-
-        return () => {
-            unsubStatus();
-            if (!isHandedOffRef.current) {
-                remove(ref(db, roomPath));
+        const initializeRoom = async () => {
+            try {
+                await set(hostRoomRef, 'waiting');
+                if (cancelled) return;
+                setRoomCreated(true);
+                unsubStatus = onValue(ref(db, `${roomPath}/guestReady`), (snap) => {
+                    if (snap.val() === true && !isHandedOffRef.current) {
+                        isHostRef.current = true;
+                        // Wait briefly so guest's Firebase listeners are ready before we connect
+                        setTimeout(() => {
+                            if (cancelled || isHandedOffRef.current) return;
+                            const conn = createFirebaseConn(roomPath, true, myId, gameIdPrefix, clientId);
+                            connRef.current = conn;
+                            attachLobbyData(conn);
+                            setLobbyState('connected');
+                        }, 300);
+                    }
+                }, (error) => {
+                    console.warn('Firebase room listener failed:', error?.code || error?.message || 'unknown error');
+                    if (!cancelled) {
+                        setRoomCreated(false);
+                        setErrorMsg(getRoomConnectionError(error, 'create'));
+                    }
+                });
+            } catch (error) {
+                console.warn('Firebase room creation failed:', error?.code || error?.message || 'unknown error');
+                if (!cancelled) {
+                    setRoomCreated(false);
+                    setErrorMsg(getRoomConnectionError(error, 'create'));
+                }
             }
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        void initializeRoom();
+
+        return () => {
+            cancelled = true;
+            unsubStatus();
+            if (!isHandedOffRef.current) {
+                remove(ref(db, roomPath)).catch(() => {});
+            }
+        };
+    }, [rejoinCode, roomPath, myId, gameIdPrefix, clientId]);
 
     // GUEST: join a room
     const handleJoin = async () => {
@@ -206,7 +455,8 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
         try {
             const snap = await get(statusRef);
             if (!snap.exists() || snap.val() === 'closed') {
-                setErrorMsg('الغرفة دي مش موجودة. تأكد من الكود وإن الخصم فاتح اللعبة.');
+                const modeMismatchMessage = await getWhoAmIModeMismatch(joinId.trim().toUpperCase(), gameIdPrefix);
+                setErrorMsg(modeMismatchMessage || 'الغرفة دي مش موجودة. تأكد من الكود وإن الخصم فاتح نفس مود اللعبة.');
                 setIsConnecting(false);
                 return;
             }
@@ -214,21 +464,15 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
             await set(ref(db, `${targetRoom}/guestReady`), true);
 
             isHostRef.current = false;
-            const conn = createFirebaseConn(targetRoom, false, joinId.trim().toUpperCase());
+            const conn = createFirebaseConn(targetRoom, false, joinId.trim().toUpperCase(), gameIdPrefix, clientId);
             connRef.current = conn;
-
-            conn.on('data', (d) => {
-                if (d?.type === 'global_ready') {
-                    oppReadyRef.current = true;
-                    setOppReady(true);
-                    if (d.profile) setOppProfile(d.profile);
-                }
-            });
+            attachLobbyData(conn);
 
             setIsConnecting(false);
             setLobbyState('connected');
-        } catch {
-            setErrorMsg('فشل الاتصال. تأكد من إنترنت وجرب تاني.');
+        } catch (error) {
+            console.warn('Firebase room join failed:', error?.code || error?.message || 'unknown error');
+            setErrorMsg(getRoomConnectionError(error));
             setIsConnecting(false);
         }
     };
@@ -247,6 +491,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
     useEffect(() => {
         if (myReady && oppReady && connRef.current) {
             const timeout = setTimeout(async () => {
+                if (isHandedOffRef.current) return;
                 isHandedOffRef.current = true;
                 // On rejoin, fetch saved state and pass it to the game
                 let stateToRestore = savedStateRef.current;
@@ -275,19 +520,22 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
         return () => { if (interval) clearInterval(interval); };
     }, [myReady, oppReady]);
 
-    const inviteUrl = typeof window !== 'undefined' ? `${window.location.origin}/?game=${gameIdPrefix}&room=${myId}` : '';
+    const inviteUrl = typeof window !== 'undefined' ? `${window.location.origin}/?game=${inviteGameId}&room=${myId}` : '';
 
-    const handleCopy = () => {
-        try {
-            navigator.clipboard.writeText(inviteUrl);
-        } catch (e) {
-            navigator.clipboard.writeText(myId);
-        }
-        setCopied(true);
+    const handleCopy = async () => {
+        if (!roomCreated) return;
+        setCopied(await copyTextToClipboard(inviteUrl));
         setTimeout(() => setCopied(false), 2000);
     };
 
+    const handleCopyCode = async () => {
+        if (!roomCreated) return;
+        setCopiedCode(await copyTextToClipboard(myId));
+        setTimeout(() => setCopiedCode(false), 2000);
+    };
+
     const handleWhatsAppShare = () => {
+        if (!roomCreated) return;
         const text = `تعال اتحداك في ألعاب سيليا! 🎮🔥\nاضغط على الرابط وادخل الجولة معايا فوراً:\n${inviteUrl}`;
         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
     };
@@ -311,54 +559,57 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
         setIsConnecting(true);
         setErrorMsg('');
 
-        const targetRoom = `rooms/${gameIdPrefix}-${codeToJoin.trim().toUpperCase()}`;
+        const normalizedCode = codeToJoin.trim().toUpperCase();
+        const targetRoom = `rooms/${gameIdPrefix}-${normalizedCode}`;
         const statusRef = ref(db, `${targetRoom}/status`);
 
         try {
             const snap = await get(statusRef);
             if (!snap.exists() || snap.val() === 'closed') {
-                setErrorMsg('الغرفة دي مش موجودة أو اتقفلت. اتأكد من الكود أو خلي صاحبك يعمل غرفة جديدة.');
+                const modeMismatchMessage = await getWhoAmIModeMismatch(normalizedCode, gameIdPrefix);
+                setErrorMsg(modeMismatchMessage || 'الغرفة دي مش موجودة أو اتقفلت. اتأكد من الكود أو خلي صاحبك يعمل غرفة جديدة.');
                 // Clear invalid rejoin code
                 setRejoinCode(null);
-                try { sessionStorage.removeItem('celia_last_room'); } catch(e) {}
+                setRejoinRole(null);
+                try {
+                    sessionStorage.removeItem(roomCodeStorageKey);
+                    sessionStorage.removeItem(roomRoleStorageKey);
+                    if (sessionStorage.getItem('celia_last_room') === normalizedCode) {
+                        sessionStorage.removeItem('celia_last_room');
+                        sessionStorage.removeItem('celia_last_game');
+                    }
+                } catch(e) {}
                 setIsConnecting(false);
                 return;
             }
 
-            // Check if this is a rejoin (room was previously joined by us)
-            const isRejoin = codeToJoin.trim().toUpperCase() === rejoinCode;
+            const isRejoin = normalizedCode === rejoinCode;
             isRejoinRef.current = isRejoin;
-
-            // Pre-fetch saved state if rejoining
+            let joinRole = 'guest';
             if (isRejoin) {
-                try {
-                    const stateSnap = await get(ref(db, `${targetRoom}/gameState`));
-                    savedStateRef.current = stateSnap.val() || null;
-                } catch(e) { savedStateRef.current = null; }
+                joinRole = await claimRejoinRole(targetRoom, rejoinRole, clientId);
+                setRejoinRole(joinRole);
+                try { sessionStorage.setItem(roomRoleStorageKey, joinRole); } catch(e) {}
+                if (targetRoom !== roomPath) await remove(ref(db, roomPath));
             }
 
-            await set(ref(db, `${targetRoom}/guestReady`), true);
+            if (joinRole === 'guest') await set(ref(db, `${targetRoom}/guestReady`), true);
 
-            isHostRef.current = false;
-            const conn = createFirebaseConn(targetRoom, false, codeToJoin.trim().toUpperCase());
+            isHostRef.current = joinRole === 'host';
+            const conn = createFirebaseConn(targetRoom, joinRole === 'host', normalizedCode, gameIdPrefix, clientId, isRejoin);
             connRef.current = conn;
-
-            conn.on('data', (d) => {
-                if (d?.type === 'global_ready') {
-                    oppReadyRef.current = true;
-                    setOppReady(true);
-                    if (d.profile) setOppProfile(d.profile);
-                }
-                // Handle state_sync pushed by host on peer-reconnect
-                if (d?.type === 'state_sync' && d.state) {
-                    savedStateRef.current = d.state;
-                }
-            });
+            attachLobbyData(conn, isRejoin);
 
             setIsConnecting(false);
             setLobbyState('connected');
-        } catch {
-            setErrorMsg('فشل الاتصال. تأكد من اتصال الإنترنت.');
+            if (isRejoin) {
+                conn.send({ type: 'rejoin_hello', profile: readLocalProfile() });
+                conn.on('peer-online', () => { void startRejoinedGame(); });
+                setTimeout(() => { void startRejoinedGame(); }, 0);
+            }
+        } catch (error) {
+            console.warn('Firebase room rejoin failed:', error?.code || error?.message || 'unknown error');
+            setErrorMsg(getRoomConnectionError(error));
             setIsConnecting(false);
         }
     };
@@ -454,7 +705,18 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                         ارجع!
                     </button>
                     <button
-                        onClick={() => { setRejoinCode(null); try { sessionStorage.removeItem('celia_last_room'); } catch(e) {} }}
+                        onClick={() => {
+                            setRejoinCode(null);
+                            setRejoinRole(null);
+                            try {
+                                sessionStorage.removeItem(roomCodeStorageKey);
+                                sessionStorage.removeItem(roomRoleStorageKey);
+                                if (sessionStorage.getItem('celia_last_game') === gameIdPrefix) {
+                                    sessionStorage.removeItem('celia_last_room');
+                                    sessionStorage.removeItem('celia_last_game');
+                                }
+                            } catch(e) {}
+                        }}
                         className="shrink-0 text-white/30 hover:text-white/60 text-sm font-bold transition-colors"
                     >
                         ✕
@@ -468,14 +730,26 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                 <div className="lobby-ticket-header">
                     <span className="text-[10px] font-black tracking-widest uppercase opacity-50">كود غرفتك</span>
                     <span className="lobby-ticket-dot" />
-                    <span className="text-[10px] font-black opacity-30">شارك مع صديقك</span>
+                    <span className="text-[10px] font-black opacity-30">{roomCreated ? 'شارك مع صديقك' : 'جارٍ تجهيز الغرفة…'}</span>
                 </div>
 
                 {/* Code display */}
                 <div className="lobby-code-row">
-                    {myId.split('').map((ch, i) => (
-                        <CodeDigit key={i} char={ch} />
-                    ))}
+                    <div className="flex items-center gap-2">
+                        {myId.split('').map((ch, i) => (
+                            <CodeDigit key={i} char={ch} />
+                        ))}
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleCopyCode}
+                        aria-label={copiedCode ? 'تم نسخ كود الغرفة' : 'نسخ كود الغرفة'}
+                        title={copiedCode ? 'تم نسخ كود الغرفة' : 'نسخ كود الغرفة'}
+                        disabled={!roomCreated}
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition active:scale-95 disabled:cursor-wait disabled:opacity-35 ${copiedCode ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300' : 'border-white/10 bg-white/5 text-white/70 hover:border-[var(--accent)]/50 hover:text-[var(--accent)]'}`}
+                    >
+                        {copiedCode ? <Check size={18} /> : <IconCopy size={18} />}
+                    </button>
                 </div>
 
                 {/* Ticket perforated bottom */}
@@ -485,7 +759,8 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                 <div className="flex gap-2 w-full mt-1">
                     <button
                         onClick={handleCopy}
-                        className={`lobby-copy-btn flex-[1.2] ${copied ? 'lobby-copy-btn--done' : ''}`}
+                        disabled={!roomCreated}
+                        className={`lobby-copy-btn flex-[1.2] disabled:cursor-wait disabled:opacity-35 ${copied ? 'lobby-copy-btn--done' : ''}`}
                     >
                         {copied ? (
                             <><Check size={15} /> تم نسخ الرابط</>
@@ -495,7 +770,8 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                     </button>
                     <button
                         onClick={handleWhatsAppShare}
-                        className="h-11 px-3.5 rounded-2xl flex items-center justify-center gap-1.5 font-black text-xs border border-emerald-400/40 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] active:scale-95 shrink-0"
+                        disabled={!roomCreated}
+                        className="h-11 px-3.5 rounded-2xl flex items-center justify-center gap-1.5 font-black text-xs border border-emerald-400/40 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] active:scale-95 shrink-0 disabled:cursor-wait disabled:opacity-35"
                         title="مشاركة مباشرة عبر واتساب"
                     >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -560,7 +836,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
             </div>
 
             {/* ── Play vs AI ── */}
-            {gameIdPrefix && (
+            {gameIdPrefix && allowAI && (
                 <>
                     <div className="flex items-center gap-3 w-full">
                         <div className="h-px flex-1 bg-white/8" />
@@ -572,7 +848,7 @@ export default function P2PConnectionManager({ gameIdPrefix, onGameStart }) {
                         onClick={() => {
                             setIsConnecting(true);
                             setTimeout(() => {
-                                onGameStart(createAIConn(gameIdPrefix), true, { nickname: 'الذكاء الاصطناعي', avatar: 'robot' });
+                                onGameStart(createAIConn(gameIdPrefix), true, { nickname: 'الذكاء الاصطناعي', avatar: 'robot', isAI: true });
                             }, 600);
                         }}
                         disabled={isConnecting}

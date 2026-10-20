@@ -415,7 +415,7 @@ export default function MemoryGame({ setView }) {
                 {gameState !== 'lobby' ? (
                     <PlayerGameHeader
                         title="الذاكرة البصرية"
-                        gameId="celia-mem"
+                        gameId="memory-game"
                         isMyTurn={isMyTurn}
                         oppProfile={oppProfile}
                         myScore={isHost ? scores.host : scores.client}

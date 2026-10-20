@@ -13,6 +13,7 @@ import DominoAI from './DominoAI.js';
 import RPSArenaAI from './RPSArenaAI.js';
 import AirHockeyAI from './AirHockeyAI.js';
 import QuickDrawAI from './QuickDrawAI.js';
+import WhoAmIAI from './WhoAmIAI.js';
 
 export default function createAIConn(gameIdPrefix) {
     const listeners = { data: [] };
@@ -55,7 +56,7 @@ export default function createAIConn(gameIdPrefix) {
         },
         _sendToPlayer(data) {
             if (data && data.type === 'global_ready' && !data.profile) {
-                data.profile = { nickname: 'الذكاء الاصطناعي', avatar: 'robot' };
+                data.profile = { nickname: 'الذكاء الاصطناعي', avatar: 'robot', isAI: true };
             }
             if (listeners['data']) {
                 listeners['data'].forEach(cb => cb(data));
@@ -77,6 +78,8 @@ export default function createAIConn(gameIdPrefix) {
         aiInstance = new MemoryAI(mockConn);
     } else if (prefix.includes('code')) {
         aiInstance = new CodeAI(mockConn);
+    } else if (prefix.includes('whoami')) {
+        aiInstance = new WhoAmIAI(mockConn);
     } else if (prefix.includes('word')) {
         aiInstance = new WordAI(mockConn);
     } else if (prefix.includes('db') || prefix.includes('dots')) {

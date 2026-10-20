@@ -16,6 +16,12 @@ import DominoGame from './games/Dominoes/DominoGame';
 import RPSArenaGame from './games/RPSArena/RPSArenaGame';
 import AirHockeyGame from './games/AirHockey/AirHockeyGame';
 import QuickDrawGame from './games/QuickDraw/QuickDrawGame';
+import SnakeArenaGame from './games/SnakeArena/SnakeArenaGame';
+import BrickBreakerGame from './games/BrickBreaker/BrickBreakerGame';
+import MathSpeedGame from './games/MathSpeed/MathSpeedGame';
+import SpeedSudokuGame from './games/SpeedSudoku/SpeedSudokuGame';
+import WhoAmIGame from './games/WhoAmI/WhoAmIGame';
+import TabooGame from './games/Taboo/TabooGame';
 import GlobalMuteButton from './components/GlobalMuteButton';
 
 function App() {
@@ -47,12 +53,24 @@ function App() {
           'celia-rps': 'rps-arena',
           'celia-hockey': 'air-hockey',
           'celia-draw': 'quick-draw',
+          'celia-snake': 'snake-arena',
+          'celia-brick': 'brick-breaker',
+          'celia-math': 'math-duel',
+          'celia-sudoku': 'speed-sudoku',
+          'celia-whoami': 'whoami-online',
+          'celia-whoami-together': 'whoami-together',
+          'celia-taboo': 'taboo-online',
+          'celia-taboo-together': 'taboo-together',
         };
         const resolvedView = prefixToView[gameParam] || gameParam;
         setView(resolvedView);
       }
     } catch (e) { }
   }, []);
+
+  React.useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view]);
 
   return (
     <ThemeProvider>
@@ -74,6 +92,16 @@ function App() {
         {view === 'rps-arena' && <RPSArenaGame setView={setView} />}
         {view === 'air-hockey' && <AirHockeyGame setView={setView} />}
         {view === 'quick-draw' && <QuickDrawGame setView={setView} />}
+        {view === 'snake-arena' && <SnakeArenaGame setView={setView} />}
+        {view === 'brick-breaker' && <BrickBreakerGame setView={setView} />}
+        {view === 'math-duel' && <MathSpeedGame setView={setView} />}
+        {view === 'speed-sudoku' && <SpeedSudokuGame setView={setView} />}
+        {view === 'whoami-local' && <WhoAmIGame setView={setView} mode="local" />}
+        {view === 'whoami-online' && <WhoAmIGame setView={setView} mode="online" />}
+        {view === 'whoami-together' && <WhoAmIGame setView={setView} mode="together" />}
+        {view === 'taboo-local' && <TabooGame setView={setView} mode="local" />}
+        {view === 'taboo-online' && <TabooGame setView={setView} mode="online" />}
+        {view === 'taboo-together' && <TabooGame setView={setView} mode="together" />}
       </div>
     </ThemeProvider>
   );

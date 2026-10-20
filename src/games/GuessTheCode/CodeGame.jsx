@@ -289,6 +289,27 @@ export default function CodeGame({ setView }) {
         connRef.current?.send({ type: 'restart' });
     };
 
+    // ── derived state for rendering ──────────────────────────────────
+    const myConfirmed = new Array(codeLength).fill(null);
+    myGuesses.forEach(g => {
+        g.result.forEach((r, i) => {
+            if (r === 'green') myConfirmed[i] = g.code[i];
+        });
+    });
+
+    const CodeDisplay = ({ title, confirmed, length, secret }) => (
+        <div className="glass-card p-2 rounded-xl flex flex-col items-center flex-1 border border-white/10">
+            <span className="text-[10px] font-bold opacity-70 mb-1">{title}</span>
+            <div className="flex gap-1" dir="ltr">
+                {Array.from({ length }).map((_, i) => (
+                    <div key={i} className={`w-6 h-8 flex items-center justify-center text-sm font-black rounded-md ${confirmed[i] ? 'bg-emerald-500 text-white shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-black/20 text-transparent'}`}>
+                        {confirmed[i] ? (secret ? secret[i] : confirmed[i]) : '*'}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
     // ── render ───────────────────────────────────────────────────────
     return (
         <>
@@ -344,7 +365,6 @@ export default function CodeGame({ setView }) {
                     </div>
                 )}
 
-                {/* ── Host: Choose Code Length ── */}
                 {/* ── Host: Choose Code Length ── */}
                 {gameState === 'length-select' && (
                     <div className="flex-1 flex flex-col items-center justify-center -mt-6">
@@ -440,6 +460,14 @@ export default function CodeGame({ setView }) {
                             </div>
                         )}
 
+                        {/* Codes Display */}
+                        {(['playing', 'won', 'lost'].includes(gameState)) && (
+                            <div className="flex gap-2 w-full">
+                                <CodeDisplay title={`كود ${opp.nickname || 'الخصم'}`} confirmed={myConfirmed} length={codeLength} secret={null} />
+                                <CodeDisplay title={`كودي`} confirmed={oppConfirmed} length={codeLength} secret={secretRef.current} />
+                            </div>
+                        )}
+
                         {/* History board */}
                         {(['playing', 'won', 'lost'].includes(gameState)) && (
                             <div className="flex-1 min-h-0">
@@ -464,9 +492,7 @@ export default function CodeGame({ setView }) {
                                             ? (input[i] ? <Lock size={22} className="opacity-40" /> : '')
                                             : (isMyTurn
                                                 ? (input[i] || '')
-                                                : (oppConfirmed[i]
-                                                    ? <span className="text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]">{secretRef.current[i]}</span>
-                                                    : <Lock size={24} className="opacity-20 text-red-500" />))}
+                                                : '')}
                                     </div>
                                 ))}
                             </div>

@@ -304,7 +304,7 @@ export default function DotsBoxesGame({ setView }) {
                         <div className="flex justify-center">
                             <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
                                 <IconDotsBoxes size={18} className="text-[var(--accent)]" />
-                                <span className="text-xs font-black gradient-text">النقاط والصناديق</span>
+                                <span className="text-xs font-black gradient-text">نقاط ومربعات</span>
                             </div>
                         </div>
                         <div className="flex justify-end"><button onClick={() => { connRef.current?.close(); setView('hub'); }} className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 active:scale-95 transition-transform text-white/90">الرئيسية</button></div>
@@ -463,11 +463,13 @@ export default function DotsBoxesGame({ setView }) {
                         </div>
 
                         {/* Grid Arena Card — Clean & Clear Mobile Structure */}
-                        <div className="w-full max-w-[370px] flex justify-center">
-                            <div className="w-full aspect-square relative glass-card p-5 sm:p-6 rounded-3xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.5)] touch-none select-none flex items-center justify-center bg-black/40">
+                        <div className="w-full max-w-[450px] flex justify-center">
+                            <div className="w-full aspect-square relative p-2 sm:p-4 touch-none select-none">
+                                {/* The background card (glass) sits behind */}
+                                <div className="absolute inset-0 glass-card rounded-[2rem] border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.5)] bg-black/40"></div>
 
                                 {/* Inner play field */}
-                                <div className="w-full h-full relative">
+                                <div className="absolute inset-4 sm:inset-6 z-10">
 
                                     {/* 1. Boxes (captures & subtle guide background) */}
                                     {boxes.map((rowArr, r) =>
@@ -476,7 +478,7 @@ export default function DotsBoxesGame({ setView }) {
                                             return (
                                                 <div
                                                     key={`box-${r}-${c}`}
-                                                    className="absolute pointer-events-none flex items-center justify-center p-1"
+                                                    className="absolute pointer-events-none flex items-center justify-center p-1.5"
                                                     style={{
                                                         top: `${(r / ROWS) * 100}%`,
                                                         left: `${(c / COLS) * 100}%`,
@@ -525,17 +527,17 @@ export default function DotsBoxesGame({ setView }) {
                                                         top: `${(r / ROWS) * 100}%`,
                                                         left: `${(c / COLS) * 100}%`,
                                                         width: `${100 / COLS}%`,
-                                                        height: '40px', // generous tap target
+                                                        height: '44px', // generous tap target
                                                     }}
                                                 >
                                                     <div
-                                                        className={`w-[82%] h-[6px] rounded-full transition-all duration-300 ${lineHolder
+                                                        className={`w-[86%] h-[8px] rounded-full transition-all duration-300 ${lineHolder
                                                                 ? 'scale-100 opacity-100'
                                                                 : canClick
                                                                     ? 'bg-white/20 group-hover:bg-white/70 group-active:scale-105 group-hover:shadow-[0_0_8px_rgba(255,255,255,0.6)]'
                                                                     : 'bg-white/10'
                                                             }`}
-                                                        style={lineHolder ? { backgroundColor: lColor.hex, boxShadow: `0 0 12px ${lColor.glow}, 0 0 4px ${lColor.hex}` } : {}}
+                                                        style={lineHolder ? { backgroundColor: lColor.hex, boxShadow: `0 0 14px ${lColor.glow}, 0 0 4px ${lColor.hex}` } : {}}
                                                     />
                                                 </div>
                                             );
@@ -556,18 +558,18 @@ export default function DotsBoxesGame({ setView }) {
                                                     style={{
                                                         top: `${(r / ROWS) * 100}%`,
                                                         left: `${(c / COLS) * 100}%`,
-                                                        width: '40px', // generous tap target
+                                                        width: '44px', // generous tap target
                                                         height: `${100 / ROWS}%`,
                                                     }}
                                                 >
                                                     <div
-                                                        className={`w-[6px] h-[82%] rounded-full transition-all duration-300 ${lineHolder
+                                                        className={`w-[8px] h-[86%] rounded-full transition-all duration-300 ${lineHolder
                                                                 ? 'scale-100 opacity-100'
                                                                 : canClick
                                                                     ? 'bg-white/20 group-hover:bg-white/70 group-active:scale-105 group-hover:shadow-[0_0_8px_rgba(255,255,255,0.6)]'
                                                                     : 'bg-white/10'
                                                             }`}
-                                                        style={lineHolder ? { backgroundColor: lColor.hex, boxShadow: `0 0 12px ${lColor.glow}, 0 0 4px ${lColor.hex}` } : {}}
+                                                        style={lineHolder ? { backgroundColor: lColor.hex, boxShadow: `0 0 14px ${lColor.glow}, 0 0 4px ${lColor.hex}` } : {}}
                                                     />
                                                 </div>
                                             );

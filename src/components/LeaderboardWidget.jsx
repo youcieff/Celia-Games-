@@ -31,8 +31,8 @@ export default function LeaderboardWidget() {
                 onClick={handleOpen}
                 title="لوحة المتصدرين الحقيقية"
             >
-                <div className="w-6 h-6 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-300 border border-amber-400/30 shrink-0 group-hover:scale-110 transition-transform">
-                    <Trophy size={14} className="fill-current animate-pulse" />
+                <div className="w-6 h-6 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-300 border border-amber-400/20 shrink-0 transition-colors">
+                    <Trophy size={14} />
                 </div>
                 <span className="text-xs font-black text-amber-300 hidden sm:inline tracking-wide">
                     المتصدرين
@@ -40,14 +40,14 @@ export default function LeaderboardWidget() {
             </button>
 
             {isOpen && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[130] flex items-center justify-center p-3 animate-fade-in">
+                <div className="safe-area-overlay fixed inset-0 bg-black/80 backdrop-blur-md z-[130] flex items-center justify-center p-3 animate-fade-in">
                     <div className="glass-card rounded-3xl p-5 w-full max-w-md flex flex-col gap-4 animate-pop-in border border-white/10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
                         
                         {/* Header */}
                         <div className="flex items-center justify-between pb-2 border-b border-white/10">
                             <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-[0_0_12px_rgba(245,158,11,0.5)]">
-                                    <Trophy size={18} className="fill-current" />
+                                <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-300 border border-amber-400/20">
+                                    <Trophy size={18} />
                                 </div>
                                 <div>
                                     <h2 className="text-base font-black gradient-text">لوحة الصدارة الحقيقية</h2>
@@ -74,7 +74,7 @@ export default function LeaderboardWidget() {
                                         key={player.id}
                                         className={`glass-card p-3 rounded-2xl border flex items-center justify-between gap-3 text-right transition-all ${
                                             isFirst
-                                                ? 'border-amber-400/70 bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-transparent shadow-[0_0_20px_rgba(245,158,11,0.2)]'
+                                                ? 'border-amber-400/35 bg-amber-500/[0.08]'
                                                 : isSecond
                                                 ? 'border-slate-300/50 bg-gradient-to-r from-slate-400/15 to-transparent'
                                                 : isThird

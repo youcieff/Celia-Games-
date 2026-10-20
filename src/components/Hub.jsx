@@ -11,28 +11,75 @@ import LayoutGrid from 'lucide-react/dist/esm/icons/layout-grid';
 import List from 'lucide-react/dist/esm/icons/list';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import X from 'lucide-react/dist/esm/icons/x';
-import Flame from 'lucide-react/dist/esm/icons/flame';
-import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left';
 import Play from 'lucide-react/dist/esm/icons/play';
-import Users from 'lucide-react/dist/esm/icons/users';
+import MessageCircle from 'lucide-react/dist/esm/icons/message-circle';
 
 /* ─── game catalogue ─────────────────────────────────────────────────────── */
 const GAMES = [
     {
+        id: 'whoami-online',
+        title: 'أنا مين؟',
+        desc: 'اكتشف الشخصية السرية بالأسئلة',
+        isNew: true,
+        exclusive: true,
+        online: true,
+        accentVar: 'var(--game-1-accent)',
+    },
+    {
+        id: 'taboo-game',
+        title: 'الكلمة الممنوعة',
+        desc: 'اشرحها من غير ما تقول الكلمة أو ممنوعاتها',
+        isNew: true,
+        exclusive: true,
+        exclusiveTier: 'secondary',
+        online: true,
+        accentVar: 'var(--game-2-accent)',
+    },
+    {
+        id: 'snake-arena',
+        title: 'ثعبان النيون',
+        desc: 'حلبة الثعبان تنافس 1v1',
+        isNew: true,
+        online: true,
+        accentVar: 'var(--game-3-accent)',
+    },
+    {
+        id: 'brick-breaker',
+        title: 'تدمير الكتل',
+        desc: 'تدمير المكعبات بمؤثرات نيون',
+        isNew: true,
+        online: true,
+        accentVar: 'var(--game-4-accent)',
+    },
+    {
+        id: 'math-duel',
+        title: 'سرعة الحساب',
+        desc: 'تحدي حسابات ذهنية 1v1',
+        isNew: true,
+        online: true,
+        accentVar: 'var(--game-5-accent)',
+    },
+    {
+        id: 'speed-sudoku',
+        title: 'سودوكو السرعة',
+        desc: 'حل السودوكو قبل خصمك',
+        isNew: true,
+        online: true,
+        accentVar: 'var(--game-6-accent)',
+    },
+    {
         id: 'quick-draw',
         title: 'ارسم وخمّن',
         desc: 'ارسم الكلمة وخلّي صاحبك يخمّن',
-        category: 'words',
-        isNew: true,
+        isNew: false,
         online: true,
-        accentVar: 'var(--game-9-accent)',
+        accentVar: 'var(--game-7-accent)',
     },
     {
         id: 'air-hockey',
         title: 'الهوكي الهوائي',
         desc: 'هوكي لحظي — أول ٧ أهداف يفوز',
-        category: 'action',
-        isNew: true,
+        isNew: false,
         online: true,
         accentVar: 'var(--game-8-accent)',
     },
@@ -40,155 +87,99 @@ const GAMES = [
         id: 'domino-game',
         title: 'الدومينو الكلاسيكية',
         desc: 'عظام الدومينو — قفل ودومينو',
-        category: 'classics',
-        isNew: true,
+        isNew: false,
         online: true,
-        accentVar: 'var(--game-4-accent)',
+        accentVar: 'var(--game-9-accent)',
     },
     {
         id: 'rps-arena',
-        title: 'حجرة ورقة مقص ⚡',
+        title: 'حجرة ورقة مقص',
         desc: 'بطاقات قوة وتكتيك — أول ٥ يفوز',
-        category: 'action',
-        isNew: true,
+        isNew: false,
         online: true,
-        accentVar: 'var(--game-6-accent)',
+        accentVar: 'var(--game-10-accent)',
     },
     {
         id: 'trivia-duel',
         title: 'تحدي المعلومات',
         desc: '١٠ أسئلة بسرعة — من أذكى؟',
-        category: 'words',
-        isNew: true,
+        isNew: false,
         online: true,
-        accentVar: 'var(--game-1-accent)',
+        accentVar: 'var(--game-11-accent)',
     },
     {
         id: 'code-game',
         title: 'خمن الكود',
         desc: 'كود سري وردود فعل دقيقة',
-        category: 'strategy',
         online: true,
-        accentVar: 'var(--game-1-accent)',
+        accentVar: 'var(--game-12-accent)',
     },
     {
         id: 'word-game',
         title: 'خمن الكلمة',
         desc: 'حرف حرف لحد ما تخمنها',
-        category: 'words',
         online: false,
-        accentVar: 'var(--game-2-accent)',
+        accentVar: 'var(--game-13-accent)',
     },
     {
         id: 'xo-game',
         title: 'إكس أو',
         desc: 'الكلاسيك السريع',
-        category: 'classics',
         online: true,
-        accentVar: 'var(--game-3-accent)',
+        accentVar: 'var(--game-14-accent)',
     },
     {
         id: 'big-xo-game',
         title: 'Big XO',
         desc: '٩ إكس أو في شبكة واحدة',
-        category: 'strategy',
         online: true,
-        accentVar: 'var(--game-4-accent)',
+        accentVar: 'var(--game-15-accent)',
     },
     {
         id: 'connect-4',
         title: 'Connect 4',
         desc: 'رص ٤ في صف رأسي أو أفقي',
-        category: 'strategy',
         online: true,
-        accentVar: 'var(--game-5-accent)',
+        accentVar: 'var(--game-16-accent)',
     },
     {
         id: 'memory-game',
         title: 'Memory Match',
         desc: 'تطابق الورق وقوة الذاكرة',
-        category: 'classics',
         online: true,
-        accentVar: 'var(--game-6-accent)',
+        accentVar: 'var(--game-17-accent)',
     },
     {
         id: 'dots-boxes',
         title: 'Dots & Boxes',
         desc: 'قفل المربعات واكسب النقاط',
-        category: 'strategy',
         online: true,
-        accentVar: 'var(--game-7-accent)',
+        accentVar: 'var(--game-18-accent)',
     },
     {
         id: 'sea-battle',
         title: 'حرب السفن',
         desc: 'حرب السفن الاستراتيجية',
-        category: 'strategy',
         online: true,
-        accentVar: 'var(--game-8-accent)',
+        accentVar: 'var(--game-19-accent)',
     },
     {
         id: 'guess-time',
         title: 'خمن الوقت',
         desc: 'وقّف الساعة في اللحظة المضبوطة',
-        category: 'action',
         online: true,
-        accentVar: 'var(--game-9-accent)',
+        accentVar: 'var(--game-20-accent)',
     },
     {
         id: 'bus-complete',
         title: 'أتوبيس كومبليت',
         desc: 'اسم حيوان نبات جماد بلاد',
-        category: 'words',
         online: true,
-        accentVar: 'var(--game-10-accent)',
+        accentVar: 'var(--game-21-accent)',
     },
 ];
 
-const CATEGORIES = [
-    { 
-        id: 'all', 
-        label: 'الكل', 
-        emoji: '🎮', 
-        accent: 'from-sky-500 via-blue-500 to-indigo-600',
-        glow: 'rgba(56, 189, 248, 0.45)'
-    },
-    { 
-        id: 'new', 
-        label: 'أحدث الألعاب', 
-        emoji: '🔥', 
-        accent: 'from-amber-500 via-orange-500 to-rose-500',
-        glow: 'rgba(245, 158, 11, 0.5)'
-    },
-    { 
-        id: 'action', 
-        label: 'سرعة وأكشن', 
-        emoji: '⚡', 
-        accent: 'from-amber-400 via-orange-500 to-yellow-500',
-        glow: 'rgba(251, 191, 36, 0.5)'
-    },
-    { 
-        id: 'words', 
-        label: 'كلمات وفنون', 
-        emoji: '🎨', 
-        accent: 'from-pink-500 via-purple-500 to-rose-500',
-        glow: 'rgba(236, 72, 153, 0.5)'
-    },
-    { 
-        id: 'strategy', 
-        label: 'ذكاء وتفكير', 
-        emoji: '🧠', 
-        accent: 'from-purple-500 via-indigo-500 to-violet-600',
-        glow: 'rgba(168, 85, 247, 0.5)'
-    },
-    { 
-        id: 'classics', 
-        label: 'كلاسيكيات', 
-        emoji: '🎲', 
-        accent: 'from-emerald-400 via-teal-500 to-cyan-600',
-        glow: 'rgba(16, 185, 129, 0.5)'
-    }
-];
+
 
 /* ─── online dot indicator ───────────────────────────────────────────────── */
 function OnlinePip({ accentVar }) {
@@ -204,7 +195,7 @@ function OnlinePip({ accentVar }) {
 /* ─── word game modal / sub-selector ─────────────────────────────────────── */
 function WordGameSelector({ onSelect, onClose }) {
     return (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="safe-area-overlay fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
             <div className="glass-card max-w-xs w-full p-5 rounded-3xl border border-white/20 text-center shadow-2xl relative">
                 <button
                     onClick={onClose}
@@ -246,10 +237,109 @@ function WordGameSelector({ onSelect, onClose }) {
     );
 }
 
+function TabooGameSelector({ onSelect, onClose }) {
+    return (
+        <div className="safe-area-overlay fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+            <div className="glass-card relative w-full max-w-sm rounded-3xl border border-white/20 p-5 text-center shadow-2xl">
+                <button onClick={onClose} aria-label="إغلاق" className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20">
+                    <X size={16} />
+                </button>
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent-soft)] text-[var(--accent)]">
+                    <GameIcon gameId="taboo-game" size={25} />
+                </div>
+                <h3 className="mb-1 text-base font-black text-white">الكلمة الممنوعة</h3>
+                <p className="mb-4 text-xs text-white/50">اختاروا اللعب عن بُعد بالدردشة أو سوا من غير دردشة:</p>
+                <div className="flex flex-col gap-2.5">
+                    <button onClick={() => onSelect('taboo-online')} className="glass-card group flex items-center gap-3 rounded-2xl border border-white/10 px-3 py-3 text-right transition hover:border-[var(--accent)] active:scale-[0.99]">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)] transition group-hover:scale-110"><MessageCircle size={20} /></span>
+                        <span><span className="block text-sm font-black">عن بُعد · بالدردشة</span><span className="mt-0.5 block text-[10px] font-medium text-white/45">كل لاعب على جهازه</span></span>
+                    </button>
+                    <button onClick={() => onSelect('taboo-local')} className="glass-card group flex items-center gap-3 rounded-2xl border border-white/10 px-3 py-3 text-right transition hover:border-[var(--accent)] active:scale-[0.99]">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)] transition group-hover:scale-110"><IconPhone size={20} /></span>
+                        <span><span className="block text-sm font-black">سوا · جهاز واحد</span><span className="mt-0.5 block text-[10px] font-medium text-white/45">أوفلاين تمامًا · بدون شات</span></span>
+                    </button>
+                    <button onClick={() => onSelect('taboo-together')} className="glass-card group flex items-center gap-3 rounded-2xl border border-white/10 px-3 py-3 text-right transition hover:border-[var(--accent)] active:scale-[0.99]">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)] transition group-hover:scale-110"><IconWifi size={20} /></span>
+                        <span><span className="block text-sm font-black">سوا · جهازين</span><span className="mt-0.5 block text-[10px] font-medium text-white/45">اتصال إنترنت لمزامنة اللعب · بدون شات</span></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function WhoAmIGameSelector({ onSelect, onClose }) {
+    return (
+        <div className="safe-area-overlay fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+            <div className="glass-card relative w-full max-w-sm rounded-3xl border border-white/20 p-5 text-center shadow-2xl">
+                <button onClick={onClose} aria-label="إغلاق" className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20">
+                    <X size={16} />
+                </button>
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent-soft)] text-[var(--accent)]">
+                    <GameIcon gameId="whoami-online" size={25} />
+                </div>
+                <h3 className="mb-1 text-base font-black text-white">أنا مين؟</h3>
+                <p className="mb-4 text-xs text-white/50">اختاروا طريقة التواصل قبل إنشاء الغرفة:</p>
+                <div className="flex flex-col gap-2.5">
+                    <button onClick={() => onSelect('whoami-online')} className="glass-card group flex items-center gap-3 rounded-2xl border border-white/10 px-3 py-3 text-right transition hover:border-[var(--accent)] active:scale-[0.99]">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)] transition group-hover:scale-110"><MessageCircle size={20} /></span>
+                        <span><span className="block text-sm font-black">عن بُعد · بالدردشة</span><span className="mt-0.5 block text-[10px] font-medium text-white/45">كل لاعب على جهازه مع دردشة داخل اللعبة</span></span>
+                    </button>
+                    <button onClick={() => onSelect('whoami-together')} className="glass-card group flex items-center gap-3 rounded-2xl border border-white/10 px-3 py-3 text-right transition hover:border-[var(--accent)] active:scale-[0.99]">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)] transition group-hover:scale-110"><IconWifi size={20} /></span>
+                        <span><span className="block text-sm font-black">سوا · بدون دردشة</span><span className="mt-0.5 block text-[10px] font-medium text-white/45">اتصال بين جهازين بدون دردشة داخل اللعبة</span></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function HubGameCard({ game, onClick, index = 0, rail = false, featuredKind = '' }) {
+    return (
+        <button
+            type="button"
+            onClick={() => onClick(game)}
+            style={{ '--card-accent': game.accentVar, animationDelay: `${index * 20}ms` }}
+            className={`hub-game-card ${rail ? 'hub-game-card--rail' : 'w-full'} ${featuredKind ? `hub-game-card--featured-${featuredKind}` : ''} text-right group cursor-pointer ${game.exclusive ? 'exclusive-card' : ''} ${game.exclusiveTier === 'secondary' ? 'exclusive-card--secondary' : ''}`}
+        >
+            <div className="hub-card-top">
+                {game.exclusive || game.isNew ? (
+                    <span className={`hub-card-label ${game.exclusive ? 'exclusive-chip' : 'plain-chip'}`}>
+                        <Sparkles size={10} />
+                        <span>{game.exclusive ? 'حصري' : 'جديد'}</span>
+                    </span>
+                ) : <span className="hub-card-label-placeholder" aria-hidden="true" />}
+
+                <span className="hub-online-badge">
+                    <span className="hub-online-pip" />
+                    <span>{game.online ? '1v1' : 'أوفلاين'}</span>
+                </span>
+            </div>
+
+            <div className="hub-card-main">
+                <div className="hub-game-icon" style={{ '--card-accent': game.accentVar }}>
+                    <GameIcon gameId={game.id} size={23} />
+                </div>
+                <div className="hub-card-copy">
+                    <h3>{game.title}</h3>
+                    <p>{game.desc}</p>
+                </div>
+            </div>
+
+            <div className="hub-card-footer">
+                <span>العب الآن</span>
+                <span className="hub-card-play"><Play size={11} className="fill-current" /></span>
+            </div>
+        </button>
+    );
+}
+
 /* ─── main hub ───────────────────────────────────────────────────────────── */
 export default function Hub({ setView }) {
     const [wordModalOpen, setWordModalOpen] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState('all');
+    const [tabooModalOpen, setTabooModalOpen] = useState(false);
+    const [whoAmIModalOpen, setWhoAmIModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
 
@@ -263,43 +353,29 @@ export default function Hub({ setView }) {
         if (game.id === 'word-game') {
             playSound('click');
             setWordModalOpen(true);
+        } else if (game.id === 'taboo-game') {
+            playSound('click');
+            setTabooModalOpen(true);
+        } else if (game.id === 'whoami-online') {
+            playSound('click');
+            setWhoAmIModalOpen(true);
         } else {
             go(game.id);
         }
     };
 
-    // Filter games by category & search query
+    // Keep search as the only catalogue filter.
     const filteredGames = useMemo(() => {
-        return GAMES.filter(game => {
-            // Category match
-            if (selectedCategory === 'new' && !game.isNew) return false;
-            if (selectedCategory !== 'all' && selectedCategory !== 'new' && game.category !== selectedCategory) {
-                return false;
-            }
-            // Search query match
-            if (searchQuery.trim()) {
-                const q = searchQuery.trim().toLowerCase();
-                const matchTitle = game.title.toLowerCase().includes(q);
-                const matchDesc = game.desc.toLowerCase().includes(q);
-                return matchTitle || matchDesc;
-            }
-            return true;
-        });
-    }, [selectedCategory, searchQuery]);
-
-    // Featured games spotlight (top new games)
-    const featuredGames = useMemo(() => GAMES.filter(g => g.isNew), []);
-
-    // Dynamic game count per category
-    const categoryCounts = useMemo(() => {
-        const counts = { all: GAMES.length, new: GAMES.filter(g => g.isNew).length };
-        GAMES.forEach(g => {
-            if (g.category) {
-                counts[g.category] = (counts[g.category] || 0) + 1;
-            }
-        });
-        return counts;
-    }, []);
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return GAMES;
+        return GAMES.filter(game =>
+            game.title.toLowerCase().includes(query) ||
+            game.desc.toLowerCase().includes(query)
+        );
+    }, [searchQuery]);
+    const latestGames = useMemo(() => GAMES.filter(game => game.isNew && !game.exclusive), []);
+    const exclusiveGames = useMemo(() => GAMES.filter(game => game.exclusive), []);
+    const showFeaturedShelves = !searchQuery.trim();
 
     return (
         <>
@@ -309,10 +385,10 @@ export default function Hub({ setView }) {
                 <div className="animated-bg-noise" />
             </div>
 
-            <div className="min-h-dvh flex flex-col items-center px-4 safe-area-pt overflow-x-hidden">
+            <div className="hub-page min-h-dvh flex flex-col items-center px-4 safe-area-pt overflow-x-hidden">
 
                 {/* ── Top Header Navigation Bar ── */}
-                <header className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl flex items-center justify-between py-3 mb-2 px-1">
+                <header className="hub-header w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl flex items-center justify-between py-3 mb-2 px-1">
                     {/* Right: Logo */}
                     <div className="shrink-0">
                         <Logo size="small" />
@@ -332,8 +408,8 @@ export default function Hub({ setView }) {
                 </header>
 
                 {/* ── Hero Title & Branding Section ── */}
-                <section className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl flex flex-col items-center text-center my-3 animate-fade-in">
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-none mb-1 drop-shadow-[0_0_30px_var(--accent-glow)]">
+                <section className="hub-hero w-full max-w-lg md:max-w-3xl lg:max-w-5xl flex flex-col items-center text-center my-3 animate-fade-in">
+                    <h1 className="hub-hero-title text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-none mb-1">
                         ألعاب <span className="gradient-text">سيليا</span>
                     </h1>
 
@@ -348,21 +424,52 @@ export default function Hub({ setView }) {
                     </div>
                 </section>
 
+                {!showFeaturedShelves ? null : (
+                    <div className="hub-featured-sections w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl">
+                        {(exclusiveGames.length + latestGames.length) > 0 && (
+                            <section className="hub-featured-shelf" aria-labelledby="hub-featured-title">
+                                <div className="hub-shelf-heading" style={{ '--shelf-accent': exclusiveGames[0]?.accentVar || latestGames[0]?.accentVar }}>
+                                    <span className="hub-shelf-mark"><Sparkles size={15} /></span>
+                                    <h2 id="hub-featured-title">الألعاب الحصرية والجديدة</h2>
+                                    <span className="hub-shelf-count">{exclusiveGames.length + latestGames.length}</span>
+                                </div>
+                                <div className="hub-scroll-row">
+                                    <div className="hub-scroll-inner py-1">
+                                        {[...exclusiveGames, ...latestGames].map((game, idx) => (
+                                            <HubGameCard
+                                                key={game.id}
+                                                game={game}
+                                                onClick={handleCardClick}
+                                                index={idx}
+                                                rail
+                                                featuredKind={game.exclusive ? 'exclusive' : 'new'}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+                    </div>
+                )}
+
+
                 {/* ── Search & View Mode Controls ── */}
-                <div className="w-full max-w-lg md:max-w-2xl flex items-center gap-2 my-2.5">
-                    <div className="relative flex-1">
+                <div className="hub-search-toolbar w-full max-w-lg md:max-w-2xl flex items-center gap-2.5">
+                    <div className="hub-search-field relative flex-1">
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="ابحث عن لعبة..."
-                            className="w-full glass-card pl-9 pr-9 py-2.5 rounded-2xl text-xs font-bold text-white placeholder:text-white/40 border border-white/10 focus:border-[var(--accent)] outline-none transition-all"
+                            className="hub-search-input w-full pl-10 pr-10 text-sm font-bold text-white placeholder:text-white/45 outline-none"
                         />
-                        <Search size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                        <Search size={16} className="hub-search-icon absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         {searchQuery && (
                             <button
                                 onClick={() => setSearchQuery('')}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white p-0.5"
+                                className="hub-search-clear absolute left-2.5 top-1/2 -translate-y-1/2"
+                                aria-label="مسح البحث"
+                                title="مسح البحث"
                             >
                                 <X size={14} />
                             </button>
@@ -388,208 +495,60 @@ export default function Hub({ setView }) {
                     </div>
                 </div>
 
-                {/* ── Category Filter Pills (Aligned with content, wraps centered on desktop) ── */}
-                <div className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mb-4">
-                    <div className="hub-scroll-row hub-scroll-wrap">
-                        <div className="hub-scroll-inner py-1 md:justify-center md:flex-wrap">
-                            {CATEGORIES.map(cat => {
-                                const isActive = selectedCategory === cat.id;
-                                const count = categoryCounts[cat.id] || 0;
-                                return (
-                                    <button
-                                        key={cat.id}
-                                        onClick={() => { playSound('click'); setSelectedCategory(cat.id); }}
-                                        className={`relative px-3.5 py-2 rounded-2xl text-xs font-black transition-all duration-300 flex items-center gap-2 shrink-0 active:scale-95 group cursor-pointer
-                                            ${isActive
-                                                ? `bg-gradient-to-r ${cat.accent} text-white shadow-[0_4px_16px_${cat.glow}] scale-105 ring-1 ring-white/30 z-10`
-                                                : 'glass-card border border-white/10 text-white/75 hover:text-white hover:border-white/20 hover:bg-white/[0.08]'}`}
-                                    >
-                                        <span className="text-sm drop-shadow-sm transition-transform group-hover:scale-110">{cat.emoji}</span>
-                                        <span className="tracking-wide">{cat.label}</span>
-                                        <span
-                                            className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full transition-colors ${
-                                                isActive
-                                                    ? 'bg-black/30 text-white border border-white/20'
-                                                    : 'bg-white/10 text-white/50 group-hover:text-white/80'
-                                            }`}
-                                        >
-                                            {count}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-
-                {/* ── Featured New Games Horizontal Spotlight (Shown when viewing 'all' and not searching) ── */}
-                {selectedCategory === 'all' && !searchQuery && (
-                    <div className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mb-6">
-                        <div className="flex items-center justify-between px-2 mb-2.5">
-                            <div className="flex items-center gap-2 min-w-0">
-                                <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-[0_0_12px_rgba(245,158,11,0.5)] shrink-0">
-                                    <Flame size={15} className="fill-current animate-pulse" />
-                                </div>
-                                <div className="flex items-baseline gap-1.5 min-w-0">
-                                    <h2 className="text-xs sm:text-sm font-black text-white tracking-wide truncate">
-                                        أحدث الألعاب المضافة
-                                    </h2>
-                                    <span className="text-[9px] sm:text-[10px] font-bold text-amber-300 bg-amber-400/15 px-1.5 py-0.5 rounded-full border border-amber-400/30 shrink-0">
-                                        {featuredGames.length} ألعاب جديدة
-                                    </span>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-1 text-[10px] font-bold text-white/50 md:hidden shrink-0">
-                                <span>اسحب للتصفح</span>
-                                <ChevronLeft size={12} className="text-white/50" />
-                            </div>
-                        </div>
-
-                        <div className="hub-scroll-row">
-                            <div className="hub-scroll-inner py-1">
-                                {featuredGames.map(game => (
-                                    <button
-                                        key={game.id}
-                                        onClick={() => handleCardClick(game)}
-                                        style={{
-                                            '--card-accent': game.accentVar,
-                                            background: 'linear-gradient(135deg, color-mix(in srgb, var(--card-accent) 20%, rgba(15, 23, 42, 0.95)) 0%, rgba(15, 23, 42, 0.9) 100%)',
-                                            borderColor: 'color-mix(in srgb, var(--card-accent) 35%, rgba(255, 255, 255, 0.12))',
-                                            boxShadow: '0 4px 16px -3px color-mix(in srgb, var(--card-accent) 25%, transparent)'
-                                        }}
-                                        className="spotlight-card shrink-0 w-[155px] sm:w-[170px] md:w-[185px] p-2.5 rounded-2xl border text-right transition-all duration-300 active:scale-95 flex flex-col justify-between group cursor-pointer"
-                                    >
-                                        {/* Top Badges */}
-                                        <div className="flex items-center justify-between w-full mb-1.5">
-                                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500/25 to-rose-500/25 border border-amber-400/35 text-amber-300 text-[8px] font-black shadow-sm">
-                                                <Sparkles size={8} className="text-amber-300 animate-pulse" />
-                                                <span>جديد</span>
-                                            </div>
-
-                                            {game.online && (
-                                                <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[8px] font-bold">
-                                                    <span className="w-1 h-1 rounded-full bg-emerald-400 animate-ping" />
-                                                    <span>1v1</span>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Center: Icon + Title & Desc */}
-                                        <div className="flex items-center gap-2 w-full my-1">
-                                            <div
-                                                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform duration-300"
-                                                style={{
-                                                    background: 'color-mix(in srgb, var(--card-accent) 30%, rgba(255,255,255,0.08))',
-                                                    border: '1.5px solid color-mix(in srgb, var(--card-accent) 60%, rgba(255,255,255,0.3))',
-                                                    boxShadow: '0 0 14px color-mix(in srgb, var(--card-accent) 45%, transparent)'
-                                                }}
-                                            >
-                                                <GameIcon gameId={game.id} size={19} className="text-white" />
-                                            </div>
-
-                                            <div className="flex flex-col text-right overflow-hidden flex-1 min-w-0">
-                                                <h3 className="text-xs font-black text-white group-hover:text-[var(--card-accent)] transition-colors truncate">
-                                                    {game.title}
-                                                </h3>
-                                                <p className="text-[9px] text-white/50 font-medium truncate mt-0.5">
-                                                    {game.desc}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Bottom CTA Action Bar */}
-                                        <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-white/10 w-full">
-                                            <span className="text-[8px] font-bold text-white/40 flex items-center gap-0.5">
-                                                <Users size={10} className="text-white/40" /> {game.online ? '1v1' : 'أوفلاين'}
-                                            </span>
-                                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/10 group-hover:bg-[var(--card-accent)] group-hover:text-slate-950 text-white font-black text-[9px] transition-all duration-300 shadow-sm">
-                                                <span>العب</span>
-                                                <Play size={7} className="fill-current" />
-                                            </div>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
                 {/* ── Main Games Container ── */}
                 <main className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl flex-1 pb-24">
                     {filteredGames.length === 0 ? (
                         <div className="glass-card p-8 rounded-3xl text-center border border-white/10 my-8">
                             <span className="text-3xl mb-2 block">🔍</span>
                             <h3 className="text-sm font-bold text-white mb-1">لم يتم العثور على ألعاب</h3>
-                            <p className="text-xs text-white/40">جرّب البحث بكلمة أخرى أو تغيير التصنيف</p>
+                            <p className="text-xs text-white/40">{'\u062c\u0631\u0651\u0628 \u0643\u0644\u0645\u0629 \u0628\u062d\u062b \u0645\u062e\u062a\u0644\u0641\u0629'}</p>
                         </div>
                     ) : viewMode === 'grid' ? (
                         /* ── Grid View: 2 columns on mobile, 3 on tablet, 4 on desktop ── */
                         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5 w-full">
-                            {filteredGames.map((game, idx) => {
-                                const catObj = CATEGORIES.find(c => c.id === game.category);
-                                return (
-                                    <button
-                                        key={game.id}
-                                        onClick={() => handleCardClick(game)}
-                                        style={{
-                                            '--card-accent': game.accentVar,
-                                            background: 'linear-gradient(135deg, color-mix(in srgb, var(--card-accent) 20%, rgba(15, 23, 42, 0.95)) 0%, rgba(15, 23, 42, 0.9) 100%)',
-                                            borderColor: 'color-mix(in srgb, var(--card-accent) 35%, rgba(255, 255, 255, 0.12))',
-                                            boxShadow: '0 6px 20px -4px color-mix(in srgb, var(--card-accent) 22%, transparent)',
-                                            animationDelay: `${idx * 20}ms`,
-                                        }}
-                                        className="spotlight-card w-full p-2.5 sm:p-3.5 rounded-2xl sm:rounded-3xl border text-right transition-all duration-300 active:scale-[0.97] flex flex-col justify-between group cursor-pointer"
-                                    >
-                                        {/* Top Badges Row */}
-                                        <div className="flex items-center justify-between w-full mb-1.5 sm:mb-2">
-                                            {game.isNew ? (
-                                                <span className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/25 to-rose-500/25 border border-amber-400/35 text-amber-300 text-[8px] sm:text-[9px] font-black shadow-sm">
-                                                    <Sparkles size={9} className="text-amber-300 animate-pulse" />
-                                                    <span>جديد</span>
-                                                </span>
-                                            ) : (
-                                                <span className="text-[8px] sm:text-[9px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50 truncate max-w-[65px] sm:max-w-[85px]">
-                                                    {catObj ? `${catObj.emoji} ${catObj.label}` : 'لعبة'}
-                                                </span>
-                                            )}
-
-                                            <span className="text-[8px] sm:text-[9px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 flex items-center gap-1">
-                                                <span className="w-1 h-1 rounded-full bg-emerald-400 animate-ping" />
-                                                <span>{game.online ? '1v1' : 'أوفلاين'}</span>
+                            {filteredGames.map((game, idx) => (
+                                <button
+                                    key={game.id}
+                                    onClick={() => handleCardClick(game)}
+                                    style={{
+                                        '--card-accent': game.accentVar,
+                                        animationDelay: `${idx * 20}ms`,
+                                    }}
+                                    className={`hub-game-card w-full text-right group cursor-pointer ${game.exclusive ? 'exclusive-card' : ''} ${game.exclusiveTier === 'secondary' ? 'exclusive-card--secondary' : ''}`}
+                                >
+                                    <div className="hub-card-top">
+                                        {game.exclusive || game.isNew ? (
+                                            <span className={`hub-card-label ${game.exclusive ? 'exclusive-chip' : 'plain-chip'}`}>
+                                                <Sparkles size={10} />
+                                                <span>{game.exclusive ? '\u062d\u0635\u0631\u064a' : '\u062c\u062f\u064a\u062f'}</span>
                                             </span>
-                                        </div>
+                                        ) : <span className="hub-card-label-placeholder" aria-hidden="true" />}
 
-                                        {/* Center: Icon + Title & Desc */}
-                                        <div className="flex flex-col items-center text-center my-1 w-full">
-                                            <div
-                                                className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center shrink-0 shadow-md group-hover:scale-110 transition-transform duration-300 mb-1.5"
-                                                style={{
-                                                    background: 'color-mix(in srgb, var(--card-accent) 30%, rgba(255,255,255,0.08))',
-                                                    border: '1.5px solid color-mix(in srgb, var(--card-accent) 60%, rgba(255,255,255,0.3))',
-                                                    boxShadow: '0 0 16px color-mix(in srgb, var(--card-accent) 45%, transparent)'
-                                                }}
-                                            >
-                                                <GameIcon gameId={game.id} size={22} className="text-white" />
-                                            </div>
+                                        <span className="hub-online-badge">
+                                            <span className="hub-online-pip" />
+                                            <span>{game.online ? '1v1' : '\u0623\u0648\u0641\u0644\u0627\u064a\u0646'}</span>
+                                        </span>
+                                    </div>
 
-                                            <h3 className="text-xs sm:text-sm font-black text-white group-hover:text-[var(--card-accent)] transition-colors truncate w-full px-0.5">
-                                                {game.title}
-                                            </h3>
-                                            <p className="text-[9px] sm:text-[10px] text-white/50 font-medium truncate w-full px-0.5 mt-0.5">
-                                                {game.desc}
-                                            </p>
+                                    <div className="hub-card-main">
+                                        <div
+                                            className="hub-game-icon"
+                                            style={{ '--card-accent': game.accentVar }}
+                                        >
+                                            <GameIcon gameId={game.id} size={23} />
                                         </div>
+                                        <div className="hub-card-copy">
+                                            <h3>{game.title}</h3>
+                                            <p>{game.desc}</p>
+                                        </div>
+                                    </div>
 
-                                        {/* Bottom Action Button */}
-                                        <div className="flex items-center justify-center pt-2 mt-1 border-t border-white/10 w-full">
-                                            <div className="w-full flex items-center justify-center gap-1.5 py-1 rounded-xl bg-white/10 group-hover:bg-[var(--card-accent)] group-hover:text-slate-950 text-white font-black text-[10px] sm:text-xs transition-all duration-300 shadow-sm">
-                                                <span>العب الآن</span>
-                                                <Play size={9} className="fill-current" />
-                                            </div>
-                                        </div>
-                                    </button>
-                                );
-                            })}
+                                    <div className="hub-card-footer">
+                                        <span>{'\u0627\u0644\u0639\u0628 \u0627\u0644\u0622\u0646'}</span>
+                                        <span className="hub-card-play"><Play size={11} className="fill-current" /></span>
+                                    </div>
+                                </button>
+                            ))}
                         </div>
                     ) : (
                         /* ── List View: 1 full-width column on mobile (stacked), 2-3 cols desktop ── */
@@ -600,19 +559,15 @@ export default function Hub({ setView }) {
                                     onClick={() => handleCardClick(game)}
                                     style={{
                                         '--card-accent': game.accentVar,
-                                        background: 'linear-gradient(135deg, color-mix(in srgb, var(--card-accent) 15%, rgba(15, 23, 42, 0.95)) 0%, rgba(15, 23, 42, 0.9) 100%)',
-                                        borderColor: 'color-mix(in srgb, var(--card-accent) 30%, rgba(255, 255, 255, 0.1))',
                                         animationDelay: `${idx * 20}ms`,
                                     }}
-                                    className="spotlight-card w-full p-2.5 sm:p-3 rounded-2xl border text-right transition-all duration-300 active:scale-[0.99] flex items-center justify-between gap-3 group cursor-pointer"
+                                    className={`spotlight-card w-full p-2.5 sm:p-3 rounded-2xl border text-right transition-all duration-300 active:scale-[0.99] flex items-center justify-between gap-3 group cursor-pointer ${game.exclusive ? 'exclusive-card' : ''} ${game.exclusiveTier === 'secondary' ? 'exclusive-card--secondary' : ''}`}
                                 >
                                     <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0">
                                         <div
-                                            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform"
+                                            className="hub-game-icon w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform"
                                             style={{
-                                                background: 'color-mix(in srgb, var(--card-accent) 30%, rgba(255,255,255,0.08))',
-                                                border: '1.5px solid color-mix(in srgb, var(--card-accent) 60%, rgba(255,255,255,0.3))',
-                                                boxShadow: '0 0 14px color-mix(in srgb, var(--card-accent) 45%, transparent)'
+                                                '--card-accent': game.accentVar,
                                             }}
                                         >
                                             <GameIcon gameId={game.id} size={22} className="text-white" />
@@ -620,12 +575,12 @@ export default function Hub({ setView }) {
 
                                         <div className="flex flex-col text-right overflow-hidden flex-1 min-w-0">
                                             <div className="flex items-center gap-1.5">
-                                                <h3 className="text-sm font-black text-white group-hover:text-[var(--card-accent)] transition-colors truncate">
+                                                <h3 className="text-sm font-black text-white transition-colors truncate">
                                                     {game.title}
                                                 </h3>
-                                                {game.isNew && (
-                                                    <span className="text-[8px] font-black px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
-                                                        جديد
+                                                {(game.exclusive || game.isNew) && (
+                                                        <span className={`${game.exclusive ? 'exclusive-chip' : 'plain-chip'} text-[8px] font-black px-1.5 py-0.2 rounded-full shrink-0`}>
+                                                        {game.exclusive ? 'حصري' : 'جديد'}
                                                     </span>
                                                 )}
                                             </div>
@@ -635,7 +590,7 @@ export default function Hub({ setView }) {
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 group-hover:bg-[var(--card-accent)] group-hover:text-slate-950 text-white font-black text-xs transition-all duration-300 shrink-0">
+                                    <div className="hub-card-cta flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs transition-all duration-300 shrink-0">
                                         <span>العب</span>
                                         <Play size={10} className="fill-current" />
                                     </div>
@@ -653,6 +608,26 @@ export default function Hub({ setView }) {
                             go(viewName);
                         }}
                         onClose={() => setWordModalOpen(false)}
+                    />
+                )}
+
+                {tabooModalOpen && (
+                    <TabooGameSelector
+                        onSelect={(viewName) => {
+                            setTabooModalOpen(false);
+                            go(viewName);
+                        }}
+                        onClose={() => setTabooModalOpen(false)}
+                    />
+                )}
+
+                {whoAmIModalOpen && (
+                    <WhoAmIGameSelector
+                        onSelect={(viewName) => {
+                            setWhoAmIModalOpen(false);
+                            go(viewName);
+                        }}
+                        onClose={() => setWhoAmIModalOpen(false)}
                     />
                 )}
 

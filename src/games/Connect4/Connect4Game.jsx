@@ -183,7 +183,9 @@ export default function Connect4Game({ setView }) {
             setOppProfile(msg.profile);
         } else if (msg.type === 'start') {
             setClientConfig(msg.config);
+            hostTurnRef.current = msg.config.hostPlaysFirst;
             setHostTurn(msg.config.hostPlaysFirst);
+            setHostPlaysFirst(msg.config.hostPlaysFirst);
             setGameState('playing');
         } else if (msg.type === 'play') {
             dropCoin(msg.colIdx, !isHostRef.current);
@@ -193,7 +195,7 @@ export default function Connect4Game({ setView }) {
             const hostOppScore = msg.oppScore !== undefined ? msg.oppScore : oppScoreRef.current;
             const guestMyScore = isHostRef.current ? hostMyScore : hostOppScore;
             const guestOppScore = isHostRef.current ? hostOppScore : hostMyScore;
-            doRestart(guestMyScore, guestOppScore);
+            doRestart(guestMyScore, guestOppScore, msg.hostPlaysFirst);
         } else if (msg.type === 'state_sync' && msg.state) {
             // Guest received state sync from host - restore full game state
             const s = msg.state;
@@ -266,6 +268,7 @@ export default function Connect4Game({ setView }) {
 
     const handleStartGame = () => {
         const config = { hostColor, oppColor, hostPlaysFirst };
+        hostTurnRef.current = hostPlaysFirst;
         setHostTurn(hostPlaysFirst);
         setGameState('playing');
         connRef.current?.send({ type: 'start', config });
@@ -279,15 +282,17 @@ export default function Connect4Game({ setView }) {
         });
     };
 
-    const doRestart = (newMyScore, newOppScore) => {
+    const doRestart = (newMyScore, newOppScore, nextHostStarts = !hostPlaysFirst) => {
         const emptyBoard = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
         boardRef.current = emptyBoard;
         setBoard(emptyBoard);
         // Alternate who goes first each game
-        const nextFirst = !hostPlaysFirst;
-        setHostPlaysFirst(nextFirst);
-        hostTurnRef.current = nextFirst;
-        setHostTurn(nextFirst);
+        setHostPlaysFirst(nextHostStarts);
+        if (!isHostRef.current) {
+            setClientConfig(prev => ({ ...prev, hostPlaysFirst: nextHostStarts }));
+        }
+        hostTurnRef.current = nextHostStarts;
+        setHostTurn(nextHostStarts);
         if (newMyScore !== undefined) {
             myScoreRef.current = newMyScore;
             oppScoreRef.current = newOppScore;
@@ -307,8 +312,14 @@ export default function Connect4Game({ setView }) {
             if (iWon) newMyScore++;
             else newOppScore++;
         }
-        doRestart(newMyScore, newOppScore);
-        connRef.current?.send({ type: 'restart', myScore: newMyScore, oppScore: newOppScore });
+        const nextHostStarts = !hostPlaysFirst;
+        doRestart(newMyScore, newOppScore, nextHostStarts);
+        connRef.current?.send({
+            type: 'restart',
+            myScore: newMyScore,
+            oppScore: newOppScore,
+            hostPlaysFirst: nextHostStarts,
+        });
     };
 
     const getColorObj = (type) => {
@@ -349,7 +360,7 @@ export default function Connect4Game({ setView }) {
                         <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
                             <Logo size="mini" />
                             <IconConnect4 size={18} className="text-[var(--accent)]" />
-                            <span className="text-xs font-black gradient-text">Connect 4</span>
+                            <span className="text-xs font-black gradient-text">أربعة في صف</span>
                             <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold mr-1">
                                 <Wifi size={11} />
                                 <span>متصل</span>

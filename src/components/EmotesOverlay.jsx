@@ -51,15 +51,39 @@ export function ChatTriggerButton({ onClick, hasUnread = false, className = '' }
     );
 }
 
-export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneButton = false, buttonPosition = 'top-left' }) {
+export default function EmotesOverlay({
+    conn,
+    oppProfile = null,
+    showStandaloneButton = false,
+    buttonPosition = 'top-left',
+    simulateAIReplies = true,
+    initialTab = 'emotes',
+    keepChatOpenOnSend = false,
+    pendingGameQuestion = null,
+    canAnswerGameQuestion = false,
+    onAnswerGameQuestion = null
+}) {
     const [myProfile] = useProfile();
     const [isOpen, setIsOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState('emotes'); // 'emotes' | 'messages'
+    const [activeTab, setActiveTab] = useState(initialTab); // 'emotes' | 'messages'
     const [inputText, setInputText] = useState('');
     const [floatingItems, setFloatingItems] = useState([]);
+    const [chatHistory, setChatHistory] = useState([]);
     const [hasUnread, setHasUnread] = useState(false);
     const itemId = useRef(0);
     const inputRef = useRef(null);
+    const chatEndRef = useRef(null);
+    const isOpenRef = useRef(isOpen);
+
+    useEffect(() => {
+        isOpenRef.current = isOpen;
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (isOpen && activeTab === 'messages') {
+            chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+    }, [chatHistory, isOpen, activeTab]);
 
     // Listen for custom toggle events dispatched from header buttons
     useEffect(() => {
@@ -83,12 +107,34 @@ export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneB
                 triggerEmote(msg.emoteId || msg.emoji, false, msg.sender || oppProfile?.nickname, msg.avatar || oppProfile?.avatar);
             } else if (msg.type === 'chat') {
                 triggerChat(msg.text, false, msg.sender || oppProfile?.nickname, msg.avatar || oppProfile?.avatar);
+            } else if (msg.type === 'whoami_question') {
+                triggerChat(msg.text, false, oppProfile?.nickname, oppProfile?.avatar, { gameQuestion: true, questionId: msg.id, silentSound: true });
+            } else if (msg.type === 'whoami_answer') {
+                const answerText = msg.unsupported
+                    ? 'الذكاء الاصطناعي لم يفهم السؤال؛ اسأل عن صفة واضحة.'
+                    : `الإجابة: ${msg.answer === 'yes' ? 'أيوه' : 'لأ'}`;
+                triggerChat(answerText, false, oppProfile?.nickname, oppProfile?.avatar, { gameAnswer: true, questionId: msg.questionId, silentSound: true });
             }
         };
 
         conn.on('data', handleData);
         return () => conn.off('data', handleData);
     }, [conn, oppProfile]);
+
+    useEffect(() => {
+        const handleWhoAmIMessage = (event) => {
+            const message = event.detail;
+            if (!message?.text) return;
+            triggerChat(message.text, true, undefined, undefined, {
+                gameQuestion: message.kind === 'question',
+                gameAnswer: message.kind === 'answer',
+                questionId: message.questionId,
+                silentSound: true
+            });
+        };
+        window.addEventListener('whoami-game-chat', handleWhoAmIMessage);
+        return () => window.removeEventListener('whoami-game-chat', handleWhoAmIMessage);
+    }, [myProfile]);
 
     const triggerEmote = (emoteKey, isMine, senderName, senderAvatar) => {
         const id = itemId.current++;
@@ -111,7 +157,7 @@ export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneB
         playSound('pop');
         if (!isMine) {
             playHaptic(20);
-            if (!isOpen) {
+            if (!isOpenRef.current) {
                 setHasUnread(true);
                 window.dispatchEvent(new CustomEvent('game-chat-unread'));
             }
@@ -122,7 +168,8 @@ export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneB
         }, 3200);
     };
 
-    const triggerChat = (text, isMine, senderName, senderAvatar) => {
+    const triggerChat = (text, isMine, senderName, senderAvatar, metadata = {}) => {
+        const { silentSound = false, ...messageMetadata } = metadata;
         const id = itemId.current++;
         const resolvedSender = isMine
             ? (myProfile.nickname || 'أنت')
@@ -131,27 +178,31 @@ export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneB
             ? myProfile.avatar
             : (senderAvatar || oppProfile?.avatar || 'alien');
 
-        setFloatingItems(prev => [...prev, {
+        const message = {
             id,
-            type: 'chat',
             text,
             isMine,
             sender: resolvedSender,
-            avatar: resolvedAvatar
-        }]);
+            avatar: resolvedAvatar,
+            sentAt: Date.now(),
+            ...messageMetadata
+        };
+        setChatHistory(prev => [...prev.slice(-39), message]);
 
-        playSound('pop');
+        // If the chat is closed, show a short notice in the shared header.
+        // When it is open, the full conversation is already visible there.
+        if (!isOpenRef.current || !keepChatOpenOnSend) {
+            window.dispatchEvent(new CustomEvent('game-chat-notice', { detail: message }));
+        }
+
+        if (!silentSound) playSound('pop');
         if (!isMine) {
             playHaptic(25);
-            if (!isOpen) {
+            if (!isOpenRef.current) {
                 setHasUnread(true);
                 window.dispatchEvent(new CustomEvent('game-chat-unread'));
             }
         }
-
-        setTimeout(() => {
-            setFloatingItems(prev => prev.filter(e => e.id !== id));
-        }, 3800);
     };
 
     const handleSendEmote = (emoteKey) => {
@@ -165,7 +216,7 @@ export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneB
         setIsOpen(false);
 
         // Offline AI reply reaction
-        simulateAIReply('emote');
+        if (simulateAIReplies) simulateAIReply('emote');
     };
 
     const handleSendChat = (text) => {
@@ -180,10 +231,10 @@ export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneB
             avatar: myProfile.avatar
         });
         setInputText('');
-        setIsOpen(false);
+        if (!keepChatOpenOnSend) setIsOpen(false);
 
         // Offline AI reply reaction
-        simulateAIReply('chat');
+        if (simulateAIReplies) simulateAIReply('chat');
     };
 
     const simulateAIReply = (kind) => {
@@ -230,7 +281,7 @@ export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneB
                                 <div className={`glass-card px-3.5 py-2 rounded-2xl border shadow-xl backdrop-blur-xl max-w-[230px] ${
                                     item.isMine
                                         ? 'bg-[var(--accent-soft)] border-[var(--accent)] text-white'
-                                        : 'bg-black/75 border-sky-400/40 text-white'
+                                        : 'themed-opponent-bubble text-white'
                                 }`}>
                                     <p className="text-[10px] font-black opacity-60 mb-0.5 leading-none">{item.sender}</p>
                                     <p className="text-xs font-bold leading-snug break-words">{item.text}</p>
@@ -252,7 +303,7 @@ export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneB
 
             {/* ── Chat & Emotes Modal / Sheet ── */}
             {isOpen && (
-                <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in pointer-events-auto"
+                <div className="safe-area-bottom-sheet fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in pointer-events-auto"
                      onClick={(e) => { if (e.target === e.currentTarget) setIsOpen(false); }}>
                     <div className="glass-card w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl border border-white/15 shadow-2xl bg-black/85 backdrop-blur-2xl p-4 animate-slide-up flex flex-col gap-3.5 max-h-[80vh]">
                         {/* Modal Header */}
@@ -313,6 +364,35 @@ export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneB
                         {/* Tab Content: Messages */}
                         {activeTab === 'messages' && (
                             <div className="flex flex-col gap-3">
+                                <div className="flex min-h-24 max-h-48 flex-col gap-2 overflow-y-auto rounded-2xl border border-white/10 bg-black/25 p-2.5 custom-scrollbar">
+                                    {chatHistory.length === 0 ? (
+                                        <div className="flex flex-1 flex-col items-center justify-center gap-1 text-center text-white/45">
+                                            <MessageCircle size={19} />
+                                            <p className="text-[11px] font-bold">ابدأ المحادثة من هنا</p>
+                                        </div>
+                                    ) : chatHistory.map(message => (
+                                        <div key={message.id} className={`flex ${message.isMine ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-[88%] rounded-2xl border px-3 py-2 ${
+                                                message.isMine
+                                                    ? 'border-[var(--accent)]/25 bg-[var(--accent-soft)] text-white'
+                                                    : 'themed-opponent-bubble text-white'
+                                            }`}>
+                                                <p className={`mb-0.5 text-[9px] font-black ${message.isMine ? 'text-[var(--accent)]' : 'text-[var(--accent-secondary)]'}`}>
+                                                    {message.sender}
+                                                </p>
+                                                <p className="break-words text-xs font-bold leading-snug" dir="auto">{message.text}</p>
+                                                {message.gameQuestion && canAnswerGameQuestion && pendingGameQuestion?.id === message.questionId && (
+                                                    <div className="mt-2 grid grid-cols-2 gap-2">
+                                                        <button type="button" onClick={() => onAnswerGameQuestion?.('yes')} className="rounded-lg bg-emerald-500 px-3 py-2 text-[11px] font-black text-slate-950">أيوه</button>
+                                                        <button type="button" onClick={() => onAnswerGameQuestion?.('no')} className="rounded-lg bg-rose-500 px-3 py-2 text-[11px] font-black text-white">لأ</button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <div ref={chatEndRef} />
+                                </div>
+
                                 {/* Custom text input */}
                                 <form
                                     onSubmit={(e) => { e.preventDefault(); handleSendChat(inputText); }}
@@ -324,7 +404,7 @@ export default function EmotesOverlay({ conn, oppProfile = null, showStandaloneB
                                         maxLength={50}
                                         value={inputText}
                                         onChange={(e) => setInputText(e.target.value)}
-                                        placeholder="اكتب رسالة سريعة..."
+                                        placeholder={oppProfile?.isAI || oppProfile?.avatar === 'robot' ? 'اسألني عن بطاقتي...' : 'اكتب رسالتك...'}
                                         className="flex-1 bg-transparent px-2.5 py-1.5 text-xs font-bold outline-none text-white placeholder:text-white/30"
                                         dir="auto"
                                     />

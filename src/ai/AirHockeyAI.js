@@ -3,7 +3,7 @@
 const TABLE_W = 380;
 const TABLE_H = 640;
 const PADDLE_R = 34;
-const PUCK_R = 15;
+const PUCK_R = 18;
 
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
@@ -17,7 +17,6 @@ export default class AirHockeyAI {
         this.puck = { x: TABLE_W / 2, y: TABLE_H / 2, vx: 0, vy: 0 };
         this.interval = null;
         this.difficultyLevel = 'medium';
-        this.isServingWait = false;
         // Tracks how many ticks we've been "stuck behind" puck — escape after threshold
         this._stuckTicks = 0;
         this._flankDir = 1; // +1 right, -1 left
@@ -62,15 +61,25 @@ export default class AirHockeyAI {
                 this.puck = { x: msg.x, y: msg.y, vx: msg.vx, vy: msg.vy };
                 break;
             }
-            case 'serve_reset':
+            case 'serve_reset': {
+                this.puck = {
+                    x: msg.puckX ?? TABLE_W / 2,
+                    y: msg.puckY ?? TABLE_H / 2,
+                    vx: 0,
+                    vy: 0
+                };
+                this.paddleX = TABLE_W / 2;
+                this.paddleY = 90;
+                this.vx = 0;
+                this.vy = 0;
+                break;
+            }
             case 'goal':
             case 'rematch': {
                 this.paddleX = TABLE_W / 2;
                 this.paddleY = 90;
                 this.vx = 0;
                 this.vy = 0;
-                this.isServingWait = true;
-                setTimeout(() => { this.isServingWait = false; }, 1400);
                 break;
             }
             default:
@@ -79,15 +88,6 @@ export default class AirHockeyAI {
     }
 
     _tick() {
-        if (this.isServingWait) {
-            this.paddleX = TABLE_W / 2;
-            this.paddleY = 90;
-            this.vx = 0;
-            this.vy = 0;
-            this._send();
-            return;
-        }
-
         const puck = this.puck;
 
         // ── Physical Movement Bounds ──

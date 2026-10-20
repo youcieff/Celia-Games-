@@ -1,82 +1,71 @@
-// AI for GuessTheWord (Hangman). AI writes a word from its list, and guesses by letter frequency.
-// Medium: uses English/Arabic word banks, guesses by letter frequency order.
-
+// Hangman opponent: it picks its own secret word and guesses the player's word.
 const WORD_BANK = [
     'شمس', 'قمر', 'نجمة', 'بحر', 'جبل', 'نهر', 'صحراء', 'بستان',
-    'سماء', 'ارض', 'هواء', 'ماء', 'نار', 'تراب', 'حجر', 'شجرة',
-    'وردة', 'زهرة', 'عصفور', 'قطة', 'كلب', 'اسد', 'نمر', 'فيل',
-    'جمل', 'حصان', 'سمكة', 'طائر', 'حمامة', 'ببغاء'
+    'سماء', 'أرض', 'هواء', 'ماء', 'نار', 'تراب', 'حجر', 'شجرة',
+    'وردة', 'زهرة', 'عصفور', 'قطة', 'كلب', 'أسد', 'نمر', 'فيل',
+    'جمل', 'حصان', 'سمكة', 'طائر', 'حمامة', 'ببغاء', 'مدرسة', 'سيارة',
+    'مكتبة', 'حديقة', 'مفتاح', 'منزل', 'قارب', 'تفاحة', 'برتقالة', 'موزة',
 ];
 
-// Arabic letter frequency (most common first) for hangman guessing
-const ARABIC_FREQ = ['ا','ل','م','ن','ي','ه','و','ر','ت','ع','س','ك','ب','ف','د','ق','ج','ح','ز','ط','ص','خ','ث','ذ','غ','ض','ش','ظ','ة','أ','إ','ء'];
+const ARABIC_FREQ = ['ا','ل','م','ن','ي','ه','و','ر','ت','ع','س','ك','ب','ف','د','ق','ج','ح','ز','ط','ص','خ','ث','ذ','غ','ض','ش','ظ','ة','أ','إ','آ'];
+const ENGLISH_FREQ = ['E','T','A','O','I','N','S','H','R','D','L','U','C','M','F','W','Y','G','P','B','V','K','X','J','Q','Z'];
 
 export default class WordAI {
     constructor(mockConn) {
         this.conn = mockConn;
         this.guessedLetters = [];
-        this.guessIndex = 0; // pointer into ARABIC_FREQ
-        this.isMyTurnToWrite = false;
+        this.guessIndex = 0;
         this.currentWord = '';
-
+        this.humanWord = '';
+        this.guessTimer = null;
+        this.gameActive = false;
         setTimeout(() => this.conn._sendToPlayer({ type: 'global_ready' }), 800);
     }
 
     onMessage(msg) {
-        if (msg.type === 'roles_set') {
-            this.isMyTurnToWrite = msg.guestWrites;
+        if (msg.type === 'human_word') {
+            this.stopThinking();
+            this.humanWord = msg.word || '';
+            this.currentWord = WORD_BANK[Math.floor(Math.random() * WORD_BANK.length)];
             this.guessedLetters = [];
             this.guessIndex = 0;
-
-            if (this.isMyTurnToWrite) {
-                // AI picks a word and sends start_game
-                this.currentWord = WORD_BANK[Math.floor(Math.random() * WORD_BANK.length)];
-                setTimeout(() => {
-                    this.conn._sendToPlayer({ type: 'start_game', word: this.currentWord, hint: '' });
-                }, 1000);
-            }
-        } else if (msg.type === 'start_game') {
-            // Player wrote a word. AI needs to guess it.
-            this.guessedLetters = [];
-            this.guessIndex = 0;
-            if (!this.isMyTurnToWrite) {
-                setTimeout(() => this.makeGuess(), 1500);
-            }
-        } else if (msg.type === 'guess') {
-            // Player is guessing our word — we just track (game handles evaluation)
-            this.guessedLetters.push(msg.letter);
+            this.gameActive = true;
+            this.conn._sendToPlayer({ type: 'ai_word', word: this.currentWord });
+        } else if (msg.type === 'guess' && msg.player === 'host' && this.gameActive) {
+            this.stopThinking();
+            this.guessTimer = setTimeout(() => this.makeGuess(), 850 + Math.random() * 450);
+        } else if (msg.type === 'game_finished') {
+            this.gameActive = false;
+            this.stopThinking();
         } else if (msg.type === 'restart') {
+            this.gameActive = false;
+            this.stopThinking();
             this.guessedLetters = [];
             this.guessIndex = 0;
-            if (msg.youWillWrite !== undefined) {
-                this.isMyTurnToWrite = msg.youWillWrite;
-                if (this.isMyTurnToWrite) {
-                    this.currentWord = WORD_BANK[Math.floor(Math.random() * WORD_BANK.length)];
-                    setTimeout(() => {
-                        this.conn._sendToPlayer({ type: 'start_game', word: this.currentWord, hint: '' });
-                    }, 1000);
-                } else {
-                    // We need to wait for start_game to make a guess
-                }
-            }
+            this.currentWord = '';
+            this.humanWord = '';
         }
     }
 
     makeGuess() {
-        // Pick the next unguessed letter from frequency list
-        while (this.guessIndex < ARABIC_FREQ.length) {
-            const letter = ARABIC_FREQ[this.guessIndex];
-            this.guessIndex++;
-            if (!this.guessedLetters.includes(letter)) {
-                this.guessedLetters.push(letter);
-                this.conn._sendToPlayer({ type: 'guess', letter, wordContext: '' });
-
-                // Schedule next guess after a delay (simulate thinking)
-                setTimeout(() => this.makeGuess(), 2000 + Math.random() * 1000);
-                return;
-            }
+        if (!this.gameActive || !this.humanWord) return;
+        const frequency = /[A-Za-z]/.test(this.humanWord) ? ENGLISH_FREQ : ARABIC_FREQ;
+        while (this.guessIndex < frequency.length) {
+            const letter = frequency[this.guessIndex++];
+            if (this.guessedLetters.includes(letter)) continue;
+            this.guessedLetters.push(letter);
+            this.conn._sendToPlayer({ type: 'guess', player: 'guest', letter });
+            return;
         }
     }
 
-    close() {}
+    stopThinking() {
+        if (this.guessTimer) clearTimeout(this.guessTimer);
+        this.guessTimer = null;
+    }
+
+    close() {
+        this.gameActive = false;
+        this.stopThinking();
+    }
 }

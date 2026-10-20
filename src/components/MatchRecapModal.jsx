@@ -80,7 +80,7 @@ export default function MatchRecapModal({
     }
 
     return (
-        <div className="fixed inset-0 z-[130] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 animate-fade-in">
+        <div className="safe-area-overlay fixed inset-0 z-[130] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 animate-fade-in">
             <div className="glass-card border border-white/10 rounded-3xl p-5 max-w-md w-full flex flex-col gap-4 shadow-2xl relative">
                 {/* Header */}
                 <div className="flex items-center justify-between pb-2 border-b border-white/10">

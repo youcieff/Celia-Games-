@@ -454,7 +454,7 @@ export default function RPSArenaGame({ setView }) {
 
             {/* Game Over Modal */}
             {gameState === 'gameover' && (
-                <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+                <div className="safe-area-overlay fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
                     <div className="glass-card max-w-sm w-full p-6 rounded-3xl border-2 border-white/15 text-center shadow-2xl">
                         <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center shadow-lg
                             ${winner === 'me' ? 'bg-emerald-500 text-white shadow-emerald-500/30' : 'bg-rose-500 text-white shadow-rose-500/30'}`}

@@ -67,7 +67,7 @@ export default function ProfileWidget() {
             </button>
 
             {isOpen && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[120] flex items-center justify-center p-3 animate-fade-in">
+                <div className="safe-area-overlay fixed inset-0 bg-black/80 backdrop-blur-md z-[120] flex items-center justify-center p-3 animate-fade-in">
                     <div className="glass-card rounded-3xl p-5 w-full max-w-md flex flex-col gap-4 animate-pop-in border border-white/10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
                         
                         {/* Header & Close */}
@@ -145,7 +145,7 @@ export default function ProfileWidget() {
                                         </div>
                                         <div className="p-1.5 rounded-xl bg-white/5 border border-white/10">
                                             <span className="text-[10px] text-white/50 block font-bold">🎮 مبارايات</span>
-                                            <span className="text-xs font-black text-sky-300">{statsData.gamesPlayed}</span>
+                                            <span className="text-xs font-black text-[var(--accent-secondary)]">{statsData.gamesPlayed}</span>
                                         </div>
                                         <div className="p-1.5 rounded-xl bg-white/5 border border-white/10">
                                             <span className="text-[10px] text-white/50 block font-bold">🔥 أعلى سلسلة</span>

@@ -69,7 +69,7 @@ export default function ConnectionPauseOverlay({ conn, onLeave }) {
     if (!isPaused) return null;
 
     return (
-        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+        <div className="safe-area-overlay fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
             <div className="glass-card border border-amber-500/30 rounded-3xl p-6 max-w-sm w-full text-center shadow-[0_0_50px_rgba(245,158,11,0.2)]">
                 {isReconnected ? (
                     <div className="animate-pop-in">

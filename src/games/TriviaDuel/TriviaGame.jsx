@@ -290,7 +290,7 @@ export default function TriviaGame({ setView }) {
                         <div className="flex justify-center">
                             <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
                                 <IconTriviaDuel size={18} className="text-[var(--accent)]" />
-                                <span className="text-xs font-black gradient-text">حرب المعلومات</span>
+                                <span className="text-xs font-black gradient-text">تحدي المعلومات</span>
                             </div>
                         </div>
                         <div className="flex justify-end"><button onClick={() => setView('hub')} className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 transition-transform">الرئيسية</button></div>

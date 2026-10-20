@@ -33,7 +33,11 @@ export default class Connect4AI {
             this.scheduleMove(500 + Math.random() * 300);
         } else if (msg.type === 'restart') {
             this._resetBoard();
-            this.isAiTurn = false;
+            const hostStarts = msg.hostPlaysFirst !== false;
+            this.isAiTurn = !hostStarts;
+            if (this.isAiTurn) {
+                this.scheduleMove(700);
+            }
         }
     }
 

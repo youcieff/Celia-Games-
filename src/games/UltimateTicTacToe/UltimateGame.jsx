@@ -241,7 +241,7 @@ export default function UltimateGame({ setView }) {
                         <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
                             <Logo size="mini" />
                             <IconBigXOGame size={18} className="text-[var(--accent)]" />
-                            <span className="text-xs font-black gradient-text">Big XO</span>
+                            <span className="text-xs font-black gradient-text">إكس أو المطورة</span>
                             <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold mr-1">
                                 <Wifi size={11} />
                                 <span>متصل ({mySymbol})</span>

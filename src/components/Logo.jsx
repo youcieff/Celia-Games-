@@ -1,16 +1,15 @@
 import React from 'react';
-import { useTheme } from '../context/ThemeContext';
 import logoImg from '../assets/logo.png';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Logo({ size = 'large', showText = null, className = '' }) {
     const { theme } = useTheme();
+    const logoFilter = theme === 'girly'
+        ? 'drop-shadow(0 0 5px rgba(201, 121, 162, .16)) drop-shadow(0 3px 8px rgba(0, 0, 0, .4))'
+        : 'drop-shadow(0 0 5px rgba(165, 68, 63, .15)) drop-shadow(0 3px 8px rgba(0, 0, 0, .4))';
     const isMini = size === 'mini';
     const isSmall = size === 'small';
     const shouldShowText = showText !== null ? showText : (size === 'large');
-
-    const glowStyle = theme === 'girly'
-        ? { filter: 'drop-shadow(0 0 12px rgba(255, 61, 138, 0.6)) drop-shadow(0 2px 8px rgba(0,0,0,0.4))' }
-        : { filter: 'drop-shadow(0 0 12px rgba(56, 189, 248, 0.6)) drop-shadow(0 2px 8px rgba(0,0,0,0.4))' };
 
     let sizeClasses = 'w-24 h-24 sm:w-28 sm:h-28';
     if (isMini) {
@@ -27,12 +26,13 @@ export default function Logo({ size = 'large', showText = null, className = '' }
         <div className={`flex items-center gap-2 select-none shrink-0 ${className}`}>
             <div
                 className={`relative flex items-center justify-center transition-all duration-300 hover:scale-105 shrink-0 ${sizeClasses}`}
-                style={{ ...glowStyle, ...inlineDim }}
+                style={inlineDim}
             >
                 <img
                     src={logoImg}
                     alt="Celia Games Logo"
                     className="w-full h-full object-contain rounded-xl"
+                    style={{ filter: logoFilter, transition: 'filter .5s ease' }}
                 />
             </div>
             {shouldShowText && (

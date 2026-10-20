@@ -1403,7 +1403,7 @@ export default function DominoGame({ setView }) {
 
             {/* ── Round Over Recap Modal (Accumulating towards 151) ── */}
             {gameState === 'round_over' && (
-                <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+                <div className="safe-area-overlay fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
                     <div className="glass-card max-w-sm w-full p-6 rounded-3xl border-2 border-white/15 text-center shadow-2xl animate-pop-in">
                         <div className={`w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center shadow-lg
                             ${roundWinner === 'me' ? 'bg-emerald-500 text-white shadow-emerald-500/30' : roundWinner === 'opp' ? 'bg-rose-500 text-white shadow-rose-500/30' : 'bg-amber-500 text-white shadow-amber-500/30'}`}
@@ -1452,7 +1452,7 @@ export default function DominoGame({ setView }) {
 
             {/* ── Final 151 Match Game Over Modal ── */}
             {gameState === 'gameover' && (
-                <div className="fixed inset-0 bg-black/90 backdrop-blur-lg flex items-center justify-center z-50 p-4 animate-fade-in">
+                <div className="safe-area-overlay fixed inset-0 bg-black/90 backdrop-blur-lg flex items-center justify-center z-50 p-4 animate-fade-in">
                     <div className="glass-card max-w-sm w-full p-6 rounded-3xl border-2 border-white/20 text-center shadow-2xl animate-pop-in">
                         <div className={`w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center shadow-2xl
                             ${matchWinner === 'me' ? 'bg-gradient-to-tr from-emerald-600 to-teal-400 text-white shadow-emerald-500/40 animate-bounce' : 'bg-gradient-to-tr from-rose-600 to-rose-400 text-white shadow-rose-500/40'}`}

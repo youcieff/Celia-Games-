@@ -6,6 +6,7 @@
 let audioCtx = null;
 const MUTE_KEY = 'celia_games_muted';
 let isMuted = false;
+const recentSoundKeys = new Map();
 
 try {
     isMuted = localStorage.getItem(MUTE_KEY) === 'true';
@@ -43,8 +44,21 @@ function initAudio() {
 /**
  * Play procedural sound effect by name
  */
-export function playSound(type) {
+export function playSound(type, options = {}) {
     if (isMuted) return;
+
+    if (options.dedupeKey) {
+        const now = Date.now();
+        const dedupeMs = Math.max(0, Number(options.dedupeMs) || 250);
+        const lastPlayedAt = recentSoundKeys.get(options.dedupeKey);
+        if (lastPlayedAt != null && now - lastPlayedAt < dedupeMs) return;
+        recentSoundKeys.set(options.dedupeKey, now);
+        if (recentSoundKeys.size > 64) {
+            for (const [key, playedAt] of recentSoundKeys) {
+                if (now - playedAt > 2000) recentSoundKeys.delete(key);
+            }
+        }
+    }
 
     try {
         const ctx = initAudio();

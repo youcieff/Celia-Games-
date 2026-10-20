@@ -19,7 +19,7 @@ import { AvatarDisplay } from '../../components/icons/AvatarIcons';
 const WIN_SCORE = 7;
 const TABLE_W = 380;
 const TABLE_H = 640;
-const PUCK_R = 15;
+const PUCK_R = 18;
 const PADDLE_R = 34;
 const GOAL_W = 140;
 
@@ -157,11 +157,15 @@ export default function AirHockeyGame({ setView }) {
     const scaleRef = useRef(1);
     const dprRef = useRef(1);
     const rafRef = useRef(null);
+    const serveTimerRef = useRef(null);
     const gameActiveRef = useRef(false);
     const isFreezeRef = useRef(false);
+    const fixedStepAccumulatorRef = useRef(0);
+    const lastFrameTimeRef = useRef(0);
 
     // Physics state refs
     const puckRef = useRef({ x: TABLE_W / 2, y: TABLE_H / 2, vx: 0, vy: 0 });
+    const puckTargetRef = useRef(null);
     const myPaddleRef = useRef({ x: TABLE_W / 2, y: TABLE_H - 95 });
     const oppPaddleRef = useRef({ x: TABLE_W / 2, y: 95 });
     const myScoreRef = useRef(0);
@@ -217,6 +221,10 @@ export default function AirHockeyGame({ setView }) {
     useEffect(() => {
         saveGameState();
     }, [gameState, myScore, oppScore]);
+
+    useEffect(() => () => {
+        if (serveTimerRef.current) clearTimeout(serveTimerRef.current);
+    }, []);
 
     const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
@@ -286,6 +294,7 @@ export default function AirHockeyGame({ setView }) {
 
     // Serve Reset Mechanic: Places the puck calmly in front of the conceded player's goal with 0 velocity
     const resetToServe = (concededBy) => {
+        if (serveTimerRef.current) clearTimeout(serveTimerRef.current);
         isFreezeRef.current = true;
         puckTrailRef.current = [];
 
@@ -323,6 +332,7 @@ export default function AirHockeyGame({ setView }) {
             vx: 0,
             vy: 0
         };
+        puckTargetRef.current = { ...puckRef.current };
 
         setGoalBanner({ text, color });
 
@@ -334,11 +344,12 @@ export default function AirHockeyGame({ setView }) {
             concededBy
         });
 
-        // 1.3 second calm pause so both players can position themselves without rush
-        setTimeout(() => {
+        // Brief pause for the serve; the AI tracks the puck during this window.
+        serveTimerRef.current = setTimeout(() => {
             setGoalBanner(null);
             isFreezeRef.current = false;
-        }, 1300);
+            serveTimerRef.current = null;
+        }, 800);
     };
 
     const onData = useCallback((msg) => {
@@ -359,7 +370,7 @@ export default function AirHockeyGame({ setView }) {
 
             case 'puck_sync': {
                 if (!isHostRef.current) {
-                    puckRef.current = {
+                    puckTargetRef.current = {
                         x: TABLE_W - msg.x,
                         y: TABLE_H - msg.y,
                         vx: -msg.vx,
@@ -370,12 +381,14 @@ export default function AirHockeyGame({ setView }) {
             }
 
             case 'serve_reset': {
+                if (serveTimerRef.current) clearTimeout(serveTimerRef.current);
                 puckRef.current = {
                     x: TABLE_W - msg.puckX,
                     y: TABLE_H - msg.puckY,
                     vx: 0,
                     vy: 0
                 };
+                puckTargetRef.current = { ...puckRef.current };
                 myPaddleRef.current = { x: TABLE_W / 2, y: TABLE_H - 95 };
                 oppPaddleRef.current = { x: TABLE_W / 2, y: 95 };
                 isFreezeRef.current = true;
@@ -386,10 +399,11 @@ export default function AirHockeyGame({ setView }) {
                         ? 'text-sky-300 border-sky-500/60 bg-sky-950/90 shadow-[0_0_30px_rgba(56,189,248,0.3)]'
                         : 'text-rose-300 border-rose-500/60 bg-rose-950/90 shadow-[0_0_30px_rgba(244,63,94,0.3)]'
                 });
-                setTimeout(() => {
+                serveTimerRef.current = setTimeout(() => {
                     setGoalBanner(null);
                     isFreezeRef.current = false;
-                }, 1300);
+                    serveTimerRef.current = null;
+                }, 800);
                 break;
             }
 
@@ -464,6 +478,9 @@ export default function AirHockeyGame({ setView }) {
                 decay: 0.04 + Math.random() * 0.03,
                 color
             });
+        }
+        if (particlesRef.current.length > 100) {
+            particlesRef.current.splice(0, particlesRef.current.length - 100);
         }
     };
 
@@ -654,22 +671,29 @@ export default function AirHockeyGame({ setView }) {
         }
     };
 
-    // Main 60FPS Game Loop
-    const gameLoop = useCallback(() => {
+    // Fixed-step physics keeps puck speed consistent across 30/60/120 Hz displays.
+    const gameLoop = useCallback((frameTime = performance.now()) => {
         if (!gameActiveRef.current) return;
         rafRef.current = requestAnimationFrame(gameLoop);
 
         const p = puckRef.current;
+        const previousFrame = lastFrameTimeRef.current || frameTime;
+        const frameDelta = clamp(frameTime - previousFrame, 0, 50);
+        lastFrameTimeRef.current = frameTime;
 
-        // Sub-stepping for host
         if (isHostRef.current) {
-            updatePhysicsStep();
-            updatePhysicsStep();
+            fixedStepAccumulatorRef.current = Math.min(fixedStepAccumulatorRef.current + frameDelta, 50);
+            const fixedStep = 1000 / 120;
+            let steps = 0;
+            while (fixedStepAccumulatorRef.current >= fixedStep && steps < 6 && gameActiveRef.current) {
+                updatePhysicsStep();
+                fixedStepAccumulatorRef.current -= fixedStep;
+                steps++;
+            }
 
-            // Sync puck to AI/peer every 20ms — uses its own dedicated ref, never blocked by paddle sends
-            const now = Date.now();
-            if (now - lastPuckSyncRef.current > 20 && connRef.current) {
-                lastPuckSyncRef.current = now;
+            // Send one authoritative update every 50ms to reduce channel congestion.
+            if (frameTime - lastPuckSyncRef.current >= 50 && connRef.current) {
+                lastPuckSyncRef.current = frameTime;
                 connRef.current.send({
                     type: 'puck_sync',
                     x: p.x,
@@ -679,12 +703,20 @@ export default function AirHockeyGame({ setView }) {
                 });
             }
         } else {
-            // Peer smooth dead-reckoning (only when not frozen during serve)
-            if (!isFreezeRef.current) {
-                p.x += p.vx;
-                p.y += p.vy;
-                p.vx *= FRICTION;
-                p.vy *= FRICTION;
+            // The host owns collision physics. Smoothly follow its snapshots instead of
+            // running a second simulation on the peer and gradually diverging.
+            const target = puckTargetRef.current;
+            if (target) {
+                if (isFreezeRef.current) {
+                    p.x = target.x;
+                    p.y = target.y;
+                } else {
+                    const blend = 1 - Math.pow(0.68, frameDelta / (1000 / 60));
+                    p.x += (target.x - p.x) * blend;
+                    p.y += (target.y - p.y) * blend;
+                }
+                p.vx = target.vx;
+                p.vy = target.vy;
             }
         }
 
@@ -746,8 +778,8 @@ export default function AirHockeyGame({ setView }) {
 
         // ── 2. Air Cushion Perforation Micro-Grid ──
         ctx.fillStyle = `${curTheme.lines}10`;
-        for (let gx = 25; gx < TABLE_W; gx += 28) {
-            for (let gy = 25; gy < TABLE_H; gy += 28) {
+        for (let gx = 25; gx < TABLE_W; gx += 36) {
+            for (let gy = 25; gy < TABLE_H; gy += 36) {
                 ctx.beginPath();
                 ctx.arc(gx, gy, 1.2, 0, Math.PI * 2);
                 ctx.fill();
@@ -960,28 +992,27 @@ export default function AirHockeyGame({ setView }) {
 
         // ── 12. High-Tech Neon Energy Puck ──
         const pk = puckRef.current;
-        ctx.shadowColor = curTheme.puckGlow;
-        ctx.shadowBlur = 16;
-
-        const puckGrad = ctx.createRadialGradient(pk.x - 4, pk.y - 4, 2, pk.x, pk.y, PUCK_R);
-        puckGrad.addColorStop(0, '#ffffff');
-        puckGrad.addColorStop(0.45, curTheme.puckInner);
-        puckGrad.addColorStop(0.8, curTheme.lines);
-        puckGrad.addColorStop(1, curTheme.puckOuter);
-        ctx.fillStyle = puckGrad;
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 18;
+        ctx.fillStyle = '#06111f';
         ctx.beginPath();
         ctx.arc(pk.x, pk.y, PUCK_R, 0, Math.PI * 2);
         ctx.fill();
-
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.8;
+        ctx.lineWidth = 3;
         ctx.stroke();
         ctx.shadowBlur = 0;
 
-        // Puck center emblem
-        ctx.fillStyle = '#0369a1';
+        // Opaque center stays visible on every arena theme.
+        ctx.fillStyle = '#f8fafc';
         ctx.beginPath();
-        ctx.arc(pk.x, pk.y, 4, 0, Math.PI * 2);
+        ctx.arc(pk.x, pk.y, PUCK_R - 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = curTheme.puckOuter;
+        ctx.beginPath();
+        ctx.arc(pk.x, pk.y, 6, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.restore();
@@ -1060,12 +1091,14 @@ export default function AirHockeyGame({ setView }) {
         const updateScale = () => {
             if (!containerRef.current || !canvasRef.current) return;
             const rect = containerRef.current.getBoundingClientRect();
-            const availW = Math.max(260, rect.width - 24);
-            const availH = Math.max(340, rect.height - 24);
-            const scale = Math.min(availW / TABLE_W, availH / TABLE_H, 1.2);
-            scaleRef.current = scale > 0 ? scale : 0.8;
+            if (rect.width < 1 || rect.height < 1) return;
+            const availW = Math.max(1, rect.width - 24);
+            const availH = Math.max(1, rect.height - 24);
+            const scale = Math.min(availW / TABLE_W, availH / TABLE_H, 1.15);
+            scaleRef.current = scale;
 
-            const dpr = window.devicePixelRatio || 1;
+            // Keep the canvas crisp while avoiding the large fill cost of 3x/4x screens.
+            const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
             dprRef.current = dpr;
 
             if (canvasRef.current) {
@@ -1079,14 +1112,21 @@ export default function AirHockeyGame({ setView }) {
         updateScale();
         const timer = setTimeout(updateScale, 50);
         window.addEventListener('resize', updateScale);
+        const resizeObserver = typeof ResizeObserver !== 'undefined' && containerRef.current
+            ? new ResizeObserver(updateScale)
+            : null;
+        if (resizeObserver && containerRef.current) resizeObserver.observe(containerRef.current);
 
         // Start animation loop
+        lastFrameTimeRef.current = 0;
+        fixedStepAccumulatorRef.current = 0;
         gameActiveRef.current = true;
         rafRef.current = requestAnimationFrame(gameLoop);
 
         return () => {
             clearTimeout(timer);
             window.removeEventListener('resize', updateScale);
+            resizeObserver?.disconnect();
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
             gameActiveRef.current = false;
         };
@@ -1118,6 +1158,10 @@ export default function AirHockeyGame({ setView }) {
                         <div className="flex justify-end"><button onClick={() => { gameActiveRef.current = false; connRef.current?.close?.(); setView('hub'); }} className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 active:scale-95 transition-transform text-white/90">الرئيسية</button></div>
                     </div>
 
+                    <div className="mb-4 w-full rounded-2xl border border-sky-300/20 bg-sky-300/[0.07] px-4 py-3 text-right">
+                        <h2 className="mb-1 text-sm font-black text-sky-200">طريقة اللعب</h2>
+                        <p className="text-xs leading-6 text-white/80">اختار «ضد الذكاء الاصطناعي» لمباراة سريعة، أو أنشئ غرفة وشارك الكود مع صديق. المضيف يختار الألوان ثم يبدأ. أثناء اللعب اسحب بإصبعك لتحريك المضرب، وأدخل القرص في مرمى الخصم؛ أول ٧ أهداف يكسب.</p>
+                    </div>
                     <div className="flex-1 flex pb-16 safe-area-pb">
                         <P2PConnectionManager
                             gameIdPrefix="celia-hockey"
@@ -1136,14 +1180,19 @@ export default function AirHockeyGame({ setView }) {
                 <div className="min-h-dvh max-w-lg mx-auto px-4 flex flex-col safe-area-pt overflow-x-hidden overflow-y-auto pb-8">
                     <div className="grid grid-cols-3 items-center py-4 mb-2">
                         <div><Logo size="small" /></div>
-                        <div className="flex justify-center"><span className="text-sm font-black opacity-70">الهوكي الهوائي</span></div>
+                        <div className="flex justify-center">
+                            <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
+                                <IconAirHockey size={18} className="text-[var(--accent)]" />
+                                <span className="text-xs font-black gradient-text">الهوكي الهوائي</span>
+                            </div>
+                        </div>
                         <div className="flex justify-end"><button onClick={() => { gameActiveRef.current = false; connRef.current?.close?.(); setView('hub'); }} className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 active:scale-95 transition-transform text-white/90">الرئيسية</button></div>
                     </div>
 
                     <div className="flex-1 flex flex-col items-center justify-center my-auto px-2">
                         <div className="glass-card rounded-3xl p-6 w-full max-w-sm border border-white/10 shadow-2xl animate-pop-in">
                             <h2 className="text-xl font-black mb-1 text-center gradient-text">إعدادات المباراة 🏒</h2>
-                            <p className="text-[11px] text-center text-white/60 font-bold mb-5">اختار ألوان المضارب ومظهر الحلبة قبل الانطلاق</p>
+                            <p className="text-[11px] text-center text-white/70 font-bold mb-5">اختار ألوان المضارب. أثناء اللعب اسحب بإصبعك لتحريك مضربك، وأول لاعب يحرز ٧ أهداف يكسب.</p>
 
                             {/* Host Color */}
                             <div className="mb-4">
@@ -1273,7 +1322,12 @@ export default function AirHockeyGame({ setView }) {
                 <div className="min-h-dvh max-w-lg mx-auto px-4 flex flex-col safe-area-pt">
                     <div className="grid grid-cols-3 items-center py-4 mb-2">
                         <div><Logo size="small" /></div>
-                        <div className="flex justify-center"><span className="text-sm font-black opacity-70">الهوكي الهوائي</span></div>
+                        <div className="flex justify-center">
+                            <div className="flex items-center gap-2 glass-card px-3.5 py-1.5 rounded-2xl border border-white/10 shrink-0">
+                                <IconAirHockey size={18} className="text-[var(--accent)]" />
+                                <span className="text-xs font-black gradient-text">الهوكي الهوائي</span>
+                            </div>
+                        </div>
                         <div className="flex justify-end"><button onClick={() => { gameActiveRef.current = false; connRef.current?.close?.(); setView('hub'); }} className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 active:scale-95 transition-transform text-white/90">الرئيسية</button></div>
                     </div>
 
@@ -1428,7 +1482,7 @@ export default function AirHockeyGame({ setView }) {
 
             {/* Game Over Modal */}
             {gameState === 'gameover' && (
-                <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+                <div className="safe-area-overlay fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
                     <div className="glass-card max-w-sm w-full p-6 rounded-3xl border-2 border-white/20 text-center shadow-2xl animate-pop-in">
                         <div className={`w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center shadow-2xl
                             ${winner === 'me' ? 'bg-gradient-to-tr from-emerald-600 to-teal-400 text-white shadow-emerald-500/40 animate-bounce' : 'bg-gradient-to-tr from-rose-600 to-rose-400 text-white shadow-rose-500/40'}`}

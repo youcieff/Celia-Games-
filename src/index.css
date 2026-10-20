@@ -8,94 +8,142 @@
    ROOT DESIGN TOKENS
    ================================================ */
 :root {
-  /* Base palette — always dark */
-  --bg-base:        #0A0508;
-  --bg-mid:         #2B0B24;
+  /* Masculine default: charcoal, clear crimson and cool steel */
+  --bg-base:        #090B0D;
+  --bg-mid:         #17191C;
 
   /* Single accent per theme — the ONE color that defines everything */
-  --accent:         #FF3D8A;
-  --accent-glow:    rgba(255, 61, 138, 0.4);
-  --accent-soft:    rgba(255, 61, 138, 0.12);
-  --accent-border:  rgba(255, 61, 138, 0.25);
+  --accent:         #C8414A;
+  --accent-secondary: #A7ADB8;
+  --accent-glow:    rgba(200, 65, 74, 0.15);
+  --accent-soft:    rgba(200, 65, 74, 0.085);
+  --accent-border:  rgba(200, 65, 74, 0.25);
 
   /* Derived semantic tokens */
   --primary-color:  var(--accent);
   --primary-glow:   var(--accent-glow);
-  --text-color:     #fdf4ff;
+  --text-color:     #F1F2F3;
 
   /* Glass system */
-  --glass-bg:       rgba(255, 255, 255, 0.04);
-  --glass-border:   rgba(255, 255, 255, 0.09);
-  --glass-shadow:   0 8px 32px rgba(0, 0, 0, 0.45);
+  --glass-bg:       rgba(200, 65, 74, 0.03);
+  --glass-border:   rgba(176, 184, 191, 0.12);
+  --glass-shadow:   0 8px 32px rgba(0, 0, 0, 0.46);
+  --surface-card:   #141619;
+  --surface-raised: #202327;
+  --surface-line:   rgba(164, 172, 181, 0.16);
 
   /* Theme transition — smooth for all color-bearing props */
   --theme-transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* Gradient stops for each game (accent variants within theme palette) */
-  --game-1-accent: var(--accent);
-  --game-2-accent: var(--accent);
-  --game-3-accent: var(--accent);
-  --game-4-accent: var(--accent);
-  --game-5-accent: var(--accent);
-  --game-6-accent: var(--accent);
-  --game-7-accent: var(--accent);
-  --game-8-accent: var(--accent);
-  --game-9-accent: var(--accent);
-  --game-10-accent: var(--accent);
+  /* Game accents: restrained crimson, ember, brass and steel. */
+  --accent-rgb:     200, 65, 74;  /* RGB of --accent for rgba() usage */
+  --game-1-accent: #D04D57;
+  --game-2-accent: #B8895F;
+  --game-3-accent: #C46B59;
+  --game-4-accent: #A84249;
+  --game-5-accent: #BDA66F;
+  --game-6-accent: #969AA0;
+  --game-7-accent: #B56C55;
+  --game-8-accent: #D04E4F;
+  --game-9-accent: #A4998C;
+  --game-10-accent: #B83E48;
+  --game-11-accent: #C2755D;
+  --game-12-accent: #8E929A;
+  --game-13-accent: #B69C68;
+  --game-14-accent: #9B3740;
+  --game-15-accent: #C47754;
+  --game-16-accent: #D15B55;
+  --game-17-accent: #8A8F97;
+  --game-18-accent: #C09B57;
+  --game-19-accent: #B94E49;
+  --game-20-accent: #A36865;
+  --game-21-accent: #C58B6E;
 }
 
-/* ── GIRLY THEME: Black → Deep Magenta ── */
+/* ── GIRLY THEME: Soft velvet, rose and orchid ── */
 [data-theme='girly'] {
-  --bg-base:        #0A0508;
-  --bg-mid:         #220A1E;
+  --bg-base:        #100A16;
+  --bg-mid:         #2D1B39;
 
-  --accent:         #FF3D8A;
-  --accent-glow:    rgba(255, 61, 138, 0.4);
-  --accent-soft:    rgba(255, 61, 138, 0.12);
-  --accent-border:  rgba(255, 61, 138, 0.28);
+  --accent:         #C979A2;
+  --accent-secondary: #A994C4;
+  --accent-rgb:     201, 121, 162;
+  --accent-glow:    rgba(201, 121, 162, 0.2);
+  --accent-soft:    rgba(201, 121, 162, 0.11);
+  --accent-border:  rgba(201, 121, 162, 0.28);
 
-  --text-color:     #fdf0f8;
-  --glass-bg:       rgba(255, 61, 138, 0.04);
-  --glass-border:   rgba(255, 61, 138, 0.12);
+  --text-color:     #FFF3FA;
+  --glass-bg:       rgba(201, 121, 162, 0.04);
+  --glass-border:   rgba(196, 166, 207, 0.14);
+  --surface-card:   #21172B;
+  --surface-raised: #34223E;
+  --surface-line:   rgba(169, 148, 196, 0.24);
 
-  /* Per-game accent variants — all warm, within pink/rose/magenta/lilac */
-  --game-1-accent:  #FF3D8A;   /* خمن الكود — hot pink */
-  --game-2-accent:  #E040D0;   /* خمن الكلمة — magenta */
-  --game-3-accent:  #FF6BAE;   /* إكس أو — rose */
-  --game-4-accent:  #C44DFF;   /* Big XO — purple-pink */
-  --game-5-accent:  #FF3D8A;   /* Connect 4 — hot pink */
-  --game-6-accent:  #FF85B8;   /* Memory — soft pink */
-  --game-7-accent:  #D43FFF;   /* Dots & Boxes — violet */
-  --game-8-accent:  #FF5FA8;   /* Sea Battle — blush */
-  --game-9-accent:  #FF3D8A;   /* خمن الوقت */
-  --game-10-accent: #E040D0;   /* أتوبيس */
+  /* The two new games use clearly separate rose and orchid accents. */
+  --game-1-accent: #D46E93;
+  --game-2-accent: #9274C7;
+  --game-3-accent: #D08386;
+  --game-4-accent: #8779AB;
+  --game-5-accent: #C08A70;
+  --game-6-accent: #D090AE;
+  --game-7-accent: #987DAD;
+  --game-8-accent: #C99775;
+  --game-9-accent: #AB7998;
+  --game-10-accent: #C57BB2;
+  --game-11-accent: #DB879C;
+  --game-12-accent: #9C795E;
+  --game-13-accent: #C28A94;
+  --game-14-accent: #8479A0;
+  --game-15-accent: #D19468;
+  --game-16-accent: #BC6C7F;
+  --game-17-accent: #807C9B;
+  --game-18-accent: #C37D96;
+  --game-19-accent: #AD8491;
+  --game-20-accent: #8D6B91;
+  --game-21-accent: #B97788;
 }
 
-/* ── MASCULINE THEME: Black → Deep Navy ── */
+/* ── MASCULINE THEME: Charcoal, ruby and copper ── */
 [data-theme='masculine'] {
-  --bg-base:        #05070C;
-  --bg-mid:         #0B1B3A;
+  --bg-base:        #090B0D;
+  --bg-mid:         #17191C;
 
-  --accent:         #2E6BFF;
-  --accent-glow:    rgba(46, 107, 255, 0.4);
-  --accent-soft:    rgba(46, 107, 255, 0.12);
-  --accent-border:  rgba(46, 107, 255, 0.28);
+  --accent:         #C8414A;
+  --accent-secondary: #A7ADB8;
+  --accent-rgb:     200, 65, 74;
+  --accent-glow:    rgba(200, 65, 74, 0.15);
+  --accent-soft:    rgba(200, 65, 74, 0.085);
+  --accent-border:  rgba(200, 65, 74, 0.25);
 
-  --text-color:     #eef4ff;
-  --glass-bg:       rgba(46, 107, 255, 0.04);
-  --glass-border:   rgba(46, 107, 255, 0.12);
+  --text-color:     #F1F2F3;
+  --glass-bg:       rgba(200, 65, 74, 0.03);
+  --glass-border:   rgba(176, 184, 191, 0.12);
+  --surface-card:   #141619;
+  --surface-raised: #202327;
+  --surface-line:   rgba(164, 172, 181, 0.16);
 
-  /* Per-game accent variants — all cool, within blue/cyan/teal/indigo */
-  --game-1-accent:  #00E5B0;   /* خمن الكود — teal */
-  --game-2-accent:  #4C8DFF;   /* خمن الكلمة — sky blue */
-  --game-3-accent:  #00D4FF;   /* إكس أو — cyan */
-  --game-4-accent:  #7B5FFF;   /* Big XO — indigo */
-  --game-5-accent:  #FFB800;   /* Connect 4 — amber (exception for fun) */
-  --game-6-accent:  #00E5B0;   /* Memory — teal */
-  --game-7-accent:  #4C8DFF;   /* Dots & Boxes — blue */
-  --game-8-accent:  #00C9FF;   /* Sea Battle — sky */
-  --game-9-accent:  #FF7A2E;   /* خمن الوقت — warm contrast */
-  --game-10-accent: #00D4A0;   /* أتوبيس — mint */
+  /* Restrained crimson, ember, brass and steel, without neon or blue. */
+  --game-1-accent: #D04D57;
+  --game-2-accent: #B8895F;
+  --game-3-accent: #C46B59;
+  --game-4-accent: #A84249;
+  --game-5-accent: #BDA66F;
+  --game-6-accent: #969AA0;
+  --game-7-accent: #B56C55;
+  --game-8-accent: #D04E4F;
+  --game-9-accent: #A4998C;
+  --game-10-accent: #B83E48;
+  --game-11-accent: #C2755D;
+  --game-12-accent: #8E929A;
+  --game-13-accent: #B69C68;
+  --game-14-accent: #9B3740;
+  --game-15-accent: #C47754;
+  --game-16-accent: #D15B55;
+  --game-17-accent: #8A8F97;
+  --game-18-accent: #C09B57;
+  --game-19-accent: #B94E49;
+  --game-20-accent: #A36865;
+  --game-21-accent: #C58B6E;
 }
 
 /* ================================================
@@ -148,12 +196,14 @@
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(160deg, var(--bg-base) 0%, var(--bg-mid) 100%);
+  background:
+    radial-gradient(ellipse at 82% 4%, color-mix(in srgb, var(--accent-secondary) 13%, transparent), transparent 42%),
+    linear-gradient(150deg, var(--bg-base) 0%, var(--bg-mid) 58%, var(--bg-base) 100%);
   overflow: hidden;
   transition: background var(--theme-transition);
 }
 
-/* top-right orb — faint accent radial */
+/* Accent light is kept soft so the game surfaces stay in focus. */
 .animated-bg::before {
   content: '';
   position: absolute;
@@ -163,23 +213,22 @@
   background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
   top: -280px;
   right: -220px;
-  opacity: 0.10;
-  animation: float-orb-1 10s ease-in-out infinite;
+  opacity: 0.045;
+  animation: none;
   transition: background var(--theme-transition);
 }
 
-/* bottom-left orb — slightly desaturated */
 .animated-bg::after {
   content: '';
   position: absolute;
   width: 500px;
   height: 500px;
   border-radius: 50%;
-  background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
+  background: radial-gradient(circle, var(--accent-secondary) 0%, transparent 68%);
   bottom: -180px;
   left: -180px;
-  opacity: 0.07;
-  animation: float-orb-2 13s ease-in-out infinite;
+  opacity: 0.035;
+  animation: none;
   transition: background var(--theme-transition);
 }
 
@@ -218,10 +267,10 @@
    ================================================ */
 .glass-card {
   background: var(--glass-bg);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(10px) saturate(110%);
+  -webkit-backdrop-filter: blur(10px) saturate(110%);
   border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.035);
   transition:
     background var(--theme-transition),
     border-color var(--theme-transition),
@@ -236,13 +285,10 @@
 }
 
 .glass-card-hover:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   border-color: var(--accent-border);
-  background: rgba(255,255,255,0.07);
-  box-shadow: 0 16px 48px rgba(0,0,0,0.4),
-              0 0 0 1px var(--accent-border),
-              0 0 32px var(--accent-glow),
-              inset 0 1px 0 rgba(255,255,255,0.1);
+  background: var(--surface-raised);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
 .glass-card-hover:active {
@@ -300,6 +346,77 @@
 .hub-scroll-inner::-webkit-scrollbar { display: none; }
 .hub-scroll-inner > * { scroll-snap-align: start; }
 
+/* Featured rows stay visible without bringing back the category filters. */
+.hub-featured-sections {
+  display: grid;
+  gap: 12px;
+  margin-block: 4px 14px;
+}
+
+.hub-featured-shelf { min-width: 0; }
+
+.hub-shelf-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 2px 4px;
+  color: var(--text-color);
+}
+
+.hub-shelf-mark {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--shelf-accent) 35%, var(--surface-line));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--shelf-accent) 12%, var(--surface-card));
+  color: color-mix(in srgb, var(--shelf-accent) 72%, white);
+}
+
+.hub-shelf-heading h2 {
+  overflow: hidden;
+  font-size: .85rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hub-shelf-count {
+  display: inline-flex;
+  min-width: 21px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  margin-inline-start: auto;
+  padding-inline: 6px;
+  border: 1px solid color-mix(in srgb, var(--shelf-accent) 27%, var(--surface-line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--shelf-accent) 9%, var(--surface-card));
+  color: color-mix(in srgb, var(--shelf-accent) 66%, white);
+  font-size: .63rem;
+  font-weight: 800;
+}
+
+.hub-featured-shelf .hub-scroll-row {
+  -webkit-mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - 12px), transparent);
+  mask-image: linear-gradient(to right, transparent, black 12px, black calc(100% - 12px), transparent);
+}
+
+.hub-game-card--rail {
+  width: min(244px, 78vw);
+  min-height: 150px;
+  flex: 0 0 min(244px, 78vw);
+  scroll-snap-align: start;
+}
+
+.hub-featured-shelf .hub-scroll-inner {
+  align-items: center;
+  padding: 5px 12px 10px;
+}
+
 /* ================================================
    HUB SPOTLIGHT FEATURED CARDS
    ================================================ */
@@ -307,12 +424,12 @@
   position: relative;
   overflow: hidden;
   border-radius: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--surface-line);
   transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
               box-shadow 0.28s ease,
               border-color 0.28s ease;
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(10px) saturate(110%);
+  -webkit-backdrop-filter: blur(10px) saturate(110%);
 }
 
 .spotlight-card:hover {
@@ -479,7 +596,7 @@
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: gradient-shift 6s ease infinite;
+  animation: none;
   transition: background var(--theme-transition);
 }
 
@@ -779,9 +896,9 @@
 .section-label {
   font-size: 0.62rem;
   font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  opacity: 0.3;
+  letter-spacing: normal;
+  text-transform: none;
+  opacity: 0.55;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -792,6 +909,193 @@
   flex: 1;
   height: 1px;
   background: var(--glass-border);
+}
+
+/* Exclusive Who Am I card: dark jewel tones with a quiet gold edge. */
+.exclusive-card {
+  background:
+    radial-gradient(120% 110% at 100% 0%, rgba(251, 191, 36, 0.14), transparent 54%),
+    linear-gradient(145deg, rgba(43, 21, 58, 0.98), rgba(19, 12, 31, 0.98)) !important;
+  border-color: rgba(251, 191, 36, 0.48) !important;
+  box-shadow: 0 8px 24px rgba(8, 5, 16, 0.3), inset 0 1px rgba(255, 232, 163, 0.12), 0 0 22px rgba(251, 191, 36, 0.09) !important;
+}
+.exclusive-card::after {
+  content: '';
+  position: absolute;
+  inset-inline: 14px;
+  top: 0;
+  height: 2px;
+  border-radius: 0 0 999px 999px;
+  background: linear-gradient(90deg, transparent, #fcd34d, #fff1b5, #f59e0b, transparent);
+  opacity: 0.9;
+  pointer-events: none;
+}
+.exclusive-card h3 { color: #fff8df; }
+.exclusive-card .w-9.h-9,
+.exclusive-card .w-11.h-11 {
+  background: linear-gradient(145deg, rgba(251, 191, 36, 0.2), rgba(168, 85, 247, 0.16)) !important;
+  border-color: rgba(252, 211, 77, 0.48) !important;
+  box-shadow: 0 0 18px rgba(251, 191, 36, 0.16) !important;
+}
+.exclusive-card .w-9.h-9 svg,
+.exclusive-card .w-11.h-11 svg { color: #fde68a; }
+.exclusive-card .border-t { border-color: rgba(252, 211, 77, 0.16) !important; }
+.exclusive-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: #fde68a !important;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.08)) !important;
+  border: 1px solid rgba(252, 211, 77, 0.42) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.12), 0 0 12px rgba(251, 191, 36, 0.08);
+  white-space: nowrap;
+}
+.exclusive-chip svg { color: #fcd34d !important; }
+
+/* Secondary exclusive games keep the badge, with a quieter treatment than the flagship. */
+.exclusive-card--secondary {
+  background:
+    radial-gradient(120% 110% at 100% 0%, rgba(167, 139, 250, 0.09), transparent 56%),
+    linear-gradient(145deg, rgba(34, 22, 48, 0.98), rgba(17, 13, 28, 0.98)) !important;
+  border-color: rgba(196, 181, 253, 0.3) !important;
+  box-shadow: 0 6px 16px rgba(8, 5, 16, 0.24), inset 0 1px rgba(237, 233, 254, 0.08), 0 0 12px rgba(167, 139, 250, 0.04) !important;
+}
+.exclusive-card--secondary::after {
+  background: linear-gradient(90deg, transparent, #c4b5fd, #ede9fe, #a78bfa, transparent);
+  opacity: 0.55;
+}
+.exclusive-card--secondary h3 { color: #f5f0ff; }
+.exclusive-card--secondary .w-9.h-9,
+.exclusive-card--secondary .w-11.h-11 {
+  background: linear-gradient(145deg, rgba(167, 139, 250, 0.16), rgba(56, 189, 248, 0.08)) !important;
+  border-color: rgba(196, 181, 253, 0.32) !important;
+  box-shadow: 0 0 12px rgba(167, 139, 250, 0.08) !important;
+}
+.exclusive-card--secondary .w-9.h-9 svg,
+.exclusive-card--secondary .w-11.h-11 svg { color: #ddd6fe; }
+.exclusive-card--secondary .exclusive-chip {
+  color: #ddd6fe !important;
+  background: rgba(167, 139, 250, 0.1) !important;
+  border-color: rgba(196, 181, 253, 0.3) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+}
+.exclusive-card--secondary .exclusive-chip svg { color: #c4b5fd !important; }
+
+/* Shared metadata chips. */
+.chip,
+.plain-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.875rem !important;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.chip {
+  color: var(--text-color);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+}
+.plain-chip {
+  color: var(--text-color);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--text-color) 18%, transparent);
+  opacity: 0.72;
+}
+
+/* Phase 3: shared game titles and numeric readouts use the display face. */
+.game-screen-heading,
+.game-score-value,
+.game-timer-value,
+.exclusive-card {
+  font-family: 'Space Grotesk', 'Tajawal', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.game-screen-heading {
+  font-size: clamp(0.875rem, 3.6vw, 1rem) !important;
+  line-height: 1.4;
+}
+.game-score-value,
+.game-timer-value {
+  font-size: max(0.875rem, 1em);
+  line-height: 1.4;
+}
+.exclusive-card h3 { line-height: 1.35; }
+.font-mono {
+  font-family: 'Space Grotesk', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Phase 4: mobile touch targets, game canvases and device safe areas. */
+.game-topbar button,
+.game-topbar-close {
+  min-width: 44px;
+  min-height: 44px;
+}
+.game-fullscreen-shell {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+}
+.safe-area-overlay {
+  padding-top: max(1rem, env(safe-area-inset-top, 0px)) !important;
+  padding-right: max(1rem, env(safe-area-inset-right, 0px)) !important;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px)) !important;
+  padding-left: max(1rem, env(safe-area-inset-left, 0px)) !important;
+}
+.safe-area-bottom-sheet {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px)) !important;
+  padding-left: max(0px, env(safe-area-inset-left, 0px)) !important;
+  padding-right: max(0px, env(safe-area-inset-right, 0px)) !important;
+}
+@media (min-width: 640px) {
+  .safe-area-bottom-sheet {
+    padding-top: max(1rem, env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px)) !important;
+    padding-left: max(1rem, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(1rem, env(safe-area-inset-right, 0px)) !important;
+  }
+}
+@media (max-width: 430px) {
+  .game-topbar { gap: 8px; }
+  .game-topbar > :first-child { min-height: 44px; }
+  .game-topbar .glass-card { min-width: 0; }
+  .game-topbar .game-screen-heading { max-width: 38vw; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .game-fullscreen-shell { padding-top: 4px; padding-bottom: 4px; }
+  .game-topbar { padding-top: 4px; padding-bottom: 4px; gap: 4px; }
+  .game-topbar .game-screen-heading { font-size: 0.9rem; }
+  .game-topbar > :first-child { min-height: 40px; }
+  .brick-breaker-power-guide { display: none; }
+  .brick-breaker-help { padding-block: 4px; font-size: 0.7rem; line-height: 1.35; }
+  .brick-breaker-court {
+    width: min(82vw, 360px) !important;
+    max-height: calc(100dvh - 190px) !important;
+    aspect-ratio: 5 / 3;
+    flex: 0 0 auto;
+  }
+}
+
+/* Phase 5: keep all game screens usable when reduced motion is requested. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* ================================================
@@ -856,7 +1160,7 @@
   background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
   border: 1px solid var(--glass-border);
   border-radius: 20px;
-  padding: 22px 24px 0;
+  padding: 16px 20px 0;
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
 }
@@ -890,7 +1194,7 @@
   display: flex;
   gap: 8px;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
   direction: ltr;
 }
 
@@ -899,10 +1203,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 58px; height: 64px;
-  border-radius: 14px;
+  width: 50px; height: 56px;
+  border-radius: 12px;
   font-family: 'Space Grotesk', monospace;
-  font-size: 2rem;
+  font-size: 1.6rem;
   font-weight: 700;
   letter-spacing: 0;
   background: rgba(255,255,255,0.04);
@@ -936,7 +1240,7 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  padding: 13px;
+  padding: 10px;
   font-size: 0.8rem;
   font-weight: 800;
   color: var(--text-color);
@@ -1075,3 +1379,628 @@
    ================================================ */
 .safe-area-pb { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); }
 .safe-area-pt { padding-top: max(16px, env(safe-area-inset-top, 16px)); }
+
+/* ================================================
+   CELIA ARCADE — graphite surfaces, restrained accents
+   ================================================ */
+.hub-page {
+  background:
+    radial-gradient(ellipse at 86% -15%, color-mix(in srgb, var(--accent-secondary) 10%, transparent), transparent 42%),
+    radial-gradient(ellipse at 20% 10%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-base) 78%, transparent), transparent 48%);
+}
+
+.hub-search-toolbar {
+  margin: 6px 0 24px;
+  padding-inline: 1px;
+}
+
+.hub-search-field { min-width: 0; }
+
+.hub-search-input {
+  display: block;
+  height: 48px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--surface-line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--accent) 3%, var(--surface-card));
+  box-shadow: inset 0 1px rgba(255, 255, 255, .035), 0 5px 14px rgba(0, 0, 0, .16);
+  transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.hub-search-input:hover {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--surface-line));
+}
+
+.hub-search-input:focus {
+  border-color: color-mix(in srgb, var(--accent) 68%, var(--surface-line));
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface-card));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 11%, transparent), inset 0 1px rgba(255, 255, 255, .04);
+}
+
+.hub-search-icon { color: color-mix(in srgb, var(--accent) 72%, var(--text-color)); }
+
+.hub-search-clear {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--surface-line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-card));
+  color: color-mix(in srgb, var(--accent) 70%, var(--text-color));
+  transition: background .2s ease, border-color .2s ease, color .2s ease;
+}
+
+.hub-search-clear:hover {
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--surface-line));
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface-card));
+  color: var(--text-color);
+}
+
+.hub-header {
+  border-bottom: 1px solid var(--surface-line);
+}
+
+.hub-theme-toggle {
+  background: color-mix(in srgb, var(--accent) 13%, var(--surface-card)) !important;
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--surface-line)) !important;
+  color: color-mix(in srgb, var(--accent) 72%, white) !important;
+  box-shadow: none !important;
+}
+
+.hub-theme-toggle:hover {
+  background: color-mix(in srgb, var(--accent) 21%, var(--surface-card)) !important;
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--surface-line)) !important;
+  transform: none;
+}
+
+[data-theme='girly'] .hub-theme-toggle {
+  color: color-mix(in srgb, var(--accent) 75%, white) !important;
+  background: color-mix(in srgb, var(--accent) 13%, var(--surface-card)) !important;
+  border-color: color-mix(in srgb, var(--accent-secondary) 28%, var(--surface-line)) !important;
+}
+
+[data-theme='masculine'] .hub-theme-toggle {
+  color: color-mix(in srgb, var(--accent-secondary) 58%, white) !important;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-card)) !important;
+  border-color: color-mix(in srgb, var(--accent-secondary) 26%, var(--surface-line)) !important;
+}
+
+.hub-hero {
+  padding: .35rem 0 .7rem;
+}
+
+.hub-hero-title {
+  letter-spacing: -.035em;
+  text-shadow: none !important;
+}
+
+.hub-hero .hub-hero-stats,
+.hub-hero > div { color: rgba(255, 255, 255, .62); }
+
+.hub-online-badge {
+  color: color-mix(in srgb, var(--accent) 75%, white);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.themed-opponent-bubble {
+  border-color: color-mix(in srgb, var(--accent-secondary) 30%, transparent);
+  background: color-mix(in srgb, var(--accent-secondary) 7%, var(--surface-card));
+}
+
+.hub-online-pip {
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+  box-shadow: none;
+  opacity: 1;
+  animation: none !important;
+}
+
+.hub-game-icon {
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--card-accent, var(--accent)) 29%, var(--surface-raised)),
+    color-mix(in srgb, var(--card-accent, var(--accent)) 15%, var(--surface-card)));
+  border: 1px solid color-mix(in srgb, var(--card-accent, var(--accent)) 52%, var(--surface-line));
+  color: color-mix(in srgb, var(--card-accent, var(--accent)) 92%, white);
+  box-shadow: none;
+}
+
+.hub-game-icon svg { color: inherit; }
+
+.spotlight-card {
+  color: var(--text-color);
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--card-accent, var(--accent)) 32%, var(--surface-raised)) 0%,
+    color-mix(in srgb, var(--card-accent, var(--accent)) 19%, var(--surface-card)) 56%,
+    color-mix(in srgb, var(--card-accent, var(--accent)) 8%, var(--bg-base)) 100%) !important;
+  border-color: color-mix(in srgb, var(--card-accent, var(--accent)) 50%, var(--surface-line)) !important;
+  box-shadow: 0 7px 18px rgba(0, 0, 0, .24), inset 0 1px rgba(255, 255, 255, .07) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.spotlight-card::before {
+  display: block;
+  top: 13px;
+  bottom: 13px;
+  left: auto;
+  right: 0;
+  width: 3px;
+  height: auto;
+  background: linear-gradient(180deg, transparent, var(--card-accent, var(--accent)), transparent);
+  transform: none;
+  opacity: .82;
+  transition: opacity .2s ease;
+}
+
+.spotlight-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--card-accent, var(--accent)) 72%, white) !important;
+  box-shadow: 0 11px 22px rgba(0, 0, 0, .3), inset 0 1px rgba(255, 255, 255, .1) !important;
+}
+.spotlight-card:hover::before { opacity: 1; }
+
+.spotlight-card h3 { color: #fff; }
+.spotlight-card:hover h3 {
+  color: color-mix(in srgb, var(--card-accent, var(--accent)) 45%, white);
+}
+
+.spotlight-card .border-t { border-color: var(--surface-line) !important; }
+
+.hub-card-cta {
+  color: color-mix(in srgb, var(--card-accent, var(--accent)) 68%, white);
+  background: color-mix(in srgb, var(--card-accent, var(--accent)) 24%, var(--surface-raised));
+  border: 1px solid color-mix(in srgb, var(--card-accent, var(--accent)) 38%, transparent);
+  box-shadow: none;
+}
+
+/* Compact arcade tiles: graphite surfaces with color kept to useful accents. */
+.hub-game-card {
+  --tile-accent: var(--card-accent, var(--accent));
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  min-height: 164px;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  overflow: hidden;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--tile-accent) 46%, var(--surface-line));
+  border-radius: 20px;
+  color: var(--text-color);
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--tile-accent) 36%, var(--surface-raised)) 0%,
+    color-mix(in srgb, var(--tile-accent) 23%, var(--surface-card)) 48%,
+    color-mix(in srgb, var(--tile-accent) 11%, var(--bg-base)) 100%);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, .25), inset 0 1px rgba(255, 255, 255, .04);
+  text-align: right;
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease, background-color .2s ease;
+}
+
+.hub-game-card::before {
+  position: absolute;
+  z-index: -1;
+  top: 12px;
+  right: 0;
+  bottom: 12px;
+  width: 3px;
+  height: auto;
+  border-radius: 3px 0 0 3px;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--tile-accent) 80%, white), transparent);
+  content: '';
+  opacity: .74;
+}
+
+.hub-game-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--tile-accent) 60%, var(--surface-line));
+  box-shadow: 0 8px 17px rgba(0, 0, 0, .27), inset 0 1px rgba(255, 255, 255, .05);
+}
+
+.hub-game-card:active { transform: translateY(-1px) scale(.99); }
+.hub-game-card:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--tile-accent) 72%, white);
+  outline-offset: 3px;
+}
+
+/* Keep the two exclusive games recognizable as the featured pair. */
+.hub-game-card.exclusive-card,
+.hub-game-card.exclusive-card--secondary {
+  border-color: color-mix(in srgb, var(--tile-accent) 63%, var(--surface-line));
+  border-radius: 23px;
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--tile-accent) 45%, var(--surface-raised)) 0%,
+    color-mix(in srgb, var(--tile-accent) 30%, var(--surface-card)) 46%,
+    color-mix(in srgb, var(--tile-accent) 15%, var(--bg-base)) 100%);
+  box-shadow: 0 7px 17px rgba(0, 0, 0, .28), inset 0 1px rgba(255, 255, 255, .06);
+}
+.hub-game-card.exclusive-card::before,
+.hub-game-card.exclusive-card--secondary::before {
+  width: 4px;
+  opacity: .95;
+}
+.hub-game-card.exclusive-card::after,
+.hub-game-card.exclusive-card--secondary::after {
+  position: absolute;
+  top: 0;
+  left: 14%;
+  width: 72%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--tile-accent) 66%, white), transparent);
+  content: '';
+  opacity: .64;
+  pointer-events: none;
+}
+.hub-game-card.exclusive-card .hub-game-icon,
+.hub-game-card.exclusive-card--secondary .hub-game-icon {
+  width: 48px;
+  height: 48px;
+  flex-basis: 48px;
+  border-color: color-mix(in srgb, var(--tile-accent) 55%, var(--surface-line));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--tile-accent) 21%, var(--surface-raised)), color-mix(in srgb, var(--tile-accent) 12%, var(--surface-card)));
+}
+.hub-game-card.exclusive-card .hub-card-play,
+.hub-game-card.exclusive-card--secondary .hub-card-play {
+  border-color: color-mix(in srgb, var(--tile-accent) 53%, var(--surface-line));
+  background: color-mix(in srgb, var(--tile-accent) 16%, var(--surface-card));
+}
+.hub-game-card.exclusive-card:hover,
+.hub-game-card.exclusive-card--secondary:hover {
+  border-color: color-mix(in srgb, var(--tile-accent) 67%, white);
+  box-shadow: 0 9px 19px rgba(0, 0, 0, .29), inset 0 1px rgba(255, 255, 255, .07);
+}
+
+/* New releases use a quieter, matte tile; exclusives keep the richer treatment above. */
+.hub-game-card--featured-new {
+  width: min(210px, 68vw);
+  min-height: 122px;
+  flex: 0 0 min(210px, 68vw);
+  border-radius: 14px;
+  border-color: color-mix(in srgb, var(--tile-accent) 48%, var(--surface-line));
+  background: linear-gradient(155deg,
+    color-mix(in srgb, var(--tile-accent) 38%, var(--surface-raised)) 0%,
+    color-mix(in srgb, var(--tile-accent) 25%, var(--surface-card)) 48%,
+    color-mix(in srgb, var(--tile-accent) 12%, var(--bg-base)) 100%);
+  box-shadow: 0 5px 13px rgba(0, 0, 0, .22), inset 0 1px rgba(255, 255, 255, .03);
+  gap: 7px;
+  padding: 9px;
+}
+
+.hub-game-card--featured-new::before {
+  top: 13px;
+  right: 0;
+  bottom: 13px;
+  width: 2px;
+  opacity: .55;
+}
+
+.hub-game-card.hub-game-card--featured-new .hub-game-icon {
+  width: 38px;
+  height: 38px;
+  flex-basis: 38px;
+  border-radius: 11px;
+  border-color: color-mix(in srgb, var(--tile-accent) 42%, var(--surface-line));
+  background: color-mix(in srgb, var(--tile-accent) 26%, var(--surface-raised));
+  box-shadow: none;
+}
+
+.hub-game-card--featured-new .hub-card-top { min-height: 18px; }
+.hub-game-card--featured-new .hub-card-footer { padding-top: 5px; }
+.hub-game-card--featured-new .hub-card-play { width: 20px; height: 20px; }
+
+.hub-game-card--featured-new .hub-card-play {
+  background: color-mix(in srgb, var(--tile-accent) 13%, var(--surface-card));
+}
+
+.hub-game-card--featured-exclusive {
+  min-height: 160px;
+  border-radius: 23px;
+}
+
+.hub-card-top {
+  display: flex;
+  min-height: 22px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.hub-card-label,
+.hub-game-card .hub-online-badge {
+  display: inline-flex;
+  min-height: 21px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border: 1px solid color-mix(in srgb, var(--tile-accent) 30%, var(--surface-line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tile-accent) 10%, var(--surface-card));
+  color: color-mix(in srgb, var(--tile-accent) 64%, white);
+  font-size: .62rem !important;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.hub-game-card .hub-card-label.exclusive-chip {
+  border-color: color-mix(in srgb, var(--tile-accent) 42%, var(--surface-line)) !important;
+  background: color-mix(in srgb, var(--tile-accent) 14%, var(--surface-card)) !important;
+  color: color-mix(in srgb, var(--tile-accent) 62%, white) !important;
+}
+
+.hub-card-label-placeholder { width: 1px; }
+.hub-game-card .hub-online-pip {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--tile-accent);
+}
+
+.hub-card-main {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.hub-game-card .hub-game-icon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--tile-accent) 40%, var(--surface-line));
+  border-radius: 15px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--tile-accent) 27%, var(--surface-raised)), color-mix(in srgb, var(--tile-accent) 14%, var(--surface-card)));
+  color: color-mix(in srgb, var(--tile-accent) 76%, white);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .07);
+  transition: transform .2s ease, background .2s ease;
+}
+
+.hub-game-card:hover .hub-game-icon { transform: translateY(-1px) rotate(-3deg); }
+.hub-card-copy { min-width: 0; flex: 1; }
+.hub-card-copy h3 {
+  overflow: hidden;
+  color: #fff;
+  font-size: .86rem;
+  font-weight: 900;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hub-card-copy p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 3px;
+  color: color-mix(in srgb, var(--text-color) 60%, transparent);
+  font-size: .66rem;
+  font-weight: 600;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.hub-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--tile-accent) 17%, var(--surface-line));
+  color: color-mix(in srgb, var(--tile-accent) 60%, white);
+  font-size: .68rem;
+  font-weight: 900;
+  transition: color .2s ease;
+}
+
+.hub-card-play {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--tile-accent) 39%, var(--surface-line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--tile-accent) 15%, var(--surface-raised));
+  color: color-mix(in srgb, var(--tile-accent) 74%, white);
+  transition: transform .2s ease, background .2s ease, color .2s ease;
+}
+.hub-game-card:hover .hub-card-play {
+  transform: translateX(-2px);
+  background: color-mix(in srgb, var(--tile-accent) 26%, var(--surface-raised));
+  color: #fff;
+}
+
+.spotlight-card:hover .hub-card-cta {
+  color: white;
+  background: color-mix(in srgb, var(--card-accent, var(--accent)) 48%, var(--surface-raised));
+  border-color: color-mix(in srgb, var(--card-accent, var(--accent)) 60%, white);
+}
+
+.spotlight-card.exclusive-card {
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--card-accent) 42%, var(--surface-raised)) 0%,
+    color-mix(in srgb, var(--card-accent) 27%, var(--surface-card)) 56%,
+    color-mix(in srgb, var(--card-accent) 12%, var(--bg-base)) 100%) !important;
+  border-color: color-mix(in srgb, var(--card-accent) 58%, var(--surface-line)) !important;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, .27), inset 0 1px rgba(255, 255, 255, .08) !important;
+}
+
+.spotlight-card.exclusive-card::after {
+  inset-inline: 16px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--card-accent) 70%, white), transparent);
+  opacity: .55;
+}
+
+.spotlight-card.exclusive-card h3,
+.spotlight-card.exclusive-card:hover h3 { color: #fff; }
+.spotlight-card.exclusive-card .hub-game-icon {
+  color: color-mix(in srgb, var(--card-accent) 68%, white);
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--card-accent) 36%, var(--surface-raised)),
+    color-mix(in srgb, var(--card-accent) 20%, var(--surface-card)));
+  border-color: color-mix(in srgb, var(--card-accent) 58%, var(--surface-line));
+  box-shadow: none;
+}
+
+.exclusive-chip {
+  min-height: 19px;
+  padding: 2px 7px;
+  color: #ead9a8 !important;
+  background: rgba(190, 157, 91, .12) !important;
+  border-color: rgba(190, 157, 91, .28) !important;
+  box-shadow: none !important;
+}
+
+.spotlight-card.exclusive-card--secondary {
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--card-accent) 35%, var(--surface-raised)) 0%,
+    color-mix(in srgb, var(--card-accent) 22%, var(--surface-card)) 58%,
+    color-mix(in srgb, var(--card-accent) 9%, var(--bg-base)) 100%) !important;
+  border-color: color-mix(in srgb, var(--card-accent) 52%, var(--surface-line)) !important;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, .26), inset 0 1px rgba(255, 255, 255, .06) !important;
+}
+
+.spotlight-card.exclusive-card--secondary::after {
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--card-accent) 65%, white), transparent);
+  opacity: .42;
+}
+
+.spotlight-card.exclusive-card--secondary h3,
+.spotlight-card.exclusive-card--secondary:hover h3 { color: #fff; }
+.spotlight-card.exclusive-card--secondary .hub-game-icon {
+  color: color-mix(in srgb, var(--card-accent) 78%, white);
+  background: color-mix(in srgb, var(--card-accent) 18%, var(--surface-raised));
+  border-color: color-mix(in srgb, var(--card-accent) 48%, var(--surface-line));
+  box-shadow: none;
+}
+
+/* Matte color treatment for regular games only; exclusive cards keep their existing look. */
+.hub-game-card:not(.exclusive-card) {
+  --card-tone: color-mix(in srgb, var(--tile-accent) 55%, var(--accent));
+  border-color: color-mix(in srgb, var(--card-tone) 36%, var(--surface-line));
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--card-tone) 26%, var(--surface-card)) 0%,
+    color-mix(in srgb, var(--card-tone) 22%, var(--bg-base)) 54%,
+    color-mix(in srgb, var(--accent) 15%, var(--bg-base)) 100%);
+  box-shadow:
+    0 7px 17px rgba(0, 0, 0, .3),
+    inset 0 1px rgba(255, 255, 255, .04);
+}
+
+.hub-game-card:not(.exclusive-card)::before {
+  background: linear-gradient(180deg, transparent, var(--card-tone), transparent);
+  opacity: .58;
+}
+
+.hub-game-card:not(.exclusive-card)::after {
+  position: absolute;
+  top: 0;
+  left: 12%;
+  width: 76%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--card-tone) 58%, white), transparent);
+  content: '';
+  opacity: .32;
+  pointer-events: none;
+}
+
+.hub-game-card:not(.exclusive-card):hover {
+  border-color: color-mix(in srgb, var(--card-tone) 54%, var(--surface-line));
+  box-shadow:
+    0 9px 20px rgba(0, 0, 0, .34),
+    inset 0 1px rgba(255, 255, 255, .05);
+}
+
+.hub-game-card:not(.exclusive-card):hover::after {
+  opacity: .5;
+}
+
+.hub-game-card:not(.exclusive-card) .hub-game-icon {
+  border-color: color-mix(in srgb, var(--card-tone) 36%, var(--surface-line));
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--card-tone) 22%, var(--surface-card)),
+    color-mix(in srgb, var(--card-tone) 16%, var(--bg-base)));
+  color: color-mix(in srgb, var(--card-tone) 78%, white);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .04);
+}
+
+.hub-game-card:not(.exclusive-card) .hub-card-label,
+.hub-game-card:not(.exclusive-card) .hub-online-badge {
+  border-color: color-mix(in srgb, var(--card-tone) 23%, var(--surface-line));
+  background: color-mix(in srgb, var(--card-tone) 8%, var(--bg-base));
+  color: color-mix(in srgb, var(--card-tone) 76%, white);
+}
+
+.hub-game-card:not(.exclusive-card) .hub-card-footer {
+  color: color-mix(in srgb, var(--card-tone) 72%, white);
+}
+
+.hub-game-card:not(.exclusive-card) .hub-card-play {
+  border-color: color-mix(in srgb, var(--card-tone) 30%, var(--surface-line));
+  background: color-mix(in srgb, var(--card-tone) 13%, var(--bg-base));
+  color: color-mix(in srgb, var(--card-tone) 80%, white);
+}
+
+.hub-game-card:not(.exclusive-card):hover .hub-card-play {
+  background: color-mix(in srgb, var(--card-tone) 19%, var(--bg-base));
+}
+
+
+.plain-chip {
+  color: color-mix(in srgb, var(--card-accent, var(--accent)) 52%, white);
+  border-color: color-mix(in srgb, var(--card-accent, var(--accent)) 36%, var(--surface-line));
+  background: color-mix(in srgb, var(--card-accent, var(--accent)) 13%, var(--surface-card));
+}
+
+.hub-page .plain-chip {
+  min-height: 19px;
+  padding: 2px 7px;
+  font-size: .63rem !important;
+  line-height: 1.1;
+}
+
+.hub-page button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 52%, white);
+  outline-offset: 2px;
+}
+
+.hub-stat-dot { box-shadow: none; animation: none; }
+.glow-button:not(:disabled):hover { box-shadow: 0 8px 20px rgba(0, 0, 0, .22); }
+.theme-button:hover { box-shadow: 0 5px 14px rgba(0, 0, 0, .2); }
+.key-btn:not(:disabled):hover,
+.numpad-btn:not(:disabled):hover { box-shadow: inset 0 0 0 1px var(--accent-border); }
+.letter-tile.revealed,
+.digit-cell.filled { box-shadow: inset 0 -2px 0 var(--accent); }
+.life-icon { filter: none; }
+.glass-input:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 14%, transparent); }
+.lobby-digit { box-shadow: inset 0 -2px 0 var(--accent); }
+.lobby-connected-icon { box-shadow: none; }
+.lobby-rings { opacity: .3; }
+
+@media (max-width: 640px) {
+  .hub-page { padding-inline: 12px; }
+  .hub-header { gap: 8px; }
+  .hub-hero { margin-block: .4rem .75rem; }
+  .hub-hero-title { font-size: 2rem; }
+  .hub-featured-sections { gap: 9px; margin-block: 2px 10px; }
+  .hub-shelf-heading h2 { font-size: .78rem; }
+  .hub-game-card--rail { min-height: 142px; }
+  .hub-page main { padding-bottom: max(5rem, env(safe-area-inset-bottom)); }
+  .hub-game-card { min-height: 154px; padding: 10px; border-radius: 17px; }
+  .hub-game-card--featured-new { min-height: 122px; border-radius: 14px; }
+  .hub-game-card--featured-exclusive { min-height: 154px; border-radius: 21px; }
+  .hub-game-card .hub-game-icon { width: 40px; height: 40px; flex-basis: 40px; border-radius: 13px; }
+  .hub-card-main { gap: 8px; }
+  .hub-card-copy h3 { font-size: .78rem; }
+  .hub-card-copy p { font-size: .61rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub-online-pip,
+  .hub-stat-dot { animation: none !important; }
+}

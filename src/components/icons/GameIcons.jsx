@@ -50,6 +50,19 @@ export function IconWordGame({ size = 24, className = '' }) {
   );
 }
 
+/** الكلمة الممنوعة — clue bubble with a blocked word */
+export function IconTaboo({ size = 24, className = '' }) {
+  return (
+    <svg {...iconProps} width={size} height={size} className={className}>
+      <path d="M4 5 Q4 3 6 3 H18 Q20 3 20 5 V14 Q20 16 18 16 H10 L5 20 V16 H6 Q4 16 4 14 Z" />
+      <line x1="8" y1="9" x2="16" y2="9" strokeWidth="2" />
+      <line x1="8" y1="12" x2="13" y2="12" strokeWidth="2" />
+      <circle cx="17" cy="17" r="4" fill="currentColor" stroke="none" />
+      <path d="M15.5 15.5 L18.5 18.5 M18.5 15.5 L15.5 18.5" stroke="white" strokeWidth="1.3" />
+    </svg>
+  );
+}
+
 /** إكس أو — 3×3 grid, clean and simple */
 export function IconXOGame({ size = 24, className = '' }) {
   return (
@@ -458,8 +471,105 @@ export function IconQuickDraw({ size = 24, className = '' }) {
   );
 }
 
+/** Snake Arena — snake body and apple */
+export function IconSnakeArena({ size = 24, className = '' }) {
+  return (
+    <svg {...iconProps} width={size} height={size} className={className}>
+      {/* Grid background hint */}
+      <rect x="2" y="2" width="20" height="20" rx="4" opacity="0.15" />
+      {/* Snake body */}
+      <path d="M5 19 H9 V13 H15 V7 H19" strokeWidth="2.5" />
+      {/* Snake head (eyes) */}
+      <circle cx="17.5" cy="6" r="0.8" fill="currentColor" stroke="none" />
+      <circle cx="19.5" cy="6" r="0.8" fill="currentColor" stroke="none" />
+      {/* Apple */}
+      <circle cx="9" cy="7" r="1.5" fill="currentColor" stroke="none" />
+      <path d="M9 5 Q10 4 11 5" strokeWidth="0.8" />
+    </svg>
+  );
+}
+
+/** Brick Breaker — paddle and bricks */
+export function IconBrickBreaker({ size = 24, className = '' }) {
+  return (
+    <svg {...iconProps} width={size} height={size} className={className}>
+      {/* Bricks */}
+      <rect x="4" y="4" width="6" height="3" rx="0.5" />
+      <rect x="11" y="4" width="9" height="3" rx="0.5" />
+      <rect x="4" y="8" width="9" height="3" rx="0.5" />
+      <rect x="14" y="8" width="6" height="3" rx="0.5" />
+      {/* Ball */}
+      <circle cx="12" cy="15" r="1.5" fill="currentColor" stroke="none" />
+      {/* Paddle */}
+      <rect x="8" y="19" width="8" height="2" rx="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** Math Speed Duel — Plus/Minus/Multiply */
+export function IconMathSpeed({ size = 24, className = '' }) {
+  return (
+    <svg {...iconProps} width={size} height={size} className={className}>
+      {/* Circle background */ }
+      <circle cx="12" cy="12" r="10" opacity="0.15" />
+      {/* Plus */ }
+      <line x1="7" y1="8" x2="11" y2="8" strokeWidth="2" />
+      <line x1="9" y1="6" x2="9" y2="10" strokeWidth="2" />
+      {/* Minus */ }
+      <line x1="14" y1="8" x2="18" y2="8" strokeWidth="2" />
+      {/* Multiply */ }
+      <line x1="7" y1="14" x2="11" y2="18" strokeWidth="2" />
+      <line x1="7" y1="18" x2="11" y2="14" strokeWidth="2" />
+      {/* Equals */ }
+      <line x1="14" y1="15" x2="18" y2="15" strokeWidth="2" />
+      <line x1="14" y1="17" x2="18" y2="17" strokeWidth="2" />
+    </svg>
+  );
+}
+
+/** Speed Sudoku — 3x3 grid with numbers */
+export function IconSpeedSudoku({ size = 24, className = '' }) {
+  return (
+    <svg {...iconProps} width={size} height={size} className={className}>
+      <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="1.5" />
+      <line x1="9" y1="3" x2="9" y2="21" strokeWidth="1.5" />
+      <line x1="15" y1="3" x2="15" y2="21" strokeWidth="1.5" />
+      <line x1="3" y1="9" x2="21" y2="9" strokeWidth="1.5" />
+      <line x1="3" y1="15" x2="21" y2="15" strokeWidth="1.5" />
+      {/* Little dots to represent numbers */}
+      <circle cx="6" cy="6" r="0.8" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="18" r="0.8" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="12" r="0.8" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** WhoAmI — Silhouette with a question mark */
+export function IconWhoAmI({ size = 24, className = '' }) {
+  const iconProps = {
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "2",
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+  };
+  return (
+    <svg {...iconProps} width={size} height={size} className={className}>
+      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" />
+      <path d="M12 14c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5z" opacity="0.4" />
+      <path d="M12 6.5V9" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="11.5" r="0.8" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 /** The full icon map — used by Hub to pick icon by game ID */
 export const GAME_ICON_MAP = {
+  'taboo-game':   IconTaboo,
+  'whoami-online': IconWhoAmI,
+  'whoami-local': IconWhoAmI,
+  'celia-whoami': IconWhoAmI,
   'code-game':    IconCodeGame,
   'word-game':    IconWordGame,
   'word-game-local': IconWordGame,
@@ -468,15 +578,24 @@ export const GAME_ICON_MAP = {
   'big-xo-game':  IconBigXOGame,
   'connect-4':    IconConnect4,
   'memory-game':  IconMemoryGame,
+  'celia-mem':    IconMemoryGame,
   'dots-boxes':   IconDotsBoxes,
   'sea-battle':   IconSeaBattle,
   'guess-time':   IconGuessTime,
   'bus-complete': IconBusComplete,
+  'bus':          IconBusComplete,
   'trivia-duel':  IconTriviaDuel,
   'domino-game':  IconDominoGame,
   'rps-arena':    IconRPSArena,
   'air-hockey':   IconAirHockey,
   'quick-draw':   IconQuickDraw,
+  'snake-arena':  IconSnakeArena,
+  'brick-breaker': IconBrickBreaker,
+  'celia-brick':  IconBrickBreaker,
+  'math-duel':    IconMathSpeed,
+  'celia-math':   IconMathSpeed,
+  'speed-sudoku': IconSpeedSudoku,
+  'celia-sudoku': IconSpeedSudoku,
 };
 
 export function GameIcon({ gameId, size = 26, className = '', style = {} }) {
