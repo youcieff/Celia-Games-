@@ -50,7 +50,7 @@ const QUESTION_VALUES = {
     meat: 'لحوم', plants: 'نباتات', main: 'وجبة رئيسية', snack: 'وجبة خفيفة', dessert: 'حلوى', drink: 'مشروب',
     sweet: 'حلو', savory: 'حادق', egyptian: 'مصري', international: 'عالمي', rice: 'أرز', dough: 'عجين',
     dairy: 'ألبان', vegetable: 'خضروات', fruit: 'فاكهة', sugar: 'سكر', '0': 'بلا أرجل', '2': 'رجلان',
-    '4': 'أربع أرجل', '6': 'ست أرجل', '8': 'ثماني أرجل'
+    '4': 'أربع أرجل', '6': 'ست أرجل', '8': 'ثماني أرجل', beard: 'لحية', mustache: 'شارب'
 };
 
 const normalizeQuestion = (question) => String(question || '')
@@ -128,6 +128,8 @@ export default function WhoAmIGame({ setView, mode }) {
     const [oppScore, setOppScore] = useState(0);
 
     const [showGuessModal, setShowGuessModal] = useState(false);
+    const [showBoardModal, setShowBoardModal] = useState(false);
+    const [previewCard, setPreviewCard] = useState(null);
     const [isGuessPending, setIsGuessPending] = useState(false);
     const useGameChat = mode === 'online';
     const showChat = useGameChat;
@@ -181,6 +183,7 @@ export default function WhoAmIGame({ setView, mode }) {
     const endGameRef = useRef(null);
     const opponentGuessRef = useRef(null);
     const hasEndedRef = useRef(false);
+    const gameOverRevealSentRef = useRef(false);
     const feedbackTimerRef = useRef(null);
     const backStepRef = useRef(null);
     const messageSequenceRef = useRef(0);
@@ -332,7 +335,10 @@ export default function WhoAmIGame({ setView, mode }) {
 
     const resetRoundUi = () => {
         hasEndedRef.current = false;
+        gameOverRevealSentRef.current = false;
         setShowGuessModal(false);
+        setShowBoardModal(false);
+        setPreviewCard(null);
         setMySecretIds([]);
         setOppSecretReady(false);
         setOpponentSecretCount(1);
@@ -624,15 +630,29 @@ export default function WhoAmIGame({ setView, mode }) {
                     }
                     break;
                 case 'game_over':
-                    if (gameStateRef.current !== 'playing') break;
-                    if (data.secretCardIds) {
-                        setOpponentSecretIds(data.secretCardIds);
-                        setOpponentSecretId(data.secretCardIds[0] || null);
-                    } else if (data.secretCard) {
-                        setOpponentSecretIds([data.secretCard]);
-                        setOpponentSecretId(data.secretCard);
+                    if (!['playing', 'game_over'].includes(gameStateRef.current)) break;
+                    // Both players can enter the result screen from the same correct guess.
+                    // Still accept the peer's reveal if it arrives after our local transition.
+                    {
+                        const revealedIds = Array.isArray(data.secretCardIds)
+                            ? data.secretCardIds.filter(Boolean)
+                            : data.secretCard ? [data.secretCard] : [];
+                        if (revealedIds.length) {
+                            setOpponentSecretIds(revealedIds);
+                            setOpponentSecretId(revealedIds[0]);
+                        }
                     }
-                    endGameRef.current?.(data.winnerId, data.winningCard, true);
+                    if (gameStateRef.current === 'playing') {
+                        endGameRef.current?.(data.winnerId, data.winningCard, true);
+                    }
+                    if (!gameOverRevealSentRef.current && mySecretIdsRef.current.length) {
+                        gameOverRevealSentRef.current = true;
+                        sendWhoAmIMessage({
+                            type: 'secret_reveal',
+                            secretCard: mySecretIdsRef.current[0],
+                            secretCardIds: mySecretIdsRef.current
+                        });
+                    }
                     break;
                 case 'secret_reveal':
                     if (!['playing', 'game_over'].includes(gameStateRef.current)) break;
@@ -1344,9 +1364,12 @@ export default function WhoAmIGame({ setView, mode }) {
         hasEndedRef.current = true;
         setWinner(winPlayerId);
         setGuessFeedback('');
+        setShowBoardModal(false);
+        setPreviewCard(null);
         updateGameState('game_over');
         
         if (!isFromOpponent) {
+            gameOverRevealSentRef.current = true;
             sendWhoAmIMessage({
                 type: 'game_over',
                 winnerId: winPlayerId,
@@ -1419,6 +1442,8 @@ export default function WhoAmIGame({ setView, mode }) {
         if (!fromPeer) sendWhoAmIMessage({ type: 'back_step', toState: targetState });
 
         setShowGuessModal(false);
+        setShowBoardModal(false);
+        setPreviewCard(null);
         hasEndedRef.current = false;
         setWinner(null);
         setOpponentSecretId(null);
@@ -1670,7 +1695,18 @@ export default function WhoAmIGame({ setView, mode }) {
 
                     <div className="shrink-0 px-2 pt-1.5">
                         <div className="flex min-w-0 items-center gap-2 rounded-xl border px-2 py-1.5" style={{ background: 'var(--accent-soft)', borderColor: 'var(--accent-border)' }}>
-                            {mySecretCardObjs.map(card => <CardPortrait key={card.id} pack={currentPack} card={card} className="relative h-9 w-9 shrink-0 rounded-lg border border-white/15" />)}
+                            {mySecretCardObjs.map(card => (
+                                <button
+                                    key={card.id}
+                                    type="button"
+                                    onClick={() => setPreviewCard(card)}
+                                    aria-label={`تكبير بطاقة ${card.name}`}
+                                    title={`عرض ${card.name} بحجم أكبر`}
+                                    className="shrink-0 rounded-lg transition hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
+                                >
+                                    <CardPortrait pack={currentPack} card={card} className="relative h-9 w-9 rounded-lg border border-white/15" />
+                                </button>
+                            ))}
                             <div className="min-w-0 flex-1">
                                 <p className="truncate text-[10px] font-bold opacity-55">بطاقتك السرية عند خصمك</p>
                                 <p className="truncate text-xs font-black" style={{ color: 'var(--accent)' }}>{mySecretCardObjs.map(card => card.name).join('، ') || '—'}</p>
@@ -1796,6 +1832,14 @@ export default function WhoAmIGame({ setView, mode }) {
                     <div className="shrink-0 border-t px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]" style={{ borderColor: 'var(--glass-border)', background: 'var(--bg-base)' }}>
                         <div className="flex items-center gap-2">
                         <button
+                            type="button"
+                            onClick={() => setShowBoardModal(true)}
+                            className="flex-1 rounded-xl border py-2.5 text-xs font-black transition active:scale-95"
+                            style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)', color: 'var(--text-color)' }}
+                        >
+                            🗂️ رؤية اللوحة
+                        </button>
+                        <button
                             onClick={() => setShowGuessModal(true)}
                             disabled={!canGuess}
                             className={`flex-1 rounded-xl py-2.5 text-sm font-black transition-all duration-300 ${
@@ -1826,6 +1870,88 @@ export default function WhoAmIGame({ setView, mode }) {
 
                         </div>
                     </div>
+                </div>
+            )}
+
+            {showBoardModal && gameState === 'playing' && (
+                <div
+                    className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-2 backdrop-blur-md sm:p-5"
+                    onClick={() => setShowBoardModal(false)}
+                >
+                    <section
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="whoami-board-title"
+                        className="flex h-[94dvh] max-h-[920px] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border shadow-2xl"
+                        style={{ background: 'var(--bg-base)', borderColor: 'var(--glass-border)' }}
+                        onClick={event => event.stopPropagation()}
+                    >
+                        <header className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3" style={{ borderColor: 'var(--glass-border)' }}>
+                            <div>
+                                <h2 id="whoami-board-title" className="text-base font-black">لوحة البطاقات</h2>
+                                <p className="mt-0.5 text-xs opacity-55">اضغط على البطاقة لاستبعادها أو إعادتها</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowBoardModal(false)}
+                                aria-label="إغلاق اللوحة"
+                                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border text-xl"
+                                style={{ borderColor: 'var(--glass-border)', background: 'var(--glass-bg)' }}
+                            >
+                                ×
+                            </button>
+                        </header>
+                        <CardBoard
+                            pack={currentPack}
+                            closedCards={myClosedCards}
+                            onToggleCard={toggleCard}
+                            myTurn={canEliminate}
+                        />
+                    </section>
+                </div>
+            )}
+
+            {previewCard && (
+                <div
+                    className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
+                    onClick={() => setPreviewCard(null)}
+                >
+                    <section
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="whoami-card-preview-title"
+                        className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-3xl border p-4 shadow-2xl custom-scrollbar sm:p-5"
+                        style={{ background: 'var(--bg-base)', borderColor: 'var(--glass-border)' }}
+                        onClick={event => event.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            onClick={() => setPreviewCard(null)}
+                            aria-label="إغلاق البطاقة"
+                            className="absolute left-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full border bg-black/60 text-xl text-white"
+                            style={{ borderColor: 'var(--glass-border)' }}
+                        >
+                            ×
+                        </button>
+                        <div className="mx-auto w-full max-w-[18rem] overflow-hidden rounded-2xl border shadow-xl" style={{ borderColor: 'var(--glass-border)' }}>
+                            <CardPortrait pack={currentPack} card={previewCard} fit="contain" className="relative aspect-[4/5] w-full" />
+                        </div>
+                        <h2 id="whoami-card-preview-title" className="mt-4 text-center text-2xl font-black" style={{ color: 'var(--accent)' }}>
+                            {previewCard.name}
+                        </h2>
+                        {Object.entries(previewCard.attrs || {}).length > 0 && (
+                            <div className="mt-4 grid grid-cols-2 gap-2">
+                                {Object.entries(previewCard.attrs).map(([key, value]) => (
+                                    <div key={key} className="min-w-0 rounded-xl border px-3 py-2" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
+                                        <p className="truncate text-[10px] font-bold opacity-55">{QUESTION_ATTRIBUTES[key] || key}</p>
+                                        <p className="mt-0.5 truncate text-sm font-black">
+                                            {QUESTION_VALUES[String(value)] ?? String(value)}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
                 </div>
             )}
 

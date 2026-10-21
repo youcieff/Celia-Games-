@@ -60,10 +60,10 @@
   --game-21-accent: #C58B6E;
 }
 
-/* ── GIRLY THEME: Soft velvet, rose and orchid ── */
+/* ── GIRLY THEME: Muted ink-plum backdrop, with rose kept for the cards ── */
 [data-theme='girly'] {
-  --bg-base:        #100A16;
-  --bg-mid:         #2D1B39;
+  --bg-base:        #100D15;
+  --bg-mid:         #241F2D;
 
   --accent:         #C979A2;
   --accent-secondary: #A994C4;
