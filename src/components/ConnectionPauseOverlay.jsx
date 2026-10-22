@@ -93,7 +93,7 @@ export default function ConnectionPauseOverlay({ conn, onLeave }) {
                         <div className="w-full bg-black/40 h-3 rounded-full overflow-hidden border border-white/10 mb-2 p-0.5">
                             <div
                                 className="h-full bg-gradient-to-r from-amber-500 to-rose-500 rounded-full transition-all duration-1000"
-                                style={{ width: `${(timeLeft / 10) * 100}%` }}
+                                style={{ width: `${(timeLeft / 30) * 100}%` }}
                             />
                         </div>
 

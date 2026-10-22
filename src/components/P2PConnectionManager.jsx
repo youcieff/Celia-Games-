@@ -64,11 +64,11 @@ function createFirebaseConn(roomPath, isHost, roomCode, gameIdPrefix, clientId, 
             if (!hasPresenceSnapshot || previousPresence !== 'online') {
                 listeners['peer-online']?.forEach(cb => cb());
             }
-            if (hasPresenceSnapshot && previousPresence !== 'online' && hasEverConnected) {
+            if (hasPresenceSnapshot && previousPresence === 'offline' && hasEverConnected) {
                 listeners['peer-reconnect']?.forEach(cb => cb());
             }
             hasEverConnected = true;
-        } else if (val === 'offline' && hasEverConnected) {
+        } else if (val === 'offline' && previousPresence === 'online' && hasEverConnected) {
             listeners['peer-disconnect']?.forEach(cb => cb());
         }
         previousPresence = val;
@@ -119,6 +119,32 @@ function createFirebaseConn(roomPath, isHost, roomCode, gameIdPrefix, clientId, 
         // Save game state to Firebase (host calls after every move so rejoiners can restore)
         saveState(state) {
             try { set(ref(db, `${roomPath}/gameState`), state); } catch (e) {}
+        },
+        // Merge a player's private clock/input state into the shared snapshot without
+        // overwriting the other seat's independently running timer.
+        savePlayerState(state, seat) {
+            if (!['host', 'peer'].includes(seat)) return Promise.resolve();
+            return runTransaction(ref(db, `${roomPath}/gameState`), (current) => {
+                const previous = current && typeof current === 'object' ? current : {};
+                const previousTarget = previous.target && typeof previous.target === 'object' ? previous.target : {};
+                const nextTarget = state?.target && typeof state.target === 'object' ? state.target : {};
+                return {
+                    ...previous,
+                    ...state,
+                    target: {
+                        ...previousTarget,
+                        ...nextTarget,
+                        players: {
+                            ...(previousTarget.players || {}),
+                            ...(nextTarget.players || {})
+                        },
+                        guesses: {
+                            ...(previousTarget.guesses || {}),
+                            ...(nextTarget.guesses || {})
+                        }
+                    }
+                };
+            }, { applyLocally: false }).catch(() => {});
         },
         // Get saved game state (called after rejoin to restore mid-game position)
         async getState() {
