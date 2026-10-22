@@ -15,6 +15,13 @@ import useProfile from '../../hooks/useProfile';
 import { triggerVictoryEffects, triggerDefeatEffects, triggerDrawEffects } from '../../lib/effectsEngine';
 
 const TARGET_TIMES = [3, 5, 10]; // seconds
+const TURN_RPS_OPTIONS = [
+    { id: 'rock', label: 'حجر', emoji: '✊' },
+    { id: 'paper', label: 'ورقة', emoji: '✋' },
+    { id: 'scissors', label: 'مقص', emoji: '✌️' }
+];
+const RPS_BEATS = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
+const TURN_COUNTDOWN_MS = 3000;
 
 function pad(n) {
     return String(Math.floor(n)).padStart(2, '0');
@@ -34,7 +41,7 @@ export default function GuessTimeGame({ setView }) {
 
     // lobby → picking-mode → picking-target | picking-roles → ...
     const [gameState, setGameState] = useState('lobby');
-    const [gameMode, setGameMode] = useState('target'); // 'target' or 'roles'
+    const [gameMode, setGameMode] = useState('target'); // target | roles | turns
 
     // Target Mode States
     const [targetMs, setTargetMs] = useState(5000);
@@ -57,9 +64,46 @@ export default function GuessTimeGame({ setView }) {
     const [countdown, setCountdown] = useState(null);
     const [scores, setScores] = useState({ me: 0, opp: 0 });
 
+    // Shared-time turns mode: the clock pauses between turns and accumulates
+    // until the active player lets it reach the chosen limit.
+    const [turnRpsChoice, setTurnRpsChoice] = useState(null);
+    const [turnOppRpsChoice, setTurnOppRpsChoice] = useState(null);
+    const [turnRpsWinner, setTurnRpsWinner] = useState(null);
+    const [turnActiveSeat, setTurnActiveSeat] = useState(null);
+    const [turnCountdown, setTurnCountdown] = useState(null);
+    const [turnElapsed, setTurnElapsed] = useState(0);
+    const [turnClockRunning, setTurnClockRunning] = useState(false);
+    const [turnAwaitingNext, setTurnAwaitingNext] = useState(false);
+    const [turnLastStop, setTurnLastStop] = useState(null);
+    const [turnNotice, setTurnNotice] = useState('');
+    const [turnRoundResult, setTurnRoundResult] = useState(null);
+
     const holdStartRef = useRef(null);
     const intervalRef = useRef(null);
     const myResultRef = useRef(null);
+    const scoresRef = useRef(scores);
+    scoresRef.current = scores;
+    const turnRpsChoiceRef = useRef(null);
+    const turnOppRpsChoiceRef = useRef(null);
+    const turnRpsResolvedRef = useRef(false);
+    const turnActiveSeatRef = useRef(null);
+    const turnIdRef = useRef(null);
+    const turnElapsedBaseRef = useRef(0);
+    const turnAwaitingNextRef = useRef(false);
+    const turnSettledRef = useRef(false);
+    const turnAttemptHandledRef = useRef(false);
+    const turnTargetMsRef = useRef(5000);
+    const turnClockRunningRef = useRef(false);
+    const turnClockOwnerRef = useRef(null);
+    const turnClockStartedAtRef = useRef(0);
+    const turnClockElapsedRef = useRef(0);
+    const turnClockSyncAtRef = useRef(0);
+    const turnLastTickAtRef = useRef(0);
+    const turnClockIntervalRef = useRef(null);
+    const turnTimeoutRef = useRef(null);
+    const turnCountdownIntervalRef = useRef(null);
+    const turnIntermissionRef = useRef(null);
+    const turnScoresRef = useRef({ host: 0, peer: 0 });
 
     const BLIND_DELAY = 1000;
 
@@ -70,8 +114,48 @@ export default function GuessTimeGame({ setView }) {
         }
     };
 
+    const clearTurnTimers = () => {
+        if (turnClockIntervalRef.current) clearInterval(turnClockIntervalRef.current);
+        if (turnTimeoutRef.current) clearTimeout(turnTimeoutRef.current);
+        if (turnCountdownIntervalRef.current) clearInterval(turnCountdownIntervalRef.current);
+        if (turnIntermissionRef.current) clearTimeout(turnIntermissionRef.current);
+        turnClockIntervalRef.current = null;
+        turnTimeoutRef.current = null;
+        turnCountdownIntervalRef.current = null;
+        turnIntermissionRef.current = null;
+        turnClockRunningRef.current = false;
+    };
+
+    const resetTurnRound = () => {
+        clearTurnTimers();
+        turnRpsChoiceRef.current = null;
+        turnOppRpsChoiceRef.current = null;
+        turnRpsResolvedRef.current = false;
+        turnActiveSeatRef.current = null;
+        turnIdRef.current = null;
+        turnElapsedBaseRef.current = 0;
+        turnAwaitingNextRef.current = false;
+        turnSettledRef.current = false;
+        turnAttemptHandledRef.current = false;
+        turnClockOwnerRef.current = null;
+        turnClockElapsedRef.current = 0;
+        turnClockSyncAtRef.current = 0;
+        setTurnRpsChoice(null);
+        setTurnOppRpsChoice(null);
+        setTurnRpsWinner(null);
+        setTurnActiveSeat(null);
+        setTurnCountdown(null);
+        setTurnElapsed(0);
+        setTurnClockRunning(false);
+        setTurnAwaitingNext(false);
+        setTurnLastStop(null);
+        setTurnNotice('');
+        setTurnRoundResult(null);
+    };
+
     const resetRound = () => {
         clearHoldInterval();
+        resetTurnRound();
         setElapsed(0);
         setIsHolding(false);
         setShowTimer(true);
@@ -113,6 +197,48 @@ export default function GuessTimeGame({ setView }) {
                 resetRound();
                 setGameState('playing-roles');
                 playSound('ding');
+                break;
+            case 'start_turn_mode':
+                enterTurnMode(msg.targetMs);
+                break;
+            case 'turn_rps_choice':
+                receiveTurnRpsChoice(msg);
+                break;
+            case 'turn_rps_tie':
+                resetTurnRpsChoices();
+                setTurnNotice('تعادل! العبوا حجر ورقة مقص مرة تانية.');
+                break;
+            case 'turn_rps_result':
+                setTurnRpsWinner(msg.firstPlayer);
+                turnRpsChoiceRef.current = isHostRef.current ? msg.hostChoice : msg.peerChoice;
+                turnOppRpsChoiceRef.current = isHostRef.current ? msg.peerChoice : msg.hostChoice;
+                setTurnRpsChoice(isHostRef.current ? msg.hostChoice : msg.peerChoice);
+                setTurnOppRpsChoice(isHostRef.current ? msg.peerChoice : msg.hostChoice);
+                break;
+            case 'turn_countdown':
+                installTurnCountdown(msg.seat, msg.turnId, msg.delayMs, msg.elapsedBase);
+                break;
+            case 'turn_clock_started':
+                if (msg.seat === (isHostRef.current ? 'peer' : 'host')) syncTurnClockStarted(msg);
+                break;
+            case 'turn_clock_tick':
+                syncTurnClockTick(msg);
+                break;
+            case 'turn_finished':
+                if (isHostRef.current && msg.seat === 'peer') processTurnFinished(msg);
+                break;
+            case 'turn_progress':
+                if (msg.seat !== (isHostRef.current ? 'host' : 'peer')) playSound('stopwatch_stop');
+                turnElapsedBaseRef.current = Math.max(0, Number(msg.elapsed) || 0);
+                turnClockElapsedRef.current = turnElapsedBaseRef.current;
+                setTurnElapsed(turnElapsedBaseRef.current);
+                setTurnLastStop({ seat: msg.seat, elapsed: turnElapsedBaseRef.current });
+                turnAwaitingNextRef.current = true;
+                setTurnAwaitingNext(true);
+                setTurnNotice(msg.notice || 'الدور التالي بعد لحظات');
+                break;
+            case 'turn_round_result':
+                receiveTurnRoundResult(msg);
                 break;
             case 'hider_started':
                 playSound('stopwatch_start');
@@ -180,13 +306,18 @@ export default function GuessTimeGame({ setView }) {
     const handleSelectMode = (mode) => {
         playSound('click');
         setGameMode(mode);
-        setGameState(mode === 'target' ? 'picking-target' : 'picking-roles');
+        setGameState(mode === 'roles' ? 'picking-roles' : 'picking-target');
     };
 
     const handlePickTarget = (ms) => {
         playSound('click');
         playHaptic(15);
         setTargetMs(ms);
+        if (gameMode === 'turns') {
+            connRef.current?.send({ type: 'start_turn_mode', targetMs: ms });
+            enterTurnMode(ms);
+            return;
+        }
         connRef.current?.send({ type: 'start_target_mode', targetMs: ms });
         startCountdown();
     };
@@ -198,6 +329,314 @@ export default function GuessTimeGame({ setView }) {
         } else {
             playSound('lose');
         }
+    };
+
+    const enterTurnMode = (ms) => {
+        resetRound();
+        const safeTarget = Number.isFinite(ms) && ms > 0 ? ms : 5000;
+        turnTargetMsRef.current = safeTarget;
+        turnScoresRef.current = isHostRef.current
+            ? { host: scoresRef.current.me, peer: scoresRef.current.opp }
+            : { host: scoresRef.current.opp, peer: scoresRef.current.me };
+        setTargetMs(safeTarget);
+        setGameMode('turns');
+        setGameState('turn-rps');
+        playSound('ding');
+    };
+
+    const resetTurnRpsChoices = () => {
+        turnRpsChoiceRef.current = null;
+        turnOppRpsChoiceRef.current = null;
+        turnRpsResolvedRef.current = false;
+        setTurnRpsChoice(null);
+        setTurnOppRpsChoice(null);
+        setTurnRpsWinner(null);
+        playSound('click');
+    };
+
+    const handleTurnRpsChoice = (choice) => {
+        if (gameState !== 'turn-rps' || turnRpsChoiceRef.current) return;
+        turnRpsChoiceRef.current = choice;
+        setTurnRpsChoice(choice);
+        connRef.current?.send({ type: 'turn_rps_choice', seat: isHostRef.current ? 'host' : 'peer', choice });
+        playSound('tap');
+        playHaptic(20);
+        if (isHostRef.current && turnOppRpsChoiceRef.current) resolveTurnRps();
+    };
+
+    const receiveTurnRpsChoice = (msg) => {
+        const localSeat = isHostRef.current ? 'host' : 'peer';
+        if (msg.seat === localSeat || !['rock', 'paper', 'scissors'].includes(msg.choice)) return;
+        turnOppRpsChoiceRef.current = msg.choice;
+        setTurnOppRpsChoice(msg.choice);
+        if (isHostRef.current && turnRpsChoiceRef.current) resolveTurnRps();
+    };
+
+    const resolveTurnRps = () => {
+        if (!isHostRef.current || turnRpsResolvedRef.current || !turnRpsChoiceRef.current || !turnOppRpsChoiceRef.current) return;
+        turnRpsResolvedRef.current = true;
+        const hostChoice = turnRpsChoiceRef.current;
+        const peerChoice = turnOppRpsChoiceRef.current;
+        if (hostChoice === peerChoice) {
+            connRef.current?.send({ type: 'turn_rps_tie' });
+            resetTurnRpsChoices();
+            setTurnNotice('تعادل! العبوا حجر ورقة مقص مرة تانية.');
+            return;
+        }
+
+        const firstPlayer = RPS_BEATS[hostChoice] === peerChoice ? 'host' : 'peer';
+        setTurnRpsWinner(firstPlayer);
+        connRef.current?.send({ type: 'turn_rps_result', firstPlayer, hostChoice, peerChoice });
+        playSound('win');
+        beginTurnCountdown(firstPlayer);
+    };
+
+    const installTurnCountdown = (seat, turnId, delayMs = TURN_COUNTDOWN_MS, elapsedBase = turnElapsedBaseRef.current) => {
+        if (!['host', 'peer'].includes(seat) || !turnId) return;
+        if (turnClockIntervalRef.current) clearInterval(turnClockIntervalRef.current);
+        if (turnTimeoutRef.current) clearTimeout(turnTimeoutRef.current);
+        if (turnCountdownIntervalRef.current) clearInterval(turnCountdownIntervalRef.current);
+        turnClockIntervalRef.current = null;
+        turnTimeoutRef.current = null;
+        turnSettledRef.current = false;
+        turnAttemptHandledRef.current = false;
+        turnActiveSeatRef.current = seat;
+        turnIdRef.current = turnId;
+        turnClockRunningRef.current = false;
+        turnClockOwnerRef.current = null;
+        const safeElapsedBase = Math.max(0, Number(elapsedBase) || 0);
+        turnElapsedBaseRef.current = safeElapsedBase;
+        turnClockElapsedRef.current = safeElapsedBase;
+        turnClockSyncAtRef.current = 0;
+        setTurnActiveSeat(seat);
+        setTurnElapsed(safeElapsedBase);
+        setTurnClockRunning(false);
+        turnAwaitingNextRef.current = false;
+        setTurnAwaitingNext(false);
+        setTurnNotice('');
+
+        const deadline = Date.now() + Math.max(0, Number(delayMs) || 0);
+        const updateCountdown = () => {
+            const remaining = deadline - Date.now();
+            setTurnCountdown(Math.max(0, Math.ceil(remaining / 1000)));
+            if (remaining <= 0) {
+                clearInterval(turnCountdownIntervalRef.current);
+                turnCountdownIntervalRef.current = null;
+                setTurnCountdown(null);
+                setGameState('playing-turns');
+            }
+        };
+        setGameState('turn-countdown');
+        updateCountdown();
+        turnCountdownIntervalRef.current = setInterval(updateCountdown, 100);
+    };
+
+    const beginTurnCountdown = (seat) => {
+        if (!isHostRef.current) return;
+        if (turnIntermissionRef.current) clearTimeout(turnIntermissionRef.current);
+        const turnId = String(Date.now()) + '-' + Math.random().toString(36).slice(2, 7);
+        const message = {
+            type: 'turn_countdown',
+            seat,
+            turnId,
+            delayMs: TURN_COUNTDOWN_MS,
+            elapsedBase: turnElapsedBaseRef.current
+        };
+        installTurnCountdown(seat, turnId, message.delayMs, message.elapsedBase);
+        connRef.current?.send(message);
+    };
+
+    const syncTurnClockStarted = (msg) => {
+        const localSeat = isHostRef.current ? 'host' : 'peer';
+        if (msg.seat !== turnActiveSeatRef.current || msg.turnId !== turnIdRef.current || turnSettledRef.current) return;
+        if (turnClockIntervalRef.current) clearInterval(turnClockIntervalRef.current);
+        if (turnTimeoutRef.current) clearTimeout(turnTimeoutRef.current);
+        const elapsedBase = Math.max(0, Number(msg.elapsedBase ?? turnElapsedBaseRef.current) || 0);
+        turnElapsedBaseRef.current = elapsedBase;
+        turnClockOwnerRef.current = msg.seat;
+        turnClockRunningRef.current = true;
+        turnClockStartedAtRef.current = performance.now();
+        turnClockElapsedRef.current = elapsedBase;
+        turnClockSyncAtRef.current = performance.now();
+        turnLastTickAtRef.current = performance.now();
+        setTurnElapsed(elapsedBase);
+        setTurnClockRunning(true);
+        setTurnNotice('');
+        playSound('stopwatch_start');
+        playHaptic(20);
+
+        const updateClock = () => {
+            if (!turnClockRunningRef.current || turnIdRef.current !== msg.turnId) return;
+            const now = performance.now();
+            const isLocalOwner = msg.seat === localSeat;
+            const elapsedMs = Math.min(turnTargetMsRef.current, isLocalOwner
+                ? elapsedBase + now - turnClockStartedAtRef.current
+                : turnClockElapsedRef.current + Math.max(0, now - turnClockSyncAtRef.current));
+            setTurnElapsed(elapsedMs);
+
+            if (isLocalOwner) {
+                if (elapsedMs >= turnTargetMsRef.current) {
+                    completeTurnAttempt(msg.seat, msg.turnId, turnTargetMsRef.current, true);
+                    return;
+                }
+                if (now - turnLastTickAtRef.current >= 100) {
+                    turnLastTickAtRef.current = now;
+                    connRef.current?.send({ type: 'turn_clock_tick', seat: msg.seat, turnId: msg.turnId, elapsed: elapsedMs });
+                }
+            }
+        };
+        turnClockIntervalRef.current = setInterval(updateClock, 30);
+        if (msg.seat === localSeat) {
+            turnTimeoutRef.current = setTimeout(() => {
+                completeTurnAttempt(msg.seat, msg.turnId, turnTargetMsRef.current, true);
+            }, Math.max(0, turnTargetMsRef.current - elapsedBase));
+        }
+    };
+
+    const syncTurnClockTick = (msg) => {
+        const localSeat = isHostRef.current ? 'host' : 'peer';
+        if (msg.seat === localSeat || msg.turnId !== turnIdRef.current || msg.seat !== turnClockOwnerRef.current || !turnClockRunningRef.current) return;
+        turnClockElapsedRef.current = Math.min(turnTargetMsRef.current, Math.max(0, Number(msg.elapsed) || 0));
+        turnClockSyncAtRef.current = performance.now();
+    };
+
+    const startTurnClock = () => {
+        const localSeat = isHostRef.current ? 'host' : 'peer';
+        if (gameState !== 'playing-turns' || turnActiveSeatRef.current !== localSeat || turnClockRunningRef.current || turnAwaitingNextRef.current) return;
+        const message = {
+            type: 'turn_clock_started',
+            seat: localSeat,
+            turnId: turnIdRef.current,
+            elapsedBase: turnElapsedBaseRef.current
+        };
+        syncTurnClockStarted(message);
+        connRef.current?.send(message);
+    };
+
+    const completeTurnAttempt = (seat, turnId, elapsed, forcedLoss = false) => {
+        if (!turnClockRunningRef.current || turnId !== turnIdRef.current || seat !== turnClockOwnerRef.current) return;
+        const finalElapsed = forcedLoss
+            ? turnTargetMsRef.current
+            : Math.max(turnElapsedBaseRef.current, Number(elapsed) || 0);
+        const overLimit = forcedLoss || finalElapsed >= turnTargetMsRef.current;
+        turnClockRunningRef.current = false;
+        if (turnClockIntervalRef.current) clearInterval(turnClockIntervalRef.current);
+        if (turnTimeoutRef.current) clearTimeout(turnTimeoutRef.current);
+        turnClockIntervalRef.current = null;
+        turnTimeoutRef.current = null;
+        setTurnClockRunning(false);
+        turnAwaitingNextRef.current = !overLimit;
+        setTurnAwaitingNext(!overLimit);
+        setTurnElapsed(finalElapsed);
+        setTurnNotice(overLimit ? 'عدّيتوا الوقت المحدد؛ بنعلن النتيجة...' : 'وقفت قبل الحد؛ الدور التالي بعد لحظات');
+        playSound('stopwatch_stop');
+        playHaptic([30, 20, 50]);
+
+        const message = { type: 'turn_finished', seat, turnId, elapsed: finalElapsed, overLimit };
+        if (isHostRef.current) processTurnFinished(message);
+        else connRef.current?.send(message);
+    };
+
+    const stopTurnClock = () => {
+        const localSeat = isHostRef.current ? 'host' : 'peer';
+        if (gameState !== 'playing-turns' || !turnClockRunningRef.current || turnClockOwnerRef.current !== localSeat) return;
+        const elapsedMs = turnElapsedBaseRef.current + performance.now() - turnClockStartedAtRef.current;
+        completeTurnAttempt(localSeat, turnIdRef.current, elapsedMs, elapsedMs >= turnTargetMsRef.current);
+    };
+
+    const finishTurnRound = (winnerSeat, details = {}) => {
+        if (!isHostRef.current || turnSettledRef.current) return;
+        turnSettledRef.current = true;
+        clearTurnTimers();
+        const nextScores = { ...turnScoresRef.current };
+        if (winnerSeat === 'host' || winnerSeat === 'peer') nextScores[winnerSeat] += 1;
+        turnScoresRef.current = nextScores;
+        setScores(isHostRef.current
+            ? { me: nextScores.host, opp: nextScores.peer }
+            : { me: nextScores.peer, opp: nextScores.host });
+
+        const result = {
+            winnerSeat,
+            reason: details.reason || 'timeout',
+            elapsed: Math.max(0, Number(details.elapsed) || 0),
+            loserSeat: details.loserSeat || null,
+            targetMs: turnTargetMsRef.current,
+            hostScore: nextScores.host,
+            peerScore: nextScores.peer
+        };
+        setTurnRoundResult(result);
+        setTurnActiveSeat(null);
+        turnActiveSeatRef.current = null;
+        turnAwaitingNextRef.current = false;
+        setTurnAwaitingNext(false);
+        setGameState('result-turns');
+        connRef.current?.send({ type: 'turn_round_result', ...result });
+
+        const localSeat = isHostRef.current ? 'host' : 'peer';
+        if (details.loserSeat && details.loserSeat !== localSeat) playSound('stopwatch_stop');
+        if (winnerSeat === 'draw') {
+            playSound('ding');
+            triggerDrawEffects();
+        } else if (winnerSeat === localSeat) {
+            playSound('win');
+            triggerVictoryEffects();
+            if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100]);
+        } else {
+            playSound('lose');
+            triggerDefeatEffects();
+        }
+    };
+
+    const processTurnFinished = (msg) => {
+        if (!isHostRef.current || turnSettledRef.current || turnAttemptHandledRef.current || msg.turnId !== turnIdRef.current || msg.seat !== turnActiveSeatRef.current) return;
+        turnAttemptHandledRef.current = true;
+        clearTurnTimers();
+        setTurnClockRunning(false);
+        const elapsedMs = Math.min(turnTargetMsRef.current, Math.max(turnElapsedBaseRef.current, Number(msg.elapsed) || 0));
+        turnElapsedBaseRef.current = elapsedMs;
+        turnClockElapsedRef.current = elapsedMs;
+        setTurnElapsed(elapsedMs);
+
+        if (msg.overLimit || elapsedMs >= turnTargetMsRef.current) {
+            finishTurnRound(msg.seat === 'host' ? 'peer' : 'host', {
+                reason: 'timeout',
+                elapsed: elapsedMs,
+                loserSeat: msg.seat
+            });
+            return;
+        }
+
+        const nextSeat = msg.seat === 'host' ? 'peer' : 'host';
+        if (msg.seat !== 'host') playSound('stopwatch_stop');
+        const notice = 'تم إيقاف المؤقت؛ الدور التالي سيكمل من نفس الوقت';
+        setTurnLastStop({ seat: msg.seat, elapsed: elapsedMs });
+        turnAwaitingNextRef.current = true;
+        setTurnAwaitingNext(true);
+        setTurnNotice(notice);
+        connRef.current?.send({ type: 'turn_progress', seat: msg.seat, elapsed: elapsedMs, notice });
+        turnIntermissionRef.current = setTimeout(() => beginTurnCountdown(nextSeat), 1200);
+    };
+
+    const receiveTurnRoundResult = (msg) => {
+        clearTurnTimers();
+        turnElapsedBaseRef.current = Math.max(0, Number(msg.elapsed) || 0);
+        turnScoresRef.current = { host: msg.hostScore, peer: msg.peerScore };
+        setTurnRoundResult(msg);
+        setTurnActiveSeat(null);
+        turnActiveSeatRef.current = null;
+        setTurnClockRunning(false);
+        turnAwaitingNextRef.current = false;
+        setTurnAwaitingNext(false);
+        setTurnElapsed(turnElapsedBaseRef.current);
+        setScores(isHostRef.current
+            ? { me: msg.hostScore, opp: msg.peerScore }
+            : { me: msg.peerScore, opp: msg.hostScore });
+        setGameState('result-turns');
+        const localSeat = isHostRef.current ? 'host' : 'peer';
+        if (msg.loserSeat && msg.loserSeat !== localSeat) playSound('stopwatch_stop');
+        if (msg.winnerSeat === 'draw') triggerDrawEffects();
+        else if (msg.winnerSeat === localSeat) triggerVictoryEffects();
+        else triggerDefeatEffects();
     };
 
     const handlePickRole = (hostIsHider) => {
@@ -351,7 +790,7 @@ export default function GuessTimeGame({ setView }) {
 
     // Auto-restart after 5 seconds on result screens
     useEffect(() => {
-        if (isHostRef.current && (gameState === 'result-target' || gameState === 'result-roles')) {
+        if (isHostRef.current && (gameState === 'result-target' || gameState === 'result-roles' || gameState === 'result-turns')) {
             const timer = setTimeout(() => {
                 connRef.current?.send({ type: 'restart' });
                 doRestart();
@@ -360,8 +799,16 @@ export default function GuessTimeGame({ setView }) {
         }
     }, [gameState, doRestart]);
 
+    useEffect(() => () => {
+        clearHoldInterval();
+        clearTurnTimers();
+    }, []); // eslint-disable-line
 
-    const isMyTurn = gameState.startsWith('playing');
+
+    const localSeat = isHostRef.current ? 'host' : 'peer';
+    const isMyTurn = gameState === 'playing-turns' || gameState === 'playing-target' || gameState === 'playing-roles'
+        ? (gameState !== 'playing-turns' || turnActiveSeat === localSeat)
+        : gameState === 'turn-countdown' && turnActiveSeat === localSeat;
 
     return (
         <>
@@ -420,6 +867,14 @@ export default function GuessTimeGame({ setView }) {
                                     <span className="font-black text-lg">تحدي الأدوار</span>
                                     <span className="text-xs opacity-60 font-bold">واحد يشغل ويوقف الساعة، والتاني يخمن الوقت</span>
                                 </button>
+                                <button
+                                    onClick={() => handleSelectMode('turns')}
+                                    className="glass-card rounded-2xl p-5 flex flex-col items-center gap-2 hover:border-sky-400/50 hover:bg-white/5 transition-all"
+                                >
+                                    <Timer size={32} className="text-sky-400" />
+                                    <span className="font-black text-lg">تحدي الوقت بالتبادل</span>
+                                    <span className="text-xs opacity-60 font-bold">عداد مشترك؛ كل لاعب يكمل من وقت اللي قبله</span>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -429,7 +884,8 @@ export default function GuessTimeGame({ setView }) {
                 {gameState === 'picking-target' && (
                     <div className="flex-1 flex flex-col items-center justify-center animate-fade-in px-2">
                         <div className="glass-card rounded-3xl p-8 w-full max-w-sm text-center border border-emerald-400/30">
-                            <h2 className="text-2xl font-black mb-4">اختار الوقت المستهدف</h2>
+                            <h2 className="text-2xl font-black mb-2">{gameMode === 'turns' ? 'اختار حد الوقت المشترك' : 'اختار الوقت المستهدف'}</h2>
+                            {gameMode === 'turns' && <p className="text-sm opacity-60 font-bold mb-5">الوقت بيتجمع بين دوركم؛ اللي يعدّي الحد يخسر</p>}
                             <div className="grid grid-cols-3 gap-3 mb-6">
                                 {TARGET_TIMES.map(s => (
                                     <button
@@ -505,6 +961,77 @@ export default function GuessTimeGame({ setView }) {
                         <p className="opacity-60 font-bold">الهدف: <span className="text-white font-black">{targetMs / 1000} ثانية</span></p>
                         <div className="text-[120px] font-black leading-none text-emerald-400 animate-pop-in drop-shadow-[0_0_40px_rgba(52,211,153,0.5)]">
                             {countdown}
+                        </div>
+                    </div>
+                )}
+
+                {gameState === 'turn-rps' && (
+                    <div className="flex-1 flex flex-col items-center justify-center animate-fade-in gap-5 px-2">
+                        <div className="glass-card rounded-3xl p-6 w-full max-w-sm text-center border border-sky-400/20">
+                            <h2 className="text-2xl font-black mb-2">مين هيبدأ؟</h2>
+                            <p className="opacity-65 text-sm font-bold">الحد المشترك: {formatTime(targetMs)} — اختاروا حجر ورقة مقص</p>
+                            <div className="grid grid-cols-3 gap-3 mt-6">
+                                {TURN_RPS_OPTIONS.map(option => (
+                                    <button
+                                        key={option.id}
+                                        disabled={Boolean(turnRpsChoice)}
+                                        onClick={() => handleTurnRpsChoice(option.id)}
+                                        className={'glass-card rounded-2xl py-4 flex flex-col items-center gap-2 border transition-all disabled:opacity-60 ' + (turnRpsChoice === option.id ? 'border-amber-400 bg-amber-400/10' : 'border-white/10 hover:border-sky-400/50')}
+                                    >
+                                        <span className="text-3xl">{option.emoji}</span>
+                                        <span className="font-black">{option.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="mt-5 text-sm font-bold text-amber-300" aria-live="polite">
+                                {turnRpsWinner
+                                    ? (turnRpsWinner === localSeat ? 'أنت تبدأ!' : 'الخصم هيبدأ')
+                                    : turnRpsChoice ? 'اختيارك اتسجل — مستنيين اختيار الخصم...' : turnNotice || 'اختاروا في نفس الوقت'}
+                            </p>
+                            {turnOppRpsChoice && <p className="mt-1 text-xs opacity-60">اختيار الخصم اتسجل</p>}
+                        </div>
+                    </div>
+                )}
+
+                {gameState === 'turn-countdown' && (
+                    <div className="flex-1 flex flex-col items-center justify-center animate-fade-in gap-4">
+                        <p className="opacity-70 font-bold">{turnActiveSeat === localSeat ? 'دورك' : 'دور الخصم'} · الوقت المتراكم</p>
+                        <p className="text-4xl font-black text-sky-300 font-mono">{formatTime(turnElapsed)} <span className="text-xl opacity-50">/ {formatTime(targetMs)}</span></p>
+                        <div className="text-[100px] font-black leading-none text-amber-400 animate-pop-in">{turnCountdown ?? 3}</div>
+                        <p className="opacity-60 text-sm font-bold">استعدوا — المؤقت هيكمل من نفس الرقم</p>
+                    </div>
+                )}
+
+                {gameState === 'playing-turns' && (
+                    <div className="flex-1 flex flex-col items-center justify-center animate-fade-in gap-5 px-2">
+                        <div className="glass-card rounded-3xl p-6 w-full max-w-sm text-center border border-sky-400/20">
+                            <p className="text-sm font-bold opacity-65">
+                                {turnClockRunning
+                                    ? 'العداد شغال'
+                                    : turnAwaitingNext
+                                        ? 'تم حفظ الوقت — بننقل الدور'
+                                        : turnActiveSeat === localSeat
+                                            ? 'دورك — شغّل العداد لما تكون جاهز'
+                                            : 'دور الخصم — مستني يبدأ'}
+                            </p>
+                            <div className="my-4 font-mono text-6xl font-black tracking-wider text-sky-300 tabular-nums" aria-live="off">{formatTime(turnElapsed)}</div>
+                            <div className="h-3 rounded-full bg-white/10 overflow-hidden mb-3">
+                                <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-rose-400 transition-[width] duration-100" style={{ width: Math.min(100, (turnElapsed / targetMs) * 100) + '%' }} />
+                            </div>
+                            <p className="text-xs opacity-60 font-bold">الحد: {formatTime(targetMs)} · المتبقي: {formatTime(Math.max(0, targetMs - turnElapsed))}</p>
+                            <button
+                                onClick={turnClockRunning ? stopTurnClock : startTurnClock}
+                                disabled={turnAwaitingNext || turnActiveSeat !== localSeat || (turnClockRunning && turnClockOwnerRef.current !== localSeat)}
+                                className={'mt-6 w-full h-14 rounded-2xl font-black text-lg transition-all disabled:opacity-40 ' + (turnClockRunning ? 'bg-rose-500 text-white hover:bg-rose-400' : 'glow-button')}
+                            >
+                                {turnAwaitingNext
+                                    ? 'جاري نقل الدور...'
+                                    : turnClockRunning
+                                        ? (turnClockOwnerRef.current === localSeat ? 'أوقف وسلّم الدور' : 'العداد شغال عند الخصم')
+                                        : turnActiveSeat === localSeat ? 'ابدأ دورك' : 'في انتظار الخصم'}
+                            </button>
+                            {turnNotice && <p className="mt-4 text-sm font-bold text-amber-300" aria-live="polite">{turnNotice}</p>}
+                            {turnLastStop && <p className="mt-2 text-xs opacity-60">آخر توقف عند {formatTime(turnLastStop.elapsed)}</p>}
                         </div>
                     </div>
                 )}
@@ -730,6 +1257,22 @@ export default function GuessTimeGame({ setView }) {
                                 </>
                             );
                         })()}
+                        <button onClick={handleRestart} className="glow-button w-full max-w-sm h-14 rounded-2xl font-black flex items-center justify-center gap-2"><RotateCcw size={18} /> العبوا تاني</button>
+                    </div>
+                )}
+
+                {gameState === 'result-turns' && turnRoundResult && (
+                    <div className="flex-1 flex flex-col items-center justify-center animate-fade-in gap-5 px-2">
+                        <div className={'glass-card rounded-3xl p-6 w-full max-w-sm text-center border shadow-2xl animate-pop-in ' + (turnRoundResult.winnerSeat === localSeat ? 'border-emerald-400/50' : 'border-rose-400/50')}>
+                            <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-3 bg-white/10">
+                                <Trophy size={36} className={turnRoundResult.winnerSeat === localSeat ? 'text-yellow-400' : 'text-rose-400'} />
+                            </div>
+                            <h2 className={'text-3xl font-black ' + (turnRoundResult.winnerSeat === localSeat ? 'text-emerald-400' : 'text-rose-400')}>
+                                {turnRoundResult.winnerSeat === localSeat ? 'كسبت!' : 'خسرت!'}
+                            </h2>
+                            <p className="opacity-70 text-sm mt-2 font-bold">{turnRoundResult.loserSeat === localSeat ? 'عدّيت حد الوقت المشترك' : 'الخصم عدّى حد الوقت المشترك'}</p>
+                            <p className="mt-4 text-3xl font-black font-mono text-sky-300">{formatTime(turnRoundResult.elapsed)} <span className="text-base opacity-50">/ {formatTime(turnRoundResult.targetMs)}</span></p>
+                        </div>
                         <button onClick={handleRestart} className="glow-button w-full max-w-sm h-14 rounded-2xl font-black flex items-center justify-center gap-2"><RotateCcw size={18} /> العبوا تاني</button>
                     </div>
                 )}

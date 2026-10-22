@@ -8,6 +8,9 @@ export default class TimeAI {
         this.gameMode = 'target';
         this.myRole = 'guesser';
         this.targetMs = 5000;
+        this.turnMode = false;
+        this.turnElapsedBase = 0;
+        this.turnRpsChoice = null;
 
         setTimeout(() => {
             this.conn._sendToPlayer({
@@ -25,6 +28,64 @@ export default class TimeAI {
     _clearTimers() {
         this.timers.forEach(t => clearTimeout(t));
         this.timers = [];
+        (this.intervals || []).forEach(t => clearInterval(t));
+        this.intervals = [];
+    }
+
+    _addInterval(timer) {
+        if (!this.intervals) this.intervals = [];
+        this.intervals.push(timer);
+        return timer;
+    }
+
+    _chooseTurnRps() {
+        if (this.turnRpsChoice) return;
+        const choices = ['rock', 'paper', 'scissors'];
+        this.turnRpsChoice = choices[Math.floor(Math.random() * choices.length)];
+        this.conn._sendToPlayer({ type: 'turn_rps_choice', seat: 'peer', choice: this.turnRpsChoice });
+    }
+
+    _startAiTurn(msg) {
+        if (!this.turnMode || msg.seat !== 'peer') return;
+        this._clearTimers();
+        const turnId = msg.turnId;
+        const base = Math.max(0, Number(msg.elapsedBase) || this.turnElapsedBase || 0);
+        const target = Math.max(1, Number(this.targetMs) || 5000);
+        const remaining = Math.max(0, target - base);
+        const willLose = remaining <= 120 || Math.random() < 0.16;
+        const safeDuration = Math.max(60, Math.min(remaining - 120, 450 + Math.random() * 1000));
+        const duration = willLose ? remaining : safeDuration;
+
+        this.turnElapsedBase = base;
+        this._addTimer(setTimeout(() => {
+            const startedAt = performance.now();
+            this.conn._sendToPlayer({
+                type: 'turn_clock_started',
+                seat: 'peer',
+                turnId,
+                elapsedBase: base
+            });
+
+            const stop = () => {
+                const elapsed = base + performance.now() - startedAt;
+                const overLimit = willLose || elapsed >= target;
+                this._clearTimers();
+                this.turnElapsedBase = overLimit ? target : elapsed;
+                this.conn._sendToPlayer({
+                    type: 'turn_finished',
+                    seat: 'peer',
+                    turnId,
+                    elapsed: overLimit ? target : elapsed,
+                    overLimit
+                });
+            };
+
+            this._addInterval(setInterval(() => {
+                const elapsed = base + performance.now() - startedAt;
+                this.conn._sendToPlayer({ type: 'turn_clock_tick', seat: 'peer', turnId, elapsed });
+                if (elapsed >= duration) stop();
+            }, 80));
+        }, Math.max(0, Number(msg.delayMs) || 0) + 250));
     }
 
     onMessage(msg) {
@@ -42,8 +103,11 @@ export default class TimeAI {
                 const variance = (Math.random() - 0.48) * Math.min(500, Math.max(80, this.targetMs * 0.06));
                 const aiElapsed = Math.max(200, Math.round(this.targetMs + variance));
 
-                // Send result around the time the AI would have released the button
-                // 3000ms countdown + aiElapsed
+                // Start and stop notifications keep the player's audio feedback
+                // in sync with the AI's simulated attempt.
+                this._addTimer(setTimeout(() => {
+                    this.conn._sendToPlayer({ type: 'opp_started' });
+                }, 3000));
                 this._addTimer(setTimeout(() => {
                     this.conn._sendToPlayer({
                         type: 'opp_result',
@@ -65,12 +129,52 @@ export default class TimeAI {
                     // AI waits 800ms, then starts "hiding" a time between 3.0s and 7.5s.
                     const secretDuration = Math.round(3000 + Math.random() * 4500);
                     this._addTimer(setTimeout(() => {
-                        this.conn._sendToPlayer({
-                            type: 'hider_done',
-                            elapsed: secretDuration
-                        });
-                    }, 800 + secretDuration));
+                        this.conn._sendToPlayer({ type: 'hider_started' });
+                        this._addTimer(setTimeout(() => {
+                            this.conn._sendToPlayer({
+                                type: 'hider_done',
+                                elapsed: secretDuration
+                            });
+                        }, secretDuration));
+                    }, 800));
                 }
+                break;
+            }
+
+            case 'start_turn_mode': {
+                this._clearTimers();
+                this.gameMode = 'turns';
+                this.turnMode = true;
+                this.targetMs = Math.max(1, Number(msg.targetMs) || 5000);
+                this.turnElapsedBase = 0;
+                this.turnRpsChoice = null;
+                this._addTimer(setTimeout(() => this._chooseTurnRps(), 450 + Math.random() * 550));
+                break;
+            }
+
+            case 'turn_rps_choice': {
+                if (this.turnMode && msg.seat === 'host' && !this.turnRpsChoice) {
+                    this._addTimer(setTimeout(() => this._chooseTurnRps(), 250 + Math.random() * 400));
+                }
+                break;
+            }
+
+            case 'turn_rps_tie': {
+                if (this.turnMode) {
+                    this.turnRpsChoice = null;
+                    this._addTimer(setTimeout(() => this._chooseTurnRps(), 350 + Math.random() * 450));
+                }
+                break;
+            }
+
+            case 'turn_countdown': {
+                if (this.turnMode && msg.seat === 'peer') this._startAiTurn(msg);
+                else if (this.turnMode) this.turnElapsedBase = Math.max(0, Number(msg.elapsedBase) || this.turnElapsedBase);
+                break;
+            }
+
+            case 'turn_progress': {
+                if (this.turnMode) this.turnElapsedBase = Math.max(0, Number(msg.elapsed) || 0);
                 break;
             }
 
@@ -95,6 +199,8 @@ export default class TimeAI {
 
             case 'restart': {
                 this._clearTimers();
+                this.turnMode = false;
+                this.turnRpsChoice = null;
                 break;
             }
 
