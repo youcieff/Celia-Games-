@@ -459,6 +459,7 @@ export default function GuessTimeGame({ setView }) {
         turnClockElapsedRef.current = elapsedBase;
         turnClockSyncAtRef.current = performance.now();
         turnLastTickAtRef.current = performance.now();
+        setTurnLastStop(null);
         setTurnElapsed(elapsedBase);
         setTurnClockRunning(true);
         setTurnNotice('');
@@ -528,6 +529,7 @@ export default function GuessTimeGame({ setView }) {
         turnAwaitingNextRef.current = !overLimit;
         setTurnAwaitingNext(!overLimit);
         setTurnElapsed(finalElapsed);
+        if (!overLimit) setTurnLastStop({ seat, elapsed: finalElapsed });
         setTurnNotice(overLimit ? 'عدّيتوا الوقت المحدد؛ بنعلن النتيجة...' : 'وقفت قبل الحد؛ الدور التالي بعد لحظات');
         playSound('stopwatch_stop');
         playHaptic([30, 20, 50]);
@@ -565,6 +567,7 @@ export default function GuessTimeGame({ setView }) {
             peerScore: nextScores.peer
         };
         setTurnRoundResult(result);
+        setTurnLastStop(null);
         setTurnActiveSeat(null);
         turnActiveSeatRef.current = null;
         turnAwaitingNextRef.current = false;
@@ -622,6 +625,7 @@ export default function GuessTimeGame({ setView }) {
         turnElapsedBaseRef.current = Math.max(0, Number(msg.elapsed) || 0);
         turnScoresRef.current = { host: msg.hostScore, peer: msg.peerScore };
         setTurnRoundResult(msg);
+        setTurnLastStop(null);
         setTurnActiveSeat(null);
         turnActiveSeatRef.current = null;
         setTurnClockRunning(false);
@@ -995,30 +999,41 @@ export default function GuessTimeGame({ setView }) {
 
                 {gameState === 'turn-countdown' && (
                     <div className="flex-1 flex flex-col items-center justify-center animate-fade-in gap-4">
-                        <p className="opacity-70 font-bold">{turnActiveSeat === localSeat ? 'دورك' : 'دور الخصم'} · الوقت المتراكم</p>
-                        <p className="text-4xl font-black text-sky-300 font-mono">{formatTime(turnElapsed)} <span className="text-xl opacity-50">/ {formatTime(targetMs)}</span></p>
+                        <p className="opacity-70 font-bold">{turnActiveSeat === localSeat ? 'دورك' : 'دور الخصم'} · الحد {formatTime(targetMs)}</p>
+                        {turnLastStop && (
+                            <div className="rounded-2xl border border-emerald-400/60 bg-emerald-400/10 px-6 py-3 text-center shadow-[0_0_32px_rgba(16,185,129,0.3)]">
+                                <p className="text-2xl font-black tracking-widest text-emerald-300">SAFE</p>
+                                <p className="text-xs font-bold text-emerald-100/80">اتوقفت قبل الحد</p>
+                            </div>
+                        )}
                         <div className="text-[100px] font-black leading-none text-amber-400 animate-pop-in">{turnCountdown ?? 3}</div>
-                        <p className="opacity-60 text-sm font-bold">استعدوا — المؤقت هيكمل من نفس الرقم</p>
+                        <p className="opacity-60 text-sm font-bold">استعدوا — العداد المشترك مستمر من حيث توقف</p>
                     </div>
                 )}
 
                 {gameState === 'playing-turns' && (
                     <div className="flex-1 flex flex-col items-center justify-center animate-fade-in gap-5 px-2">
-                        <div className="glass-card rounded-3xl p-6 w-full max-w-sm text-center border border-sky-400/20">
+                        <div className={'glass-card rounded-3xl p-6 w-full max-w-sm text-center border transition-all ' + (turnLastStop && !turnClockRunning ? 'border-emerald-400/60 shadow-[0_0_36px_rgba(16,185,129,0.28)]' : 'border-sky-400/20')}>
                             <p className="text-sm font-bold opacity-65">
                                 {turnClockRunning
-                                    ? 'العداد شغال'
+                                    ? 'العداد شغال — الوقت مخفي'
                                     : turnAwaitingNext
                                         ? 'تم حفظ الوقت — بننقل الدور'
                                         : turnActiveSeat === localSeat
                                             ? 'دورك — شغّل العداد لما تكون جاهز'
                                             : 'دور الخصم — مستني يبدأ'}
                             </p>
-                            <div className="my-4 font-mono text-6xl font-black tracking-wider text-sky-300 tabular-nums" aria-live="off">{formatTime(turnElapsed)}</div>
-                            <div className="h-3 rounded-full bg-white/10 overflow-hidden mb-3">
-                                <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-rose-400 transition-[width] duration-100" style={{ width: Math.min(100, (turnElapsed / targetMs) * 100) + '%' }} />
-                            </div>
-                            <p className="text-xs opacity-60 font-bold">الحد: {formatTime(targetMs)} · المتبقي: {formatTime(Math.max(0, targetMs - turnElapsed))}</p>
+                            {turnLastStop && !turnClockRunning ? (
+                                <div className="my-5 rounded-2xl border border-emerald-400/60 bg-emerald-400/10 py-4 shadow-[0_0_32px_rgba(16,185,129,0.3)] animate-fade-in">
+                                    <p className="text-5xl font-black tracking-[0.18em] text-emerald-300 drop-shadow-[0_0_18px_rgba(52,211,153,0.75)]">SAFE</p>
+                                    <p className="mt-2 text-sm font-bold text-emerald-100/80">وقفت قبل الحد — الوقت محفوظ</p>
+                                </div>
+                            ) : (
+                                <div className={'my-5 mx-auto w-24 h-24 rounded-full flex items-center justify-center border bg-white/[0.03] ' + (turnClockRunning ? 'border-amber-300/50 text-amber-300 animate-pulse shadow-[0_0_28px_rgba(252,211,77,0.18)]' : 'border-sky-300/20 text-sky-300/70')}>
+                                    <Timer size={48} strokeWidth={1.8} />
+                                </div>
+                            )}
+                            <p className="text-xs opacity-60 font-bold">حد الجولة: {formatTime(targetMs)}</p>
                             <button
                                 onClick={turnClockRunning ? stopTurnClock : startTurnClock}
                                 disabled={turnAwaitingNext || turnActiveSeat !== localSeat || (turnClockRunning && turnClockOwnerRef.current !== localSeat)}
@@ -1030,8 +1045,7 @@ export default function GuessTimeGame({ setView }) {
                                         ? (turnClockOwnerRef.current === localSeat ? 'أوقف وسلّم الدور' : 'العداد شغال عند الخصم')
                                         : turnActiveSeat === localSeat ? 'ابدأ دورك' : 'في انتظار الخصم'}
                             </button>
-                            {turnNotice && <p className="mt-4 text-sm font-bold text-amber-300" aria-live="polite">{turnNotice}</p>}
-                            {turnLastStop && <p className="mt-2 text-xs opacity-60">آخر توقف عند {formatTime(turnLastStop.elapsed)}</p>}
+                            {turnNotice && !turnLastStop && <p className="mt-4 text-sm font-bold text-amber-300" aria-live="polite">{turnNotice}</p>}
                         </div>
                     </div>
                 )}
@@ -1271,7 +1285,7 @@ export default function GuessTimeGame({ setView }) {
                                 {turnRoundResult.winnerSeat === localSeat ? 'كسبت!' : 'خسرت!'}
                             </h2>
                             <p className="opacity-70 text-sm mt-2 font-bold">{turnRoundResult.loserSeat === localSeat ? 'عدّيت حد الوقت المشترك' : 'الخصم عدّى حد الوقت المشترك'}</p>
-                            <p className="mt-4 text-3xl font-black font-mono text-sky-300">{formatTime(turnRoundResult.elapsed)} <span className="text-base opacity-50">/ {formatTime(turnRoundResult.targetMs)}</span></p>
+                            <p className="mt-4 text-sm font-bold opacity-70">الحد المشترك: {formatTime(turnRoundResult.targetMs)}</p>
                         </div>
                         <button onClick={handleRestart} className="glow-button w-full max-w-sm h-14 rounded-2xl font-black flex items-center justify-center gap-2"><RotateCcw size={18} /> العبوا تاني</button>
                     </div>
