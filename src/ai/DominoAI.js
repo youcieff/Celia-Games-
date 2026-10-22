@@ -7,6 +7,7 @@ export default class DominoAI {
         this.hand = [];
         this.boneyardCount = 14;
         this.boardChain = [];
+        this.openingTileId = null;
         this.isMyTurn = false;
         this.thinkTimer = null;
 
@@ -24,6 +25,7 @@ export default class DominoAI {
                 this.conn._sendToPlayer({ type: 'dominoes_ack' });
                 this.hand = [...(msg.peerHand || [])];
                 this.boardChain = [];
+                this.openingTileId = msg.openingTileId ?? msg.openingTile?.id ?? null;
                 this.boneyardCount = msg.boneyardCount !== undefined ? msg.boneyardCount : 14;
                 this.isMyTurn = msg.startTurn === 'peer';
                 if (this.isMyTurn) this._scheduleMove();
@@ -44,12 +46,12 @@ export default class DominoAI {
                     // Check if AI can make a move now, or needs to draw again
                     const playable = this._playableTiles();
                     if (playable.length > 0) {
-                        this._scheduleMove(700);
+                        this._scheduleMove(350);
                     } else if (this.boneyardCount > 0) {
                         // Keep drawing after a realistic short delay
                         this.thinkTimer = setTimeout(() => {
                             this.conn._sendToPlayer({ type: 'draw_request' });
-                        }, 600);
+                        }, 400);
                     } else {
                         // Empty boneyard and no moves -> must pass
                         this.thinkTimer = setTimeout(() => {
@@ -59,7 +61,7 @@ export default class DominoAI {
                                 oppTiles: this.hand,
                                 remainingTilesSum: this.hand.reduce((acc, t) => acc + t.sum, 0)
                             });
-                        }, 700);
+                        }, 450);
                     }
                 } else {
                     this.boneyardCount = 0;
@@ -103,7 +105,9 @@ export default class DominoAI {
     }
 
     _canPlay(tile) {
-        if (this.boardChain.length === 0) return true;
+        if (this.boardChain.length === 0) {
+            return !this.openingTileId || tile.id === this.openingTileId;
+        }
         const { left, right } = this._getChainEnds();
         return tile.top === left || tile.bottom === left || tile.top === right || tile.bottom === right;
     }
@@ -114,7 +118,7 @@ export default class DominoAI {
 
     _scheduleMove(customDelay) {
         if (this.thinkTimer) clearTimeout(this.thinkTimer);
-        const delay = customDelay !== undefined ? customDelay : (900 + Math.random() * 1200);
+        const delay = customDelay !== undefined ? customDelay : (420 + Math.random() * 380);
         this.thinkTimer = setTimeout(() => this._makeMove(), delay);
     }
 
@@ -139,35 +143,38 @@ export default class DominoAI {
             return;
         }
 
-        // Pick best tile: prefer doubles, then highest pip sum
-        const tile = playable.reduce((best, t) => {
-            if (t.isDouble && !best.isDouble) return t;
-            if (!t.isDouble && best.isDouble) return best;
-            return t.sum > best.sum ? t : best;
-        });
-
+        // Score each legal placement by points shed, doubles cleared, and
+        // how many follow-up plays the remaining hand can make on both ends.
         const { left, right } = this._getChainEnds();
-        const newHand = this.hand.filter(t => t.id !== tile.id);
-        this.hand = newHand;
+        const candidates = [];
+        for (const tile of playable) {
+            const newHand = this.hand.filter(t => t.id !== tile.id);
+            const placements = this.boardChain.length === 0
+                ? [{ side: 'right', nodeLeft: tile.top, nodeRight: tile.bottom }]
+                : [
+                    ...(tile.top === left || tile.bottom === left
+                        ? [{ side: 'left', nodeLeft: tile.top === left ? tile.bottom : tile.top, nodeRight: left }]
+                        : []),
+                    ...(tile.top === right || tile.bottom === right
+                        ? [{ side: 'right', nodeLeft: right, nodeRight: tile.top === right ? tile.bottom : tile.top }]
+                        : [])
+                ];
 
-        let side, nodeLeft, nodeRight;
-
-        if (this.boardChain.length === 0) {
-            side = 'right';
-            nodeLeft = tile.top;
-            nodeRight = tile.bottom;
-        } else {
-            const canLeft = tile.top === left || tile.bottom === left;
-            if (canLeft) {
-                side = 'left';
-                nodeLeft = tile.top === left ? tile.bottom : tile.top;
-                nodeRight = left;
-            } else {
-                side = 'right';
-                nodeLeft = right;
-                nodeRight = tile.top === right ? tile.bottom : tile.top;
+            for (const placement of placements) {
+                const followUps = newHand.reduce((count, handTile) => (
+                    count + Number(handTile.top === placement.nodeLeft || handTile.bottom === placement.nodeLeft)
+                    + Number(handTile.top === placement.nodeRight || handTile.bottom === placement.nodeRight)
+                ), 0);
+                const score = tile.sum * 1.35 + (tile.isDouble ? 2.5 : 0) + followUps * 2.2;
+                candidates.push({ tile, newHand, score, ...placement });
             }
         }
+
+        const move = candidates.sort((a, b) => b.score - a.score)[0];
+        if (!move) return;
+        const { tile, newHand, side, nodeLeft, nodeRight } = move;
+        this.hand = newHand;
+        if (this.boardChain.length === 0) this.openingTileId = null;
 
         const newChainNode = {
             id: tile.id,

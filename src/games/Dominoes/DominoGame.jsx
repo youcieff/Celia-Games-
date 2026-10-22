@@ -37,6 +37,15 @@ function shuffle(arr) {
     return copy;
 }
 
+function chooseOpeningTile(hostHand, peerHand) {
+    const allHandTiles = [...hostHand, ...peerHand];
+    return allHandTiles
+        .filter(tile => tile.isDouble)
+        .sort((a, b) => b.top - a.top)[0]
+        || allHandTiles.sort((a, b) => b.sum - a.sum || b.top - a.top)[0]
+        || null;
+}
+
 // Authentic Domino Pips calculator for a 28x28 square half-face
 function getPipOffsets(count, isVertical) {
     const D = 7;
@@ -273,7 +282,7 @@ function calculateSerpentineLayout(boardChain, rootId) {
 }
 
 // ── Standalone Hand Domino Tile View ─────────────────────────────────────────
-function HandDominoTile({ tile, isSelected, isPlayable, onClick, disabled }) {
+function HandDominoTile({ tile, isSelected, isPlayable, isOpeningTile = false, onClick, disabled }) {
     if (!tile) return null;
     const { top, bottom } = tile;
     const topPips = getPipOffsets(top, true);
@@ -284,46 +293,56 @@ function HandDominoTile({ tile, isSelected, isPlayable, onClick, disabled }) {
             type="button"
             onClick={!disabled && onClick ? onClick : undefined}
             disabled={disabled}
-            className={`shrink-0 rounded-xl transition-all duration-200 relative select-none
-                ${isSelected ? 'ring-2 ring-amber-400 -translate-y-3 scale-105 shadow-[0_10px_25px_rgba(245,158,11,0.5)] z-10' : ''}
-                ${isPlayable && !disabled && !isSelected ? 'ring-2 ring-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.5)] -translate-y-1.5 hover:scale-105' : ''}
+            className={`relative shrink-0 select-none rounded-xl transition-all duration-150
+                ${isSelected ? 'z-10 -translate-y-2.5 scale-105 ring-2 ring-amber-300 shadow-[0_8px_18px_rgba(245,158,11,0.24)]' : ''}
+                ${isPlayable && !disabled && !isSelected ? 'ring-2 ring-emerald-300/80 shadow-[0_6px_16px_rgba(16,185,129,0.2)] -translate-y-1 hover:scale-[1.03]' : ''}
                 ${disabled ? 'opacity-35 grayscale cursor-not-allowed' : onClick ? 'cursor-pointer' : 'cursor-default'}`}
-            style={{ width: '36px', height: '68px' }}
+            style={{ width: 'clamp(40px, 9vw, 52px)', height: 'clamp(74px, 17vw, 94px)' }}
         >
-            <svg viewBox="0 0 36 68" className="w-full h-full block filter drop-shadow-md">
+            <svg viewBox="0 0 44 80" className="block h-full w-full drop-shadow-[0_4px_5px_rgba(0,0,0,0.38)]">
                 <defs>
                     <linearGradient id={`ivory-h-${tile.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#ffffff" />
-                        <stop offset="50%" stopColor="#fbf9f4" />
-                        <stop offset="100%" stopColor="#ebe4d4" />
+                        <stop offset="0%" stopColor="#fffef9" />
+                        <stop offset="52%" stopColor="#f5f0e5" />
+                        <stop offset="100%" stopColor="#ded3bd" />
+                    </linearGradient>
+                    <linearGradient id={`rim-h-${tile.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#fffef7" stopOpacity=".95" />
+                        <stop offset="100%" stopColor="#b5a78b" stopOpacity=".85" />
                     </linearGradient>
                 </defs>
 
-                <rect x="1" y="1" width="34" height="66" rx="5" fill={`url(#ivory-h-${tile.id})`} stroke="#d6cfc0" strokeWidth="1" />
-                <rect x="2.5" y="2.5" width="31" height="63" rx="4" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="0.8" />
+                <rect x="1" y="1" width="42" height="78" rx="7" fill={`url(#ivory-h-${tile.id})`} stroke="#ab9b7e" strokeWidth="1.2" />
+                <rect x="2.5" y="2.5" width="39" height="75" rx="5.5" fill="none" stroke={`url(#rim-h-${tile.id})`} strokeWidth="1" />
+                <path d="M7 4.5 H37" stroke="#fff" strokeOpacity=".7" strokeWidth="1" strokeLinecap="round" />
 
-                <line x1="4" y1="34" x2="32" y2="34" stroke="#9ca3af" strokeWidth="1.2" strokeLinecap="round" />
-                <circle cx="18" cy="34" r="2.2" fill="#ca8a04" stroke="#854d0e" strokeWidth="0.6" />
-                <circle cx="17.4" cy="33.4" r="0.7" fill="#fef08a" />
+                <line x1="5" y1="40" x2="39" y2="40" stroke="#a89a80" strokeWidth="1.2" strokeLinecap="round" />
+                <circle cx="22" cy="40" r="2.3" fill="#b38b45" stroke="#795c2e" strokeWidth="0.6" />
+                <circle cx="21.4" cy="39.4" r="0.7" fill="#fff0b6" />
 
-                <g transform="translate(18, 17)">
+                <g transform="translate(22, 20)">
                     {topPips.map(([dx, dy], i) => (
                         <g key={i}>
-                            <circle cx={dx} cy={dy} r="2.5" fill="#111827" />
-                            <circle cx={dx - 0.5} cy={dy - 0.5} r="0.8" fill="#4b5563" opacity="0.6" />
+                            <circle cx={dx} cy={dy} r="2.65" fill="#17231d" />
+                            <circle cx={dx - 0.55} cy={dy - 0.55} r="0.8" fill="#708071" opacity="0.55" />
                         </g>
                     ))}
                 </g>
 
-                <g transform="translate(18, 51)">
+                <g transform="translate(22, 60)">
                     {botPips.map(([dx, dy], i) => (
                         <g key={i}>
-                            <circle cx={dx} cy={dy} r="2.5" fill="#111827" />
-                            <circle cx={dx - 0.5} cy={dy - 0.5} r="0.8" fill="#4b5563" opacity="0.6" />
+                            <circle cx={dx} cy={dy} r="2.65" fill="#17231d" />
+                            <circle cx={dx - 0.55} cy={dy - 0.55} r="0.8" fill="#708071" opacity="0.55" />
                         </g>
                     ))}
                 </g>
             </svg>
+            {isOpeningTile && (
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-amber-200/60 bg-amber-300 px-1.5 py-0.5 text-[8px] font-black leading-none text-stone-950 shadow-md">
+                    البداية
+                </span>
+            )}
         </button>
     );
 }
@@ -348,6 +367,8 @@ export default function DominoGame({ setView }) {
     const [boneyard, setBoneyard] = useState([]);
     const [boardChain, setBoardChain] = useState([]);
     const [currentTurn, setCurrentTurn] = useState('host');
+    const [openingTileInfo, setOpeningTileInfo] = useState(null);
+    const [openingStarter, setOpeningStarter] = useState(null);
     const [selectedTile, setSelectedTile] = useState(null);
 
     // Round / Match Results
@@ -358,6 +379,8 @@ export default function DominoGame({ setView }) {
 
     const rootTileIdRef = useRef(null);
     const consecutivePassesRef = useRef(0);
+    const blockedResolutionRef = useRef(false);
+    const roundEndedRef = useRef(false);
     const myHandRef = useRef([]);
     myHandRef.current = myHand;
     const peerHandRef = useRef([]);
@@ -367,6 +390,8 @@ export default function DominoGame({ setView }) {
     const lastRoundWinnerRef = useRef(null); // 'host' | 'peer' | null — winner goes first next round
 
     const isMyTurn = (isHostRef.current && currentTurn === 'host') || (!isHostRef.current && currentTurn === 'peer');
+    const localSeat = isHostRef.current ? 'host' : 'peer';
+    const openingStarterLabel = openingStarter === localSeat ? 'أنت' : (oppProfile?.nickname || 'الخصم');
 
     const saveGameState = () => {
         if (!isHostRef.current || !connRef.current) return;
@@ -392,13 +417,13 @@ export default function DominoGame({ setView }) {
     }, [boardChain]);
 
     const canPlayTile = useCallback((tile) => {
-        if (boardChain.length === 0) return true;
+        if (boardChain.length === 0) return !openingTileInfo?.id || tile.id === openingTileInfo.id;
         const { left, right } = getChainEnds();
         return (
             tile.top === left || tile.bottom === left ||
             tile.top === right || tile.bottom === right
         );
-    }, [boardChain, getChainEnds]);
+    }, [boardChain, getChainEnds, openingTileInfo]);
 
     const hasAnyValidMove = useCallback(() => {
         return myHand.some(t => canPlayTile(t));
@@ -406,7 +431,7 @@ export default function DominoGame({ setView }) {
 
     // Auto-pass: when it's my turn, I have no valid moves, and boneyard is empty → pass automatically
     useEffect(() => {
-        if (gameState !== 'playing') return;
+        if (gameState !== 'playing' || blockedResolutionRef.current || roundEndedRef.current) return;
         if (!isMyTurn) return;
         if (boneyard.length > 0) return; // still can draw
         if (myHand.some(t => canPlayTile(t))) return; // still can play
@@ -414,22 +439,24 @@ export default function DominoGame({ setView }) {
 
         // Short delay so UI shows "your turn" then auto-passes
         const timer = setTimeout(() => {
+            if (blockedResolutionRef.current || roundEndedRef.current) return;
             playSound('tick');
             consecutivePassesRef.current += 1;
+            if (consecutivePassesRef.current >= 2) blockedResolutionRef.current = true;
             connRef.current?.send({
                 type: 'pass_turn',
                 oppTiles: myHandRef.current,
                 remainingTilesSum: myHandRef.current.reduce((acc, t) => acc + t.sum, 0)
             });
             if (consecutivePassesRef.current >= 2) {
-                handleBlockedGame([]);
+                if (isHostRef.current) handleBlockedGame(peerHandRef.current);
             } else {
                 setCurrentTurn(isHostRef.current ? 'peer' : 'host');
             }
         }, 800);
         return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isMyTurn, boneyard.length, myHand, gameState]);
+    }, [isMyTurn, boneyard.length, myHand, gameState, boardChain, openingTileInfo, canPlayTile]);
 
     const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
@@ -461,37 +488,31 @@ export default function DominoGame({ setView }) {
         const peerHand = deck.slice(7, 14);
         const bank = deck.slice(14);
 
-        // ── Determine who goes first ──
-        // Round 1: highest double goes first. Subsequent rounds: winner of last round goes first.
-        let startTurn = 'host';
-
-        if (lastRoundWinnerRef.current !== null) {
-            // Winner of previous round starts
-            startTurn = lastRoundWinnerRef.current;
-        } else {
-            // First round: highest double determines starter
-            let highestDoubleHost = -1;
-            let highestDoublePeer = -1;
-            hostHand.forEach(t => { if (t.isDouble && t.top > highestDoubleHost) highestDoubleHost = t.top; });
-            peerHand.forEach(t => { if (t.isDouble && t.top > highestDoublePeer) highestDoublePeer = t.top; });
-
-            if (highestDoublePeer > highestDoubleHost) {
-                startTurn = 'peer';
-            } else if (highestDoubleHost === -1 && highestDoublePeer === -1) {
-                const maxSumH = Math.max(...hostHand.map(t => t.sum));
-                const maxSumP = Math.max(...peerHand.map(t => t.sum));
-                if (maxSumP > maxSumH) startTurn = 'peer';
-            }
-        }
+        // First round opens with the highest double (6-6 down to 0-0),
+        // and that exact tile must be played. If neither hand has a double,
+        // the highest-value tile opens. Later rounds start with the last winner.
+        const isOpeningRound = roundNumRef.current === 1
+            && myMatchScoreRef.current === 0
+            && oppMatchScoreRef.current === 0;
+        const openingTile = isOpeningRound
+            ? chooseOpeningTile(hostHand, peerHand)
+            : null;
+        const startTurn = isOpeningRound
+            ? (openingTile && peerHand.some(tile => tile.id === openingTile.id) ? 'peer' : 'host')
+            : (lastRoundWinnerRef.current || 'host');
 
         rootTileIdRef.current = null;
         consecutivePassesRef.current = 0;
+        blockedResolutionRef.current = false;
+        roundEndedRef.current = false;
         peerHandRef.current = peerHand;
         setMyHand(hostHand);
         setOppHandCount(7);
         setBoneyard(bank);
         setBoardChain([]);
         setCurrentTurn(startTurn);
+        setOpeningTileInfo(openingTile);
+        setOpeningStarter(startTurn);
         setSelectedTile(null);
         setRoundOverReason(null);
         setRoundWinner(null);
@@ -507,6 +528,8 @@ export default function DominoGame({ setView }) {
                 hostHandCount: 7,
                 boneyardCount: bank.length,
                 startTurn: startTurn,
+                openingTileId: openingTile?.id ?? null,
+                openingTile,
                 roundNum: roundNumRef.current,
                 hostScore: myMatchScoreRef.current,
                 peerScore: oppMatchScoreRef.current
@@ -540,11 +563,15 @@ export default function DominoGame({ setView }) {
                 connRef.current?.send({ type: 'dominoes_ack' });
                 rootTileIdRef.current = null;
                 consecutivePassesRef.current = 0;
+                blockedResolutionRef.current = false;
+                roundEndedRef.current = false;
                 setMyHand(msg.peerHand);
                 setOppHandCount(msg.hostHandCount);
                 setBoneyard(Array(msg.boneyardCount).fill({}));
                 setBoardChain([]);
                 setCurrentTurn(msg.startTurn);
+                setOpeningTileInfo(msg.openingTile || generateAllTiles().find(tile => tile.id === msg.openingTileId) || null);
+                setOpeningStarter(msg.startTurn || null);
                 setSelectedTile(null);
                 setRoundOverReason(null);
                 setRoundWinner(null);
@@ -626,11 +653,14 @@ export default function DominoGame({ setView }) {
             }
 
             case 'pass_turn': {
+                if (roundEndedRef.current || blockedResolutionRef.current) break;
+                if (isHostRef.current && Array.isArray(msg.oppTiles)) peerHandRef.current = msg.oppTiles;
                 playSound('tick');
                 consecutivePassesRef.current += 1;
 
                 if (consecutivePassesRef.current >= 2) {
-                    handleBlockedGame(msg.oppTiles);
+                    blockedResolutionRef.current = true;
+                    if (isHostRef.current) handleBlockedGame(msg.oppTiles);
                 } else {
                     setCurrentTurn(isHostRef.current ? 'host' : 'peer');
                 }
@@ -640,6 +670,8 @@ export default function DominoGame({ setView }) {
             case 'round_end': {
                 // Peer receives round end from host
                 const { winnerKey, reason, roundPoints, myScore, oppScore } = msg;
+                roundEndedRef.current = true;
+                blockedResolutionRef.current = true;
                 setRoundWinner(winnerKey);
                 setRoundOverReason(reason);
                 setRoundPointsEarned(roundPoints);
@@ -654,6 +686,8 @@ export default function DominoGame({ setView }) {
 
             case 'match_over': {
                 const { winnerKey, myScore, oppScore } = msg;
+                roundEndedRef.current = true;
+                blockedResolutionRef.current = true;
                 setMatchWinner(winnerKey);
                 setMyMatchScore(myScore);
                 setOppMatchScore(oppScore);
@@ -703,7 +737,7 @@ export default function DominoGame({ setView }) {
     };
 
     const handleTileClick = (tile) => {
-        if (!isMyTurn || gameState !== 'playing') return;
+        if (!isMyTurn || gameState !== 'playing' || roundEndedRef.current || !canPlayTile(tile)) return;
 
         if (boardChain.length === 0) {
             executePlay(tile, 'right', tile.top, tile.bottom);
@@ -752,6 +786,7 @@ export default function DominoGame({ setView }) {
     };
 
     const executePlay = (tile, side, nodeLeft, nodeRight) => {
+        if (roundEndedRef.current || !isMyTurn || !canPlayTile(tile)) return;
         playSound('tap');
         playHaptic(25);
         consecutivePassesRef.current = 0;
@@ -817,9 +852,10 @@ export default function DominoGame({ setView }) {
     };
 
     const handlePass = () => {
-        if (!isMyTurn || gameState !== 'playing') return;
+        if (!isMyTurn || gameState !== 'playing' || blockedResolutionRef.current || roundEndedRef.current) return;
         playSound('tick');
         consecutivePassesRef.current += 1;
+        if (consecutivePassesRef.current >= 2) blockedResolutionRef.current = true;
 
         connRef.current?.send({
             type: 'pass_turn',
@@ -828,7 +864,7 @@ export default function DominoGame({ setView }) {
         });
 
         if (consecutivePassesRef.current >= 2) {
-            handleBlockedGame([]);
+            if (isHostRef.current) handleBlockedGame(peerHandRef.current);
         } else {
             const nextTurn = isHostRef.current ? 'peer' : 'host';
             setCurrentTurn(nextTurn);
@@ -837,6 +873,7 @@ export default function DominoGame({ setView }) {
 
     // ── 151 Scoring Logic: Blocked Game (القفلة) ──────────────────────────────
     const handleBlockedGame = (oppTiles) => {
+        if (!isHostRef.current || roundEndedRef.current) return;
         const mySum = myHandRef.current.reduce((acc, t) => acc + (t.sum ?? (t.top + t.bottom)), 0);
         let oppSum = 0;
         if (oppTiles && oppTiles.length > 0) {
@@ -861,6 +898,9 @@ export default function DominoGame({ setView }) {
 
     // ── 151 Scoring Logic: End Round & Accumulate Toward 151 ───────────────────
     const endRound = (winnerKey, reason, bonusPoints) => {
+        if (roundEndedRef.current) return;
+        roundEndedRef.current = true;
+        blockedResolutionRef.current = true;
         let earnedPoints = 0;
 
         if (reason === 'domino') {
@@ -1050,7 +1090,7 @@ export default function DominoGame({ setView }) {
 
             {/* Active Game Layout */}
             {gameState !== 'playing' && gameState !== 'round_over' && gameState !== 'gameover' ? null : (
-                <div className="flex-1 flex flex-col justify-between p-3 gap-2 overflow-hidden max-w-xl w-full mx-auto">
+                <div className="flex-1 min-h-0 flex flex-col justify-between p-3 gap-2 overflow-hidden max-w-5xl w-full mx-auto">
                     {/* Top Status & 151 Progress Bars */}
                     <div className="glass-card px-4 py-2 rounded-2xl border border-white/10 flex items-center justify-between gap-3">
                         {/* Opponent score progress */}
@@ -1103,11 +1143,25 @@ export default function DominoGame({ setView }) {
                     </div>
 
                     {/* Luxury Emerald Felt Domino Table (100% Fit-to-Screen, NO SCROLLBARS, NO ARROWS) */}
-                    <div className="relative flex-1 min-h-[290px] sm:min-h-[350px] rounded-3xl bg-gradient-to-b from-emerald-950/90 via-slate-950 to-emerald-950/90 border-2 border-emerald-500/30 shadow-[inset_0_0_60px_rgba(16,185,129,0.18),0_12px_36px_rgba(0,0,0,0.6)] flex items-center justify-center overflow-hidden p-2">
+                    <div className="relative isolate flex-1 min-h-[250px] sm:min-h-[350px] rounded-[26px] border-2 border-[#bda36d]/45 flex items-center justify-center overflow-hidden p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.13),inset_0_0_38px_rgba(0,0,0,0.3),0_14px_32px_rgba(0,0,0,0.38)]" style={{ backgroundColor: '#073b32', backgroundImage: 'radial-gradient(ellipse at 50% 42%, rgba(24, 105, 76, .34), transparent 68%), repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 1px, transparent 1px 4px)' }}>
+                        <div className="pointer-events-none absolute inset-[7px] rounded-[19px] border border-[#dfc989]/15" />
                         {boardChain.length === 0 ? (
-                            <div className="w-full text-center text-emerald-300/70 text-sm font-bold flex flex-col items-center gap-2 pointer-events-none">
-                                <span className="text-4xl animate-bounce">🎲</span>
-                                <span>العب أول عظمة لبدء الجولة!</span>
+                            <div className="relative z-10 w-full text-center text-emerald-50/80 text-sm font-bold flex flex-col items-center gap-3 pointer-events-none">
+                                <span className="text-[10px] font-black tracking-[.28em] text-[#e1ce9b]/55">DOMINO 151 <span className="mx-1 text-white/25">•</span> ROUND {roundNum}</span>
+                                <span className="grid h-14 w-14 place-items-center rounded-2xl border border-[#d7c28f]/20 bg-black/15">
+                                    <svg viewBox="0 0 32 42" className="h-9 w-7 drop-shadow-sm" aria-hidden="true">
+                                        <rect x="1" y="1" width="30" height="40" rx="5" fill="#f3eddf" stroke="#b6a889" strokeWidth="1.5" />
+                                        <path d="M4 21h24" stroke="#a89a80" strokeWidth="1.4" />
+                                        <circle cx="16" cy="21" r="2" fill="#b38b45" />
+                                        <circle cx="10" cy="10" r="2" fill="#17231d" />
+                                        <circle cx="22" cy="32" r="2" fill="#17231d" />
+                                    </svg>
+                                </span>
+                                {openingTileInfo ? (
+                                    <span>البداية لـ <b className="text-[#f4d58f]">{openingStarterLabel}</b> بقطعة <b className="text-white">{openingTileInfo.top}–{openingTileInfo.bottom}</b></span>
+                                ) : (
+                                    <span>الفائز بالجولة السابقة يبدأ بأي قطعة يختارها</span>
+                                )}
                             </div>
                         ) : (
                             <svg
@@ -1117,9 +1171,9 @@ export default function DominoGame({ setView }) {
                             >
                                 <defs>
                                     <linearGradient id="ivory-table-tile" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stopColor="#ffffff" />
-                                        <stop offset="50%" stopColor="#fbf9f4" />
-                                        <stop offset="100%" stopColor="#ebe4d4" />
+                                        <stop offset="0%" stopColor="#fffef8" />
+                                        <stop offset="52%" stopColor="#f3eddf" />
+                                        <stop offset="100%" stopColor="#d9ceb9" />
                                     </linearGradient>
                                     <radialGradient id="brass-table-pin" cx="40%" cy="35%" r="65%">
                                         <stop offset="0%" stopColor="#fef08a" />
@@ -1148,8 +1202,8 @@ export default function DominoGame({ setView }) {
                                                 height={t.h}
                                                 rx="5"
                                                 fill="url(#ivory-table-tile)"
-                                                stroke="#d6cfc0"
-                                                strokeWidth="1"
+                                                stroke="#b6a889"
+                                                strokeWidth="1.2"
                                                 filter="url(#tile-shadow)"
                                             />
                                             <rect
@@ -1164,9 +1218,9 @@ export default function DominoGame({ setView }) {
                                             />
 
                                             {isVert ? (
-                                                <line x1={-t.w / 2 + 3} y1="0" x2={t.w / 2 - 3} y2="0" stroke="#9ca3af" strokeWidth="1.2" strokeLinecap="round" />
+                                                <line x1={-t.w / 2 + 3} y1="0" x2={t.w / 2 - 3} y2="0" stroke="#a89a80" strokeWidth="1.2" strokeLinecap="round" />
                                             ) : (
-                                                <line x1="0" y1={-t.h / 2 + 3} x2="0" y2={t.h / 2 - 3} stroke="#9ca3af" strokeWidth="1.2" strokeLinecap="round" />
+                                                <line x1="0" y1={-t.h / 2 + 3} x2="0" y2={t.h / 2 - 3} stroke="#a89a80" strokeWidth="1.2" strokeLinecap="round" />
                                             )}
 
                                             <circle cx="0" cy="0" r="2.2" fill="url(#brass-table-pin)" stroke="#854d0e" strokeWidth="0.5" />
@@ -1175,8 +1229,8 @@ export default function DominoGame({ setView }) {
                                             <g transform={`translate(${h1Offset[0]}, ${h1Offset[1]})`}>
                                                 {half1Pips.map(([dx, dy], i) => (
                                                     <g key={i}>
-                                                        <circle cx={dx} cy={dy} r="2.4" fill="#111827" />
-                                                        <circle cx={dx - 0.5} cy={dy - 0.5} r="0.8" fill="#4b5563" opacity="0.55" />
+                                                        <circle cx={dx} cy={dy} r="2.4" fill="#17231d" />
+                                                        <circle cx={dx - 0.5} cy={dy - 0.5} r="0.8" fill="#708071" opacity="0.55" />
                                                     </g>
                                                 ))}
                                             </g>
@@ -1184,8 +1238,8 @@ export default function DominoGame({ setView }) {
                                             <g transform={`translate(${h2Offset[0]}, ${h2Offset[1]})`}>
                                                 {half2Pips.map(([dx, dy], i) => (
                                                     <g key={i}>
-                                                        <circle cx={dx} cy={dy} r="2.4" fill="#111827" />
-                                                        <circle cx={dx - 0.5} cy={dy - 0.5} r="0.8" fill="#4b5563" opacity="0.55" />
+                                                        <circle cx={dx} cy={dy} r="2.4" fill="#17231d" />
+                                                        <circle cx={dx - 0.5} cy={dy - 0.5} r="0.8" fill="#708071" opacity="0.55" />
                                                     </g>
                                                 ))}
                                             </g>
@@ -1392,6 +1446,7 @@ export default function DominoGame({ setView }) {
                                     tile={tile}
                                     isSelected={selectedTile?.id === tile.id}
                                     isPlayable={playable}
+                                    isOpeningTile={Boolean(openingTileInfo?.id === tile.id && openingStarter === localSeat && boardChain.length === 0)}
                                     disabled={isMyTurn && !playable}
                                     onClick={() => handleTileClick(tile)}
                                 />
