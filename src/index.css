@@ -1157,22 +1157,24 @@
 /* Invite ticket card */
 .lobby-ticket {
   position: relative;
-  background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  padding: 16px 20px 0;
+  background:
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 56%),
+    linear-gradient(145deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.018) 72%);
+  border: 1px solid color-mix(in srgb, var(--glass-border) 88%, var(--accent));
+  border-radius: 24px;
+  padding: 18px 20px 16px;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+  box-shadow: 0 18px 48px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.075);
 }
 
 /* Subtle accent glow on ticket */
 .lobby-ticket::before {
   content: '';
   position: absolute;
-  top: -40px; left: 50%;
+  top: -54px; left: 50%;
   transform: translateX(-50%);
-  width: 200px; height: 200px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 20%, transparent) 0%, transparent 70%);
+  width: 270px; height: 190px;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--accent) 18%, transparent) 0%, transparent 72%);
   pointer-events: none;
 }
 
@@ -1180,7 +1182,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 14px;
+  margin-bottom: 0;
 }
 
 .lobby-ticket-dot {
@@ -1194,8 +1196,16 @@
   display: flex;
   gap: 8px;
   justify-content: center;
-  margin-bottom: 14px;
+  margin-bottom: 0;
   direction: ltr;
+}
+
+.lobby-code-stage {
+  margin-top: 16px;
+  padding: 12px 10px 10px;
+  border: 1px solid rgba(255,255,255,0.075);
+  border-radius: 19px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.035), rgba(0,0,0,0.14));
 }
 
 /* Single code digit box */
@@ -1203,20 +1213,45 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 50px; height: 56px;
-  border-radius: 12px;
+  width: 52px; height: 58px;
+  border-radius: 15px;
   font-family: 'Space Grotesk', monospace;
   font-size: 1.6rem;
   font-weight: 700;
   letter-spacing: 0;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--glass-border);
+  background: linear-gradient(150deg, rgba(255,255,255,0.075), rgba(255,255,255,0.025));
+  border: 1px solid color-mix(in srgb, var(--glass-border) 75%, var(--accent));
   box-shadow:
-    inset 0 -3px 0 var(--accent),
-    0 0 18px color-mix(in srgb, var(--accent) 18%, transparent);
+    inset 0 -3px 0 color-mix(in srgb, var(--accent) 78%, white),
+    0 8px 22px rgba(0,0,0,0.22),
+    0 0 22px color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--text-color);
   transition: box-shadow var(--theme-transition);
   user-select: all;
+}
+
+.lobby-code-copy {
+  border-color: rgba(255,255,255,0.11);
+  background: rgba(255,255,255,0.045);
+  color: rgba(255,255,255,0.72);
+}
+.lobby-code-copy:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+  color: var(--accent);
+}
+.lobby-code-copy--done {
+  border-color: rgba(110,231,183,0.35);
+  background: rgba(16,185,129,0.12);
+  color: rgb(110,231,183);
+}
+
+.lobby-code-hint {
+  margin-top: 9px;
+  text-align: center;
+  color: rgba(255,255,255,0.43);
+  font-size: 10px;
+  font-weight: 700;
 }
 
 /* Perforated tear line between code and copy */
@@ -1253,6 +1288,85 @@
 }
 .lobby-copy-btn:hover { opacity: 0.85; }
 .lobby-copy-btn--done { opacity: 1 !important; color: var(--accent); }
+
+.lobby-action-btn {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 15px;
+  padding: 0 12px;
+  font-size: 11px;
+  font-weight: 900;
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.lobby-action-btn:active { transform: scale(0.97); }
+.lobby-action-btn--link {
+  border: 1px solid color-mix(in srgb, var(--accent) 27%, transparent);
+  background: color-mix(in srgb, var(--accent) 9%, rgba(10,8,14,0.65));
+  color: color-mix(in srgb, var(--accent) 86%, white);
+}
+.lobby-action-btn--link:hover {
+  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+  background: color-mix(in srgb, var(--accent) 15%, rgba(10,8,14,0.65));
+}
+.lobby-action-btn--whatsapp {
+  border: 1px solid rgba(52,211,153,0.3);
+  background: linear-gradient(135deg, rgba(16,185,129,0.18), rgba(6,95,70,0.12));
+  color: rgb(110,231,183);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
+}
+.lobby-action-btn--whatsapp:hover {
+  border-color: rgba(52,211,153,0.5);
+  background: linear-gradient(135deg, rgba(16,185,129,0.25), rgba(6,95,70,0.18));
+}
+.lobby-action-btn--done {
+  border-color: rgba(110,231,183,0.32);
+  background: rgba(16,185,129,0.12);
+  color: rgb(110,231,183);
+}
+
+.lobby-friend-invite {
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--accent) 9%, rgba(10,8,14,0.68)), rgba(255,255,255,0.025));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
+}
+.lobby-friend-invite:hover,
+.lobby-friend-invite--active {
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--accent) 14%, rgba(10,8,14,0.68)), rgba(255,255,255,0.035));
+}
+.lobby-friend-picker {
+  border: 1px solid rgba(255,255,255,0.09);
+  background: linear-gradient(145deg, rgba(255,255,255,0.045), rgba(0,0,0,0.22));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
+  animation: lobby-friend-picker-in 0.2s ease-out both;
+}
+.lobby-friend-row {
+  border-color: rgba(255,255,255,0.075);
+  background: linear-gradient(110deg, rgba(255,255,255,0.04), rgba(255,255,255,0.018));
+}
+.lobby-friend-row--sent {
+  border-color: rgba(110,231,183,0.17);
+  background: linear-gradient(110deg, rgba(16,185,129,0.085), rgba(255,255,255,0.018));
+}
+.lobby-friend-list::-webkit-scrollbar { width: 4px; }
+.lobby-friend-list::-webkit-scrollbar-thumb { border-radius: 99px; background: rgba(255,255,255,0.15); }
+
+@keyframes lobby-friend-picker-in {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 420px) {
+  .lobby-ticket { padding: 14px 12px 13px; border-radius: 20px; }
+  .lobby-ticket-header { gap: 6px; }
+  .lobby-code-row { gap: 6px; }
+  .lobby-digit { width: clamp(38px, 12vw, 50px); height: 52px; font-size: 1.4rem; }
+  .lobby-code-stage { padding-right: 6px; padding-left: 6px; }
+  .lobby-action-btn { min-height: 44px; gap: 6px; padding-right: 8px; padding-left: 8px; font-size: 10px; }
+}
 
 /* Join input field */
 .lobby-join-field {

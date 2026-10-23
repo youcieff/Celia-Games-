@@ -8,7 +8,8 @@ import Check from 'lucide-react/dist/esm/icons/check';
 import createAIConn from '../ai/createAIConn';
 import { ensureProfileIdentity } from '../lib/profileIdentity';
 import { dismissGameInvite, loadSocialData, sendGameInvite } from '../lib/socialClient';
-import { UserPlus } from 'lucide-react';
+import { subscribeFriendPresence } from '../lib/socialPresence';
+import { CircleCheck, Send, UserPlus, UsersRound, X } from 'lucide-react';
 import { 
     IconCopy, IconJoin, IconChip, IconHourglass,
     IconBusComplete, IconConnect4, IconDotsBoxes, IconCodeGame, 
@@ -388,6 +389,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
     const [inviteSentTo, setInviteSentTo] = useState('');
     const [inviteLoading, setInviteLoading] = useState(false);
     const [inviteMessage, setInviteMessage] = useState('');
+    const [invitePresence, setInvitePresence] = useState({});
     const [errorMsg, setErrorMsg] = useState('');
     const [rejoinCode, setRejoinCode] = useState(() => {
         try {
@@ -411,6 +413,16 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
             return id;
         } catch(e) { return `${genId()}${Date.now().toString(36)}`; }
     });
+    const inviteFriendUidKey = inviteFriends.map(friend => friend.uid).sort().join('|');
+
+    useEffect(() => {
+        const friendUids = inviteFriendUidKey ? inviteFriendUidKey.split('|') : [];
+        setInvitePresence({});
+        if (!friendUids.length) return undefined;
+        return subscribeFriendPresence(friendUids, (uid, online) => {
+            setInvitePresence(current => ({ ...current, [uid]: online }));
+        });
+    }, [inviteFriendUidKey]);
 
     const [lobbyState, setLobbyState] = useState('lobby'); // 'lobby' | 'connected'
     const [myReady, setMyReady] = useState(false);
@@ -795,7 +807,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
     }
 
     return (
-        <div className="flex flex-col items-center justify-start w-full max-w-sm mx-auto gap-4 pt-2">
+        <div className="flex flex-col items-center justify-start w-full max-w-md mx-auto gap-4 pt-2">
 
             {/* ── Rejoin previous room ── */}
             {rejoinCode && (
@@ -834,15 +846,24 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
 
             {/* ── Your room code ── */}
             <div className="lobby-ticket w-full">
-                {/* Ticket header */}
-                <div className="lobby-ticket-header">
-                    <span className="text-[10px] font-black tracking-widest uppercase opacity-50">كود غرفتك</span>
-                    <span className="lobby-ticket-dot" />
-                    <span className="text-[10px] font-black opacity-30">{roomCreated ? 'شارك مع صديقك' : 'جارٍ تجهيز الغرفة…'}</span>
+                <div className="lobby-ticket-header relative z-[1] justify-between">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--accent)]/20 bg-[var(--accent)]/10 text-[var(--accent)] shadow-[0_0_24px_color-mix(in_srgb,var(--accent)_12%,transparent)]">
+                            <UsersRound size={19} />
+                        </span>
+                        <div className="min-w-0">
+                            <h2 className="text-sm font-black tracking-wide">غرفتك جاهزة للّعب</h2>
+                            <p className="mt-0.5 truncate text-[10px] font-bold text-white/45">شارك الكود أو ابعت دعوة لصاحبك</p>
+                        </div>
+                    </div>
+                    <span className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[10px] font-black ${roomCreated ? 'border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-200' : 'border-amber-200/15 bg-amber-200/[0.06] text-amber-100/70'}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${roomCreated ? 'bg-emerald-300 shadow-[0_0_9px_rgba(110,231,183,.8)]' : 'animate-pulse bg-amber-200/60'}`} />
+                        {roomCreated ? 'جاهزة' : 'بتتجهز'}
+                    </span>
                 </div>
 
-                {/* Code display */}
-                <div className="lobby-code-row">
+                <div className="lobby-code-stage relative z-[1]">
+                    <div className="lobby-code-row">
                     <div className="flex items-center gap-2">
                         {myId.split('').map((ch, i) => (
                             <CodeDigit key={i} char={ch} />
@@ -854,33 +875,34 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                         aria-label={copiedCode ? 'تم نسخ كود الغرفة' : 'نسخ كود الغرفة'}
                         title={copiedCode ? 'تم نسخ كود الغرفة' : 'نسخ كود الغرفة'}
                         disabled={!roomCreated}
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition active:scale-95 disabled:cursor-wait disabled:opacity-35 ${copiedCode ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300' : 'border-white/10 bg-white/5 text-white/70 hover:border-[var(--accent)]/50 hover:text-[var(--accent)]'}`}
+                        className={`lobby-code-copy flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition active:scale-95 disabled:cursor-wait disabled:opacity-35 ${copiedCode ? 'lobby-code-copy--done' : ''}`}
                     >
                         {copiedCode ? <Check size={18} /> : <IconCopy size={18} />}
                     </button>
+                    </div>
+                    <p className="lobby-code-hint">اكتب الكود ده عشان صاحبك يدخل غرفتك</p>
                 </div>
 
-                {/* Ticket perforated bottom */}
                 <div className="lobby-ticket-perforation" />
 
-                {/* Actions: Copy Link & WhatsApp Share */}
-                <div className="flex gap-2 w-full mt-1">
+                <div className="relative z-[1] mt-2 grid w-full grid-cols-2 gap-2">
                     <button
                         onClick={handleCopy}
                         disabled={!roomCreated}
-                        className={`lobby-copy-btn flex-[1.2] disabled:cursor-wait disabled:opacity-35 ${copied ? 'lobby-copy-btn--done' : ''}`}
+                        className={`lobby-action-btn lobby-action-btn--link disabled:cursor-wait disabled:opacity-40 ${copied ? 'lobby-action-btn--done' : ''}`}
                     >
                         {copied ? (
-                            <><Check size={15} /> تم نسخ الرابط</>
+                            <><Check size={16} /> تم نسخ الرابط</>
                         ) : (
-                            <><IconCopy size={15} /> نسخ الرابط</>
+                            <><IconCopy size={16} /> نسخ رابط الغرفة</>
                         )}
                     </button>
                     <button
                         onClick={handleWhatsAppShare}
                         disabled={!roomCreated}
-                        className="h-11 px-3.5 rounded-2xl flex items-center justify-center gap-1.5 font-black text-xs border border-emerald-400/40 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] active:scale-95 shrink-0 disabled:cursor-wait disabled:opacity-35"
+                        className="lobby-action-btn lobby-action-btn--whatsapp disabled:cursor-wait disabled:opacity-40"
                         title="مشاركة مباشرة عبر واتساب"
+                        aria-label="مشاركة دعوة الغرفة عبر واتساب"
                     >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 14.99 3.8 13.47 3.8 11.91C3.81 7.37 7.5 3.67 12.05 3.67M9.53 7.33C9.33 7.33 9.04 7.41 8.78 7.69C8.53 7.97 7.82 8.63 7.82 10C7.82 11.36 8.81 12.67 8.95 12.86C9.09 13.05 10.89 15.83 13.65 17.03C14.31 17.31 14.82 17.48 15.22 17.61C15.89 17.82 16.5 17.79 16.98 17.72C17.52 17.64 18.64 17.04 18.88 16.38C19.11 15.71 19.11 15.14 19.04 15.02C18.97 14.9 18.78 14.83 18.49 14.69C18.2 14.55 16.78 13.85 16.52 13.75C16.26 13.66 16.07 13.61 15.88 13.9C15.68 14.18 15.12 14.83 14.95 15.02C14.78 15.22 14.61 15.24 14.32 15.1C14.03 14.96 13.1 14.65 12 13.67C11.14 12.91 10.56 11.97 10.4 11.68C10.23 11.4 10.38 11.24 10.53 11.1C10.66 10.97 10.82 10.76 10.97 10.59C11.11 10.42 11.16 10.29 11.26 10.1C11.36 9.9 11.31 9.73 11.23 9.59C11.16 9.45 10.57 8.01 10.33 7.42C10.09 6.85 9.85 6.93 9.68 6.92C9.51 6.92 9.33 6.92 9.53 7.33Z" />
@@ -892,32 +914,67 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                     type="button"
                     onClick={handleOpenFriendInvites}
                     disabled={!roomCreated || inviteLoading}
-                    className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/10 text-xs font-black text-[var(--accent)] transition hover:bg-[var(--accent)]/15 disabled:opacity-40"
+                    className={`lobby-friend-invite relative z-[1] mt-2.5 flex h-12 w-full items-center justify-between gap-3 rounded-2xl px-4 text-right transition disabled:cursor-wait disabled:opacity-40 ${showFriendInvites ? 'lobby-friend-invite--active' : ''}`}
                 >
-                    <UserPlus size={15} />
-                    {inviteLoading ? 'لحظة...' : 'ادعُ صديقًا من حسابك'}
+                    <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)]/15 text-[var(--accent)]"><UserPlus size={16} /></span>
+                        <span className="min-w-0">
+                            <span className="block text-xs font-black">{inviteLoading ? 'بنجهز قائمة الأصدقاء…' : 'ادعُ صديقًا من حسابك'}</span>
+                            <span className="mt-0.5 block text-[9px] font-bold text-white/40">دعوة مباشرة لحسابات أصدقائك</span>
+                        </span>
+                    </span>
+                    <span className="shrink-0 text-sm text-white/40">{showFriendInvites ? '−' : '←'}</span>
                 </button>
                 {showFriendInvites && (
-                    <div className="mt-2 rounded-xl border border-white/10 bg-black/30 p-3">
-                        <div className="mb-2 flex items-center justify-between">
-                            <p className="text-xs font-black">اختار صديقًا</p>
-                            <button type="button" onClick={() => setShowFriendInvites(false)} className="text-[10px] font-bold text-white/45 hover:text-white">إغلاق</button>
+                    <div className="lobby-friend-picker relative z-[1] mt-2.5 rounded-2xl p-3.5">
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                                <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.045] text-white/75"><UsersRound size={17} /></span>
+                                <div>
+                                    <p className="text-xs font-black">اختار صديقًا</p>
+                                    <p className="mt-0.5 text-[9px] font-bold text-white/40">هنبعتله كود الغرفة مباشرة</p>
+                                </div>
+                            </div>
+                            <button type="button" onClick={() => setShowFriendInvites(false)} aria-label="إغلاق قائمة الأصدقاء" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-white/45 transition hover:border-white/15 hover:text-white"><X size={15} /></button>
                         </div>
-                        {inviteFriends.length > 0 && <div className="flex flex-col gap-1.5">
-                            {inviteFriends.map(friend => (
-                                <button
-                                    key={friend.uid}
-                                    type="button"
-                                    onClick={() => void handleInviteFriend(friend)}
-                                    disabled={inviteLoading || Boolean(inviteSentTo)}
-                                    className="flex h-9 items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.035] px-3 text-right text-xs font-bold hover:border-[var(--accent)]/30 disabled:opacity-50"
-                                >
-                                    <span className="truncate">{friend.nickname} <span className="text-white/40">@{friend.username}</span></span>
-                                    <span className="shrink-0 text-[10px] text-[var(--accent)]">{inviteSentTo === friend.uid ? 'تم الإرسال' : 'إرسال'}</span>
-                                </button>
-                            ))}
-                        </div>}
-                        {inviteMessage && <p role="status" className="mt-2 text-center text-[10px] font-bold text-amber-200">{inviteMessage}</p>}
+                        {inviteFriends.length > 0 ? (
+                            <div className="lobby-friend-list flex max-h-52 flex-col gap-2 overflow-y-auto pl-0.5">
+                                {inviteFriends.map(friend => {
+                                    const sent = inviteSentTo === friend.uid;
+                                    const unavailable = Boolean(inviteSentTo) && !sent;
+                                    return (
+                                        <div key={friend.uid} className={`lobby-friend-row flex items-center gap-2.5 rounded-xl border px-2.5 py-2 transition ${sent ? 'lobby-friend-row--sent' : ''}`}>
+                                            <span className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-sm font-black ${sent ? 'border-emerald-300/20 bg-emerald-300/10 text-emerald-200' : 'border-white/10 bg-white/[0.045] text-[var(--accent)]'}`}>
+                                                {(friend.nickname || friend.username || '؟').trim().slice(0, 1).toUpperCase()}
+                                                <span className={`absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#141018] ${invitePresence[friend.uid] ? 'bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,.7)]' : invitePresence[friend.uid] === false ? 'bg-white/25' : 'animate-pulse bg-amber-200/55'}`} />
+                                            </span>
+                                            <span className="min-w-0 flex-1 text-right">
+                                                <span className="block truncate text-xs font-black text-white/90">{friend.nickname}</span>
+                                                <span className="mt-0.5 flex items-center gap-1 truncate text-[9px] font-bold text-white/40">
+                                                    <span>{friend.username ? `@${friend.username}` : 'صديقك'}</span>
+                                                    <span className="opacity-40">·</span>
+                                                    <span className={invitePresence[friend.uid] ? 'text-emerald-300' : 'text-white/35'}>{invitePresence[friend.uid] ? 'متصل الآن' : invitePresence[friend.uid] === false ? 'غير متصل' : 'جارٍ التحقق'}</span>
+                                                </span>
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleInviteFriend(friend)}
+                                                disabled={inviteLoading || unavailable || sent}
+                                                className={`flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 text-[10px] font-black transition disabled:cursor-default ${sent ? 'border border-emerald-300/20 bg-emerald-300/10 text-emerald-200' : unavailable ? 'border border-white/[0.06] bg-white/[0.025] text-white/30' : 'border border-[var(--accent)]/20 bg-[var(--accent)]/10 text-[var(--accent)] hover:border-[var(--accent)]/45 hover:bg-[var(--accent)]/20'}`}
+                                            >
+                                                {sent ? <><CircleCheck size={14} /> اتبعتت</> : unavailable ? 'مشغولة' : <><Send size={13} /> إرسال</>}
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-5 text-center">
+                                <p className="text-xs font-black text-white/70">لسه ماعندكش أصدقاء</p>
+                                <p className="mt-1 text-[10px] font-bold text-white/40">أضف أصحابك من ملفك الشخصي وهتقدر تعزمهم هنا</p>
+                            </div>
+                        )}
+                        {inviteMessage && <p role="status" className={`mt-3 rounded-xl px-3 py-2 text-center text-[10px] font-black ${inviteSentTo ? 'border border-emerald-300/15 bg-emerald-300/[0.07] text-emerald-200' : 'border border-amber-200/10 bg-amber-200/[0.05] text-amber-100'}`}>{inviteMessage}</p>}
                     </div>
                 )}
             </div>

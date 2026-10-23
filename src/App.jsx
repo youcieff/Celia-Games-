@@ -24,6 +24,7 @@ import WhoAmIGame from './games/WhoAmI/WhoAmIGame';
 import TabooGame from './games/Taboo/TabooGame';
 import GlobalMuteButton from './components/GlobalMuteButton';
 import AdminDashboard from './components/AdminDashboard';
+import SocialNotifications from './components/SocialNotifications';
 
 function App() {
   const [view, setView] = React.useState(() => window.location.pathname.replace(/\/$/, '') === '/admin' ? 'admin' : 'hub');
@@ -114,6 +115,7 @@ function App() {
         {view === 'taboo-online' && <TabooGame setView={setView} mode="online" />}
         {view === 'taboo-together' && <TabooGame setView={setView} mode="together" />}
       </div>
+      <SocialNotifications />
     </ThemeProvider>
   );
 }

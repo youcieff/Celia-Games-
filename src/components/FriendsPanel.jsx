@@ -8,6 +8,7 @@ import {
     removeFriend,
     sendFriendRequest
 } from '../lib/socialClient';
+import { subscribeFriendPresence } from '../lib/socialPresence';
 
 export default function FriendsPanel() {
     const [friends, setFriends] = useState([]);
@@ -17,6 +18,7 @@ export default function FriendsPanel() {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
+    const [onlineByUid, setOnlineByUid] = useState({});
 
     const refresh = useCallback(async (showLoader = true) => {
         if (showLoader) setBusy(true);
@@ -38,6 +40,16 @@ export default function FriendsPanel() {
         const timer = setInterval(() => void refresh(false), 25_000);
         return () => clearInterval(timer);
     }, [refresh]);
+
+    const friendUidKey = friends.map(friend => friend.uid).sort().join('|');
+    useEffect(() => {
+        const friendUids = friendUidKey ? friendUidKey.split('|') : [];
+        setOnlineByUid({});
+        if (!friendUids.length) return undefined;
+        return subscribeFriendPresence(friendUids, (uid, isOnline) => {
+            setOnlineByUid(current => ({ ...current, [uid]: isOnline }));
+        });
+    }, [friendUidKey]);
 
     const runAction = async (action, successMessage) => {
         setBusy(true);
@@ -136,7 +148,13 @@ export default function FriendsPanel() {
                         {friends.map(friend => (
                             <div key={friend.uid} className="flex items-center gap-2 rounded-xl bg-white/[0.025] px-3 py-2">
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate text-xs font-black">{friend.nickname}</p>
+                                    <div className="flex items-center gap-1.5">
+                                        <p className="truncate text-xs font-black">{friend.nickname}</p>
+                                        <span className="inline-flex shrink-0 items-center gap-1 text-[9px] font-black" aria-label={onlineByUid[friend.uid] ? 'متصل الآن' : 'غير متصل'}>
+                                            <span className={`h-1.5 w-1.5 rounded-full ${onlineByUid[friend.uid] ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,.8)]' : onlineByUid[friend.uid] === false ? 'bg-white/25' : 'animate-pulse bg-amber-300/60'}`} />
+                                            <span className={onlineByUid[friend.uid] ? 'text-emerald-300' : 'text-white/35'}>{onlineByUid[friend.uid] ? 'متصل' : onlineByUid[friend.uid] === false ? 'غير متصل' : 'جارٍ التحقق'}</span>
+                                        </span>
+                                    </div>
                                     <p className="truncate text-[10px] font-bold text-white/40">@{friend.username} · {friend.wins} فوز</p>
                                 </div>
                                 <button type="button" disabled={busy} onClick={() => window.confirm(`تحذف ${friend.nickname} من الأصدقاء؟`) && void runAction(() => removeFriend(friend.uid))} aria-label="حذف صديق" className="flex h-8 w-8 items-center justify-center rounded-lg text-white/35 hover:bg-rose-400/10 hover:text-rose-300 disabled:opacity-50"><Trash2 size={14} /></button>

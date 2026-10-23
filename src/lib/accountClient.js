@@ -1,6 +1,7 @@
 import { onAuthStateChanged, signInWithCustomToken, signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import { ensureProfileIdentity } from './profileIdentity';
+import { stopPresence } from './socialPresence';
 
 const PROFILE_KEY = 'celia_games_profile';
 const PLAYER_ID_KEY = 'celia_player_id';
@@ -291,6 +292,7 @@ export async function refreshAccountSnapshot() {
 }
 
 export async function logoutAccount() {
+    await stopPresence(auth.currentUser?.uid);
     await signOut(auth);
     localStorage.removeItem(ACCOUNT_KEY);
     const guestSnapshot = readJson(GUEST_BACKUP_KEY, null);

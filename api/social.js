@@ -87,21 +87,7 @@ async function getSocialData(database, uid) {
     }));
     const invites = Object.entries(invitesSnapshot.val() || {})
         .map(([id, invite]) => ({ id, ...(invite || {}) }))
-        .filter(invite => Number(invite.expiresAt) > Date.now())
-        .sort((a, b) => Number(b.createdAt) - Number(a.createdAt))
-        .slice(0, 20);
-    const expiredInviteIds = Object.entries(invitesSnapshot.val() || {})
-        .filter(([, invite]) => Number(invite?.expiresAt) <= Date.now())
-        .map(([id]) => id);
-    if (expiredInviteIds.length) {
-        const expired = {};
-        expiredInviteIds.forEach(id => {
-            const invite = invitesSnapshot.val()[id];
-            expired[`gameInvites/${uid}/${id}`] = null;
-            if (invite?.fromUid) expired[`outgoingGameInvites/${invite.fromUid}/${id}`] = null;
-        });
-        await database.ref().update(expired);
-    }
+        .sort((a, b) => Number(b.createdAt) - Number(a.createdAt));
 
     return { friends, requests, invites };
 }
@@ -186,8 +172,7 @@ async function sendGameInvite(database, uid, body) {
         gameId,
         gameTitle: GAME_TITLES[gameId],
         roomCode,
-        createdAt: Date.now(),
-        expiresAt: Date.now() + 24 * 60 * 60 * 1000
+        createdAt: Date.now()
     };
     await database.ref().update({
         [`gameInvites/${friendUid}/${inviteRef.key}`]: invite,

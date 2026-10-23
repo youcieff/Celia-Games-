@@ -70,6 +70,25 @@ export function playSound(type, options = {}) {
         gain.connect(ctx.destination);
 
         switch (type) {
+            case 'notification': {
+                // A soft three-note rising chime reserved for friend and game invites.
+                [659.25, 880, 1174.66].forEach((frequency, index) => {
+                    const startAt = t + index * 0.105;
+                    const tone = ctx.createOscillator();
+                    const toneGain = ctx.createGain();
+                    tone.type = index === 2 ? 'sine' : 'triangle';
+                    tone.frequency.setValueAtTime(frequency, startAt);
+                    toneGain.gain.setValueAtTime(0.0001, startAt);
+                    toneGain.gain.linearRampToValueAtTime(index === 2 ? 0.19 : 0.14, startAt + 0.018);
+                    toneGain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.42);
+                    tone.connect(toneGain);
+                    toneGain.connect(ctx.destination);
+                    tone.start(startAt);
+                    tone.stop(startAt + 0.43);
+                });
+                return;
+            }
+
             case 'click':
             case 'tap':
                 osc.type = 'sine';
