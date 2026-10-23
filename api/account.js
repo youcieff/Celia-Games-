@@ -59,6 +59,8 @@ function toPublicProfile(profile) {
 async function logMissingAccountProfile(database, uid, username, action) {
     let usernameIndexFound = false;
     let usernameIndexMatchesUid = null;
+    let publicProfileFound = false;
+    let accountSecretFound = false;
     if (typeof username === 'string' && username.trim()) {
         try {
             const usernameKey = usernameDatabaseKey(normalizeUsername(username));
@@ -69,12 +71,57 @@ async function logMissingAccountProfile(database, uid, username, action) {
             // Best effort only; never log a username or other user supplied value.
         }
     }
+    try {
+        const [publicProfile, accountSecret] = await Promise.all([
+            database.ref(`publicProfiles/${uid}`).get(),
+            database.ref(`accountSecrets/${uid}`).get()
+        ]);
+        publicProfileFound = publicProfile.exists();
+        accountSecretFound = accountSecret.exists();
+    } catch {
+        // Keep diagnostics best effort and limited to existence flags.
+    }
     console.warn('[account-api] authenticated profile is missing', {
         action,
         uidHash: createHash('sha256').update(uid).digest('hex').slice(0, 12),
         usernameIndexFound,
-        usernameIndexMatchesUid
+        usernameIndexMatchesUid,
+        publicProfileFound,
+        accountSecretFound
     });
+}
+
+async function restoreAccountProfileFromPublic(database, uid, incoming) {
+    if (typeof incoming.username !== 'string' || !incoming.username.trim()) return false;
+    let username;
+    try {
+        username = normalizeUsername(incoming.username);
+    } catch {
+        return false;
+    }
+    const usernameKey = usernameDatabaseKey(username);
+    const [indexSnapshot, publicSnapshot, historySnapshot, streakSnapshot] = await Promise.all([
+        database.ref(`usernameIndex/${usernameKey}`).get(),
+        database.ref(`publicProfiles/${uid}`).get(),
+        database.ref(`matchHistory/${uid}`).get(),
+        database.ref(`winStreaks/${uid}`).get()
+    ]);
+    if (indexSnapshot.val() !== uid || !publicSnapshot.exists()) return false;
+
+    const publicProfile = publicSnapshot.val() || {};
+    const history = Array.isArray(historySnapshot.val()) ? historySnapshot.val() : [];
+    const streak = streakSnapshot.val() || {};
+    const restored = {
+        ...sanitizeProfile(publicProfile, username, uid),
+        createdAt: Math.max(0, Number(publicProfile.createdAt) || Date.now()),
+        lastSeenAt: Math.max(0, Number(publicProfile.lastSeenAt) || 0),
+        usernameKey,
+        recentMatchIds: history.map(match => match?.id).filter(id => typeof id === 'string').slice(-500),
+        currentStreak: Math.max(0, Number(streak.currentStreak) || 0),
+        maxStreak: Math.max(0, Number(streak.maxStreak) || 0)
+    };
+    const result = await database.ref(`users/${uid}`).transaction(current => current || restored, undefined, false);
+    return result.snapshot.exists();
 }
 
 async function checkLoginRateLimit(database, usernameKey) {
@@ -213,7 +260,7 @@ async function syncAccount(req, body) {
     const database = getAdminDatabase();
     const userRef = database.ref(`users/${identity.uid}`);
     const incoming = body.profile && typeof body.profile === 'object' ? body.profile : {};
-    const transaction = await userRef.transaction(current => {
+    const updateProfile = current => {
         if (!current) return;
         const safeIncoming = sanitizeProfile(incoming, current.username, identity.uid);
         return {
@@ -222,8 +269,13 @@ async function syncAccount(req, body) {
             avatar: safeIncoming.avatar,
             lastSeenAt: Math.max(Date.now(), (Number(current.lastSeenAt) || 0) + 1)
         };
-    }, undefined, false);
-    const profile = transaction.snapshot.val();
+    };
+    let transaction = await userRef.transaction(updateProfile, undefined, false);
+    let profile = transaction.snapshot.val();
+    if ((!transaction.committed || !profile) && await restoreAccountProfileFromPublic(database, identity.uid, incoming)) {
+        transaction = await userRef.transaction(updateProfile, undefined, false);
+        profile = transaction.snapshot.val();
+    }
     if (!transaction.committed || !profile) {
         await logMissingAccountProfile(database, identity.uid, incoming.username, 'sync');
         const error = new Error('الحساب غير موجود');
