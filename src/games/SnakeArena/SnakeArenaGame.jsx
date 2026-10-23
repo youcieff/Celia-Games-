@@ -143,6 +143,7 @@ export default function SnakeArenaGame({ setView }) {
     const isHostRef = useRef(false);
     const isAIRef = useRef(false);
     const hasStartedRef = useRef(false);
+    const matchRecordedRef = useRef(false);
     const [myProfile, , awardMatchResult] = useProfile({ gameId: 'snake-arena', gameTitle: 'ساحة الأفعى' });
     const [oppProfile, setOppProfile] = useState(null);
 
@@ -153,6 +154,8 @@ export default function SnakeArenaGame({ setView }) {
     const [countdown, setCountdown] = useState(3);
     const [myScore, setMyScore] = useState(0);
     const [oppScore, setOppScore] = useState(0);
+    const scoreRef = useRef({ my: myScore, opp: oppScore });
+    scoreRef.current = { my: myScore, opp: oppScore };
     const [roundNum, setRoundNum] = useState(1);
     const [p1FruitCount, setP1FruitCount] = useState(0);
     const [p2FruitCount, setP2FruitCount] = useState(0);
@@ -453,7 +456,6 @@ export default function SnakeArenaGame({ setView }) {
         setP2Snake(finalP2);
         setPowerUp(null);
         setPowerEffects({ p1: {}, p2: {} });
-        setGameState('round_over');
         
         let p1ScoreInc = 0;
         let p2ScoreInc = 0;
@@ -461,8 +463,14 @@ export default function SnakeArenaGame({ setView }) {
         if (result === 'p1_win') p1ScoreInc = 1;
         else if (result === 'p2_win') p2ScoreInc = 1;
 
-        setMyScore(prev => prev + (isHostRef.current ? p1ScoreInc : p2ScoreInc));
-        setOppScore(prev => prev + (isHostRef.current ? p2ScoreInc : p1ScoreInc));
+        const nextMyScore = scoreRef.current.my + (isHostRef.current ? p1ScoreInc : p2ScoreInc);
+        const nextOppScore = scoreRef.current.opp + (isHostRef.current ? p2ScoreInc : p1ScoreInc);
+        scoreRef.current = { my: nextMyScore, opp: nextOppScore };
+        setMyScore(nextMyScore);
+        setOppScore(nextOppScore);
+
+        const matchFinished = nextMyScore >= WIN_SCORE || nextOppScore >= WIN_SCORE;
+        setGameState(matchFinished ? 'game_over' : 'round_over');
 
         if (isHostRef.current) {
             if (result === 'p1_win') setRoundResult('win');
@@ -472,6 +480,22 @@ export default function SnakeArenaGame({ setView }) {
             if (result === 'p1_win') setRoundResult('lose');
             else if (result === 'p2_win') setRoundResult('win');
             else setRoundResult('draw');
+        }
+
+        if (matchFinished && !matchRecordedRef.current) {
+            matchRecordedRef.current = true;
+            if (isHostRef.current) connRef.current?.send({ type: 'game_over' });
+            const outcome = nextMyScore > nextOppScore ? 'win' : nextOppScore > nextMyScore ? 'loss' : 'draw';
+            if (outcome === 'win') triggerVictoryEffects();
+            else if (outcome === 'loss') triggerDefeatEffects();
+            awardMatchResult(outcome, {
+                gameId: 'snake-arena',
+                gameTitle: 'ساحة الأفعى',
+                oppName: oppProfile?.nickname || (isAIRef.current ? 'الذكاء الاصطناعي' : 'الخصم'),
+                oppAvatar: oppProfile?.avatar || 'cool',
+                isAI: isAIRef.current,
+                xpEarned: outcome === 'win' ? 25 : outcome === 'loss' ? 5 : 10
+            });
         }
     };
 
@@ -775,21 +799,7 @@ export default function SnakeArenaGame({ setView }) {
     // Check game over
     useEffect(() => {
         if (gameState === 'round_over') {
-            if (myScore >= WIN_SCORE || oppScore >= WIN_SCORE) {
-                setGameState('game_over');
-                if (isHostRef.current) {
-                    connRef.current?.send({ type: 'game_over' });
-                }
-                if (myScore > oppScore) {
-                    triggerVictoryEffects();
-                    awardMatchResult('win', 25);
-                } else if (oppScore > myScore) {
-                    triggerDefeatEffects();
-                    awardMatchResult('loss', 5);
-                } else {
-                    awardMatchResult('draw', 10);
-                }
-            } else {
+            if (myScore < WIN_SCORE && oppScore < WIN_SCORE) {
                 // Auto start next round if host
                 if (isHostRef.current) {
                     setTimeout(startRound, 2500);

@@ -105,7 +105,12 @@ export default function useProfile(defaultMatchDetails = {}) {
         const isWin = outcome === 'win';
         const suppliedDetails = xpOrDetails && typeof xpOrDetails === 'object' ? xpOrDetails : {};
         const matchDetails = { ...defaultMatchDetails, ...suppliedDetails };
-        const explicitXP = typeof xpOrDetails === 'number' ? xpOrDetails : null;
+        const detailXP = suppliedDetails.xpEarned ?? suppliedDetails.xp;
+        const explicitXP = typeof xpOrDetails === 'number'
+            ? xpOrDetails
+            : detailXP !== undefined && detailXP !== null && Number.isFinite(Number(detailXP))
+                ? Number(detailXP)
+                : null;
         const addedXP = Number.isFinite(explicitXP) ? Math.max(0, explicitXP) : (isWin ? 30 : 10);
         const recorded = recordMatch({
             isWin,
