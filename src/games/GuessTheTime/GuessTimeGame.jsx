@@ -842,7 +842,8 @@ export default function GuessTimeGame({ setView }) {
                 gameId: 'guess-time',
                 gameTitle: 'خمن الوقت',
                 oppName: oppProfile?.nickname || 'الخصم',
-                oppAvatar: oppProfile?.avatar || 'cool'
+                oppAvatar: oppProfile?.avatar || 'cool',
+                isAI: Boolean(oppProfile?.isAI || oppProfile?.avatar === 'robot')
             });
         }
         if (details.loserSeat && details.loserSeat !== localSeat) playSound('stopwatch_stop');
@@ -912,7 +913,8 @@ export default function GuessTimeGame({ setView }) {
                 gameId: 'guess-time',
                 gameTitle: 'خمن الوقت',
                 oppName: oppProfile?.nickname || 'الخصم',
-                oppAvatar: oppProfile?.avatar || 'cool'
+                oppAvatar: oppProfile?.avatar || 'cool',
+                isAI: Boolean(oppProfile?.isAI || oppProfile?.avatar === 'robot')
             });
         }
         if (msg.loserSeat && msg.loserSeat !== localSeat) playSound('stopwatch_stop');
@@ -1032,7 +1034,8 @@ export default function GuessTimeGame({ setView }) {
                         gameId: 'guess-time',
                         gameTitle: 'خمن الوقت',
                         oppName: oppProfile?.nickname || 'الخصم',
-                        oppAvatar: oppProfile?.avatar || 'cool'
+                        oppAvatar: oppProfile?.avatar || 'cool',
+                        isAI: Boolean(oppProfile?.isAI || oppProfile?.avatar === 'robot')
                     });
                 }
                 setGameState('result-target');
@@ -1064,7 +1067,8 @@ export default function GuessTimeGame({ setView }) {
                         gameId: 'guess-time',
                         gameTitle: 'خمن الوقت',
                         oppName: oppProfile?.nickname || 'الخصم',
-                        oppAvatar: oppProfile?.avatar || 'cool'
+                        oppAvatar: oppProfile?.avatar || 'cool',
+                        isAI: Boolean(oppProfile?.isAI || oppProfile?.avatar === 'robot')
                     });
                 }
                 if (iWonLocally) {

@@ -60,7 +60,7 @@ export function getWinStreakStats() {
   }
 }
 
-export function recordMatch({ gameId, gameTitle, oppName = 'خصم', oppAvatar = 'cool', isWin, outcome, myScore = 0, oppScore = 0, isAI = false }) {
+export function recordMatch({ gameId, gameTitle, oppName = 'خصم', oppAvatar = 'cool', isWin, outcome, myScore = 0, oppScore = 0, isAI = false, xpEarned = 0 }) {
   try {
     // 1. Update streak
     const streakStats = getWinStreakStats();
@@ -81,6 +81,7 @@ export function recordMatch({ gameId, gameTitle, oppName = 'خصم', oppAvatar =
       myScore,
       oppScore,
       isAI,
+      xpEarned: Math.max(0, Math.min(1000, Math.floor(Number(xpEarned) || 0))),
       timestamp: Date.now()
     };
     

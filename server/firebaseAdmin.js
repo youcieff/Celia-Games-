@@ -96,6 +96,7 @@ export function sanitizeHistory(value) {
         myScore: Math.max(0, Math.min(1_000_000, Math.floor(Number(item?.myScore) || 0))),
         oppScore: Math.max(0, Math.min(1_000_000, Math.floor(Number(item?.oppScore) || 0))),
         isAI: Boolean(item?.isAI),
+        xpEarned: Math.max(0, Math.min(1000, Math.floor(Number(item?.xpEarned) || 0))),
         timestamp: Math.max(0, Math.min(Date.now() + 60_000, Number(item?.timestamp) || Date.now()))
     }));
 }

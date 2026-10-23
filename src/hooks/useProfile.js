@@ -111,6 +111,7 @@ export default function useProfile(defaultMatchDetails = {}) {
             isWin,
             outcome,
             ...matchDetails,
+            xpEarned: addedXP,
             gameId: matchDetails.gameId || 'unknown-game',
             gameTitle: matchDetails.gameTitle || 'مباراة'
         });

@@ -238,12 +238,17 @@ export async function flushPendingAccountProfile() {
 
 export async function recordAccountMatch(match, outcome, xp) {
     const user = auth.currentUser;
-    if (!user) return false;
+    // Firebase restores its persisted auth session asynchronously on page load.
+    // A very quick AI game can finish before currentUser is ready, so retain the
+    // match under the saved account UID and let the auth listener flush it later.
+    const uid = user?.uid || getSavedAccount()?.uid;
+    if (!uid) return false;
     const pending = readPendingMatches();
-    if (!pending.some(item => item.uid === user.uid && item.match?.id === match?.id)) {
-        pending.push({ uid: user.uid, match, outcome, xp });
+    if (!pending.some(item => item.uid === uid && item.match?.id === match?.id)) {
+        pending.push({ uid, match, outcome, xp });
         savePendingMatches(pending);
     }
+    if (!user) return true;
     return flushPendingAccountMatches();
 }
 
@@ -254,7 +259,34 @@ export async function refreshAccountSnapshot() {
     const response = await fetch('/api/account', { headers: { Authorization: `Bearer ${token}` } });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error || 'تعذر تحميل الحساب');
+
+    // Recover recent matches that were saved locally while an earlier account
+    // request failed. Only migrate history when this device still belongs to
+    // the same signed-in UID; never upload a guest or another account's games.
+    const localProfile = readJson(PROFILE_KEY, null);
+    const localHistory = readJson(HISTORY_KEY, []);
+    const remoteMatchIds = new Set((Array.isArray(result.history) ? result.history : []).map(match => match?.id));
+    const missingMatchCount = localProfile?.uid === user.uid
+        ? Math.max(0, (Number(localProfile.gamesPlayed) || 0) - (Number(result.profile?.gamesPlayed) || 0))
+        : 0;
+    const recoverableMatches = missingMatchCount > 0 && Array.isArray(localHistory)
+        ? localHistory.filter(match => match?.id && !remoteMatchIds.has(match.id))
+            .slice(0, missingMatchCount)
+        : [];
+
     applyAccountSnapshot(result);
+    if (recoverableMatches.length) {
+        const pending = readPendingMatches();
+        for (const match of recoverableMatches) {
+            if (pending.some(item => item.uid === user.uid && item.match?.id === match.id)) continue;
+            const outcome = ['win', 'loss', 'draw'].includes(match.outcome)
+                ? match.outcome
+                : match.isWin ? 'win' : 'loss';
+            pending.push({ uid: user.uid, match, outcome, xp: match.xpEarned || 0 });
+        }
+        savePendingMatches(pending);
+        await flushPendingAccountMatches();
+    }
     return result.profile;
 }
 
