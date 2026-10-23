@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { KeyRound, LogOut, RefreshCw, UserRound, UserRoundPlus } from 'lucide-react';
+import { KeyRound, LogOut, UserRound, UserRoundPlus } from 'lucide-react';
 import {
     createAccount,
     getSavedAccount,
     loginToAccount,
     logoutAccount,
     refreshAccountSnapshot,
-    syncAccountSnapshot,
     subscribeToAccount
 } from '../lib/accountClient';
 import FriendsPanel from './FriendsPanel';
@@ -72,21 +71,6 @@ export default function AccountAccessPanel({ profile }) {
         }
     };
 
-    const handleManualSync = async () => {
-        setBusy(true);
-        setError('');
-        setMessage('');
-        try {
-            const syncedProfile = await syncAccountSnapshot(profile);
-            setSavedAccount({ username: syncedProfile?.username || savedAccount?.username });
-            setMessage('اتحدّث ملفك على أجهزتك.');
-        } catch (syncError) {
-            setError(syncError.message);
-        } finally {
-            setBusy(false);
-        }
-    };
-
     return (
         <section className="rounded-2xl border border-white/10 bg-black/20 p-4 text-right" dir="rtl">
             <div className="mb-3 flex items-center gap-2">
@@ -101,19 +85,16 @@ export default function AccountAccessPanel({ profile }) {
 
             {user ? (
                 <>
-                <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.07] p-3">
-                    <p className="text-xs font-bold text-white/60">الحساب المتصل</p>
-                    <p className="mt-1 truncate text-sm font-black text-emerald-300">{savedAccount?.username || user.displayName || 'حسابك'}</p>
-                    <div className="mt-3 flex gap-2">
-                        <button type="button" disabled={busy} onClick={handleManualSync} className="flex h-9 flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 text-xs font-black hover:bg-white/10 disabled:opacity-50">
-                            <RefreshCw size={14} /> مزامنة الآن
-                        </button>
-                        <button type="button" disabled={busy} onClick={handleLogout} className="flex h-9 items-center justify-center gap-2 rounded-xl border border-rose-400/20 bg-rose-400/10 px-3 text-xs font-black text-rose-200 disabled:opacity-50">
-                            <LogOut size={14} /> خروج
-                        </button>
+                    <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.07] p-3">
+                        <p className="text-xs font-bold text-white/60">الحساب المتصل · مزامنة تلقائية</p>
+                        <p className="mt-1 truncate text-sm font-black text-emerald-300">{savedAccount?.username || user.displayName || 'حسابك'}</p>
+                        <div className="mt-3 flex">
+                            <button type="button" disabled={busy} onClick={handleLogout} className="flex h-9 items-center justify-center gap-2 rounded-xl border border-rose-400/20 bg-rose-400/10 px-3 text-xs font-black text-rose-200 disabled:opacity-50">
+                                <LogOut size={14} /> خروج
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <FriendsPanel />
+                    <FriendsPanel />
                 </>
             ) : (
                 <>

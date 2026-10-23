@@ -91,18 +91,53 @@ export async function loginToAccount(username, pin) {
 }
 
 let scheduledSyncTimer = null;
-let queuedSyncProfile = null;
+let queuedSyncSnapshot = null;
 let queuedSyncPromise = null;
 let resolveQueuedSync = null;
 let pendingMatchRetryTimer = null;
+let pendingProfileRetryTimer = null;
+let pendingProfileRetryDelayMs = 15_000;
+
+function isSamePendingProfile(left, right) {
+    return left?.uid === right?.uid && JSON.stringify(left?.profile) === JSON.stringify(right?.profile);
+}
+
+function isLatestPendingProfileForUser(expected) {
+    if (queuedSyncSnapshot?.uid === expected?.uid) return isSamePendingProfile(queuedSyncSnapshot, expected);
+    const stored = readJson(PENDING_PROFILE_KEY, null);
+    if (stored?.uid === expected?.uid) return isSamePendingProfile(stored, expected);
+    return false;
+}
+
+function clearPendingProfile(expected) {
+    const stored = readJson(PENDING_PROFILE_KEY, null);
+    if (isSamePendingProfile(stored, expected)) localStorage.removeItem(PENDING_PROFILE_KEY);
+    if (isSamePendingProfile(queuedSyncSnapshot, expected)) queuedSyncSnapshot = null;
+}
+
+function clearPendingProfileRetry() {
+    clearTimeout(pendingProfileRetryTimer);
+    pendingProfileRetryTimer = null;
+    pendingProfileRetryDelayMs = 15_000;
+}
+
+function schedulePendingProfileRetry(delay = pendingProfileRetryDelayMs) {
+    if (typeof window === 'undefined' || pendingProfileRetryTimer) return;
+    pendingProfileRetryTimer = setTimeout(() => {
+        pendingProfileRetryTimer = null;
+        void flushPendingAccountProfile().catch(error => console.warn('Pending account profile will retry later', error));
+    }, delay);
+    pendingProfileRetryDelayMs = Math.min(Math.max(delay * 2, 15_000), 120_000);
+}
 
 export function syncAccountSnapshot(profile) {
     const user = auth.currentUser;
     if (!user) return Promise.resolve();
+    const pendingSnapshot = { uid: user.uid, profile };
     try {
-        localStorage.setItem(PENDING_PROFILE_KEY, JSON.stringify({ uid: user.uid, profile }));
+        localStorage.setItem(PENDING_PROFILE_KEY, JSON.stringify(pendingSnapshot));
     } catch { }
-    queuedSyncProfile = profile;
+    queuedSyncSnapshot = pendingSnapshot;
     if (!queuedSyncPromise) {
         queuedSyncPromise = new Promise((resolve, reject) => {
             resolveQueuedSync = { resolve, reject };
@@ -110,20 +145,29 @@ export function syncAccountSnapshot(profile) {
     }
     clearTimeout(scheduledSyncTimer);
     scheduledSyncTimer = setTimeout(async () => {
+        scheduledSyncTimer = null;
         const completion = resolveQueuedSync;
-        const profileToSync = queuedSyncProfile;
         queuedSyncPromise = null;
         resolveQueuedSync = null;
         try {
             const currentUser = auth.currentUser;
-            if (!currentUser) return completion?.resolve();
+            const storedPending = readJson(PENDING_PROFILE_KEY, null);
+            const latestPending = queuedSyncSnapshot?.uid === currentUser?.uid
+                ? queuedSyncSnapshot
+                : storedPending?.uid === currentUser?.uid ? storedPending : null;
+            if (!currentUser || !latestPending) return completion?.resolve();
             const token = await currentUser.getIdToken();
-            const result = await postAccount({ action: 'sync', profile: profileToSync }, token);
-            applyAccountSnapshot(result);
-            const pendingProfile = readJson(PENDING_PROFILE_KEY, null);
-            if (pendingProfile?.uid === currentUser.uid) localStorage.removeItem(PENDING_PROFILE_KEY);
+            const result = await postAccount({ action: 'sync', profile: latestPending.profile }, token);
+            if (isLatestPendingProfileForUser(latestPending)) {
+                applyAccountSnapshot(result);
+                clearPendingProfile(latestPending);
+                clearPendingProfileRetry();
+            } else {
+                if (!scheduledSyncTimer) schedulePendingProfileRetry(350);
+            }
             completion?.resolve(result.profile);
         } catch (error) {
+            schedulePendingProfileRetry();
             completion?.reject(error);
         }
     }, 350);
@@ -170,14 +214,26 @@ export async function flushPendingAccountMatches() {
 export async function flushPendingAccountProfile() {
     const user = auth.currentUser;
     if (!user) return false;
-    const pending = readJson(PENDING_PROFILE_KEY, null);
+    const storedPending = readJson(PENDING_PROFILE_KEY, null);
+    const pending = queuedSyncSnapshot?.uid === user.uid
+        ? queuedSyncSnapshot
+        : storedPending?.uid === user.uid ? storedPending : null;
     if (!pending?.profile || pending.uid !== user.uid) return false;
-    const token = await user.getIdToken();
-    const result = await postAccount({ action: 'sync', profile: pending.profile }, token);
-    applyAccountSnapshot(result);
-    const currentPending = readJson(PENDING_PROFILE_KEY, null);
-    if (currentPending?.uid === user.uid) localStorage.removeItem(PENDING_PROFILE_KEY);
-    return true;
+    try {
+        const token = await user.getIdToken();
+        const result = await postAccount({ action: 'sync', profile: pending.profile }, token);
+        if (isLatestPendingProfileForUser(pending)) {
+            applyAccountSnapshot(result);
+            clearPendingProfile(pending);
+            clearPendingProfileRetry();
+        } else {
+            if (!scheduledSyncTimer) schedulePendingProfileRetry(350);
+        }
+        return true;
+    } catch (error) {
+        schedulePendingProfileRetry();
+        throw error;
+    }
 }
 
 export async function recordAccountMatch(match, outcome, xp) {
@@ -247,8 +303,10 @@ export function subscribeToAccount(callback) {
 }
 
 if (typeof window !== 'undefined') {
-    window.addEventListener('online', () => {
+    const retryPendingAccountData = () => {
         void flushPendingAccountProfile().catch(error => console.warn('Pending account profile will retry later', error));
         void flushPendingAccountMatches().catch(error => console.warn('Pending account matches will retry later', error));
-    });
+    };
+    window.addEventListener('online', retryPendingAccountData);
+    window.addEventListener('focus', retryPendingAccountData);
 }
