@@ -56,7 +56,7 @@ function toPublicProfile(profile) {
     };
 }
 
-async function logMissingAccountProfile(database, uid, username, action) {
+async function logMissingAccountProfile(database, uid, username, action, diagnostics = {}) {
     let usernameIndexFound = false;
     let usernameIndexMatchesUid = null;
     let publicProfileFound = false;
@@ -87,17 +87,23 @@ async function logMissingAccountProfile(database, uid, username, action) {
         usernameIndexFound,
         usernameIndexMatchesUid,
         publicProfileFound,
-        accountSecretFound
+        accountSecretFound,
+        recoveryReason: diagnostics.recoveryReason || 'unknown',
+        recoveryProfileAvailable: Boolean(diagnostics.recoveryProfileAvailable),
+        transactionCommitted: Boolean(diagnostics.transactionCommitted),
+        transactionProfileExists: Boolean(diagnostics.transactionProfileExists)
     });
 }
 
-async function restoreAccountProfileFromPublic(database, uid, incoming) {
-    if (typeof incoming.username !== 'string' || !incoming.username.trim()) return false;
+async function readRestorableAccountProfile(database, uid, incoming) {
+    if (typeof incoming.username !== 'string' || !incoming.username.trim()) {
+        return { profile: null, reason: 'username_missing' };
+    }
     let username;
     try {
         username = normalizeUsername(incoming.username);
     } catch {
-        return false;
+        return { profile: null, reason: 'username_invalid' };
     }
     const usernameKey = usernameDatabaseKey(username);
     const [indexSnapshot, publicSnapshot, historySnapshot, streakSnapshot] = await Promise.all([
@@ -106,12 +112,13 @@ async function restoreAccountProfileFromPublic(database, uid, incoming) {
         database.ref(`matchHistory/${uid}`).get(),
         database.ref(`winStreaks/${uid}`).get()
     ]);
-    if (indexSnapshot.val() !== uid || !publicSnapshot.exists()) return false;
+    if (indexSnapshot.val() !== uid) return { profile: null, reason: 'username_index_mismatch' };
+    if (!publicSnapshot.exists()) return { profile: null, reason: 'public_profile_missing' };
 
     const publicProfile = publicSnapshot.val() || {};
     const history = Array.isArray(historySnapshot.val()) ? historySnapshot.val() : [];
     const streak = streakSnapshot.val() || {};
-    const restored = {
+    const profile = {
         ...sanitizeProfile(publicProfile, username, uid),
         createdAt: Math.max(0, Number(publicProfile.createdAt) || Date.now()),
         lastSeenAt: Math.max(0, Number(publicProfile.lastSeenAt) || 0),
@@ -120,8 +127,7 @@ async function restoreAccountProfileFromPublic(database, uid, incoming) {
         currentStreak: Math.max(0, Number(streak.currentStreak) || 0),
         maxStreak: Math.max(0, Number(streak.maxStreak) || 0)
     };
-    const result = await database.ref(`users/${uid}`).transaction(current => current || restored, undefined, false);
-    return result.snapshot.exists();
+    return { profile, reason: 'ready' };
 }
 
 async function checkLoginRateLimit(database, usernameKey) {
@@ -260,24 +266,27 @@ async function syncAccount(req, body) {
     const database = getAdminDatabase();
     const userRef = database.ref(`users/${identity.uid}`);
     const incoming = body.profile && typeof body.profile === 'object' ? body.profile : {};
+    const recovery = await readRestorableAccountProfile(database, identity.uid, incoming);
     const updateProfile = current => {
-        if (!current) return;
-        const safeIncoming = sanitizeProfile(incoming, current.username, identity.uid);
+        const source = current || recovery.profile;
+        if (!source) return;
+        const safeIncoming = sanitizeProfile(incoming, source.username, identity.uid);
         return {
-            ...current,
-            nickname: normalizeNickname(incoming.nickname, current.username),
+            ...source,
+            nickname: normalizeNickname(incoming.nickname, source.username),
             avatar: safeIncoming.avatar,
-            lastSeenAt: Math.max(Date.now(), (Number(current.lastSeenAt) || 0) + 1)
+            lastSeenAt: Math.max(Date.now(), (Number(source.lastSeenAt) || 0) + 1)
         };
     };
-    let transaction = await userRef.transaction(updateProfile, undefined, false);
-    let profile = transaction.snapshot.val();
-    if ((!transaction.committed || !profile) && await restoreAccountProfileFromPublic(database, identity.uid, incoming)) {
-        transaction = await userRef.transaction(updateProfile, undefined, false);
-        profile = transaction.snapshot.val();
-    }
+    const transaction = await userRef.transaction(updateProfile, undefined, false);
+    const profile = transaction.snapshot.val();
     if (!transaction.committed || !profile) {
-        await logMissingAccountProfile(database, identity.uid, incoming.username, 'sync');
+        await logMissingAccountProfile(database, identity.uid, incoming.username, 'sync', {
+            recoveryReason: recovery.reason,
+            recoveryProfileAvailable: Boolean(recovery.profile),
+            transactionCommitted: transaction.committed,
+            transactionProfileExists: Boolean(profile)
+        });
         const error = new Error('الحساب غير موجود');
         error.status = 404;
         throw error;
