@@ -133,7 +133,9 @@ export default function WhoAmIGame({ setView, mode }) {
     const [isGuessPending, setIsGuessPending] = useState(false);
     const useGameChat = mode === 'online';
     const isTogetherMode = mode === 'together';
-    const showChat = true;
+    // Both online modes run on two devices, so expose the same chat controls
+    // and listener to the host and the joining player.
+    const showChat = mode === 'online' || mode === 'together';
     
     const lastGuessRef = useRef(null);
     const guessAttemptIdRef = useRef(null);
@@ -2073,7 +2075,6 @@ export default function WhoAmIGame({ setView, mode }) {
                     closedCards={myClosedCards}
                     onGuess={handleGuess}
                     onClose={() => setShowGuessModal(false)}
-                    onPreviewCard={setPreviewCard}
                 />
             )}
         </div>

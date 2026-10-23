@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import Eye from 'lucide-react/dist/esm/icons/eye';
 import CardPortrait from './CardPortrait';
 
-export default function GuessModal({ pack, closedCards, onGuess, onClose, onPreviewCard }) {
+export default function GuessModal({ pack, closedCards, onGuess, onClose }) {
     const [selectedId, setSelectedId] = useState(null);
     
     // Only show cards that are NOT closed
@@ -48,15 +47,6 @@ export default function GuessModal({ pack, closedCards, onGuess, onClose, onPrev
                                         ${selectedId === card.id ? 'text-[var(--accent)]' : 'text-white'}`}>
                                         {card.name}
                                     </div>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => onPreviewCard?.(card)}
-                                    aria-label={`عرض خصائص ${card.name}`}
-                                    title={`عرض خصائص ${card.name}`}
-                                    className="absolute right-1.5 top-1.5 z-10 grid h-7 w-7 place-items-center rounded-lg border border-white/20 bg-black/70 text-white shadow-lg transition hover:scale-105 hover:bg-black/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
-                                >
-                                    <Eye size={14} />
                                 </button>
                             </div>
                         ))}
