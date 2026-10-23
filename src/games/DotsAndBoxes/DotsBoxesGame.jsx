@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import P2PConnectionManager from '../../components/P2PConnectionManager';
+import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
 import Logo from '../../components/Logo';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Wifi from 'lucide-react/dist/esm/icons/wifi';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
-import EmotesOverlay, { ChatTriggerButton } from '../../components/EmotesOverlay';
+import EmotesOverlay, { ChatTriggerButton, GameNotifications } from '../../components/EmotesOverlay';
 import useProfile from '../../hooks/useProfile';
 import { triggerVictoryEffects, triggerDefeatEffects, triggerDrawEffects } from '../../lib/effectsEngine';
 import { AvatarDisplay } from '../../components/icons/AvatarIcons';
 import { IconDotsBoxes, IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 import { playSound, playHaptic } from '../../lib/audioEngine';
-import { recordMatch } from '../../lib/statsEngine';
 
 const ROWS = 4; // number of boxes vertically
 const COLS = 4; // number of boxes horizontally
@@ -28,7 +28,7 @@ export default function DotsBoxesGame({ setView }) {
     const connRef = useRef(null);
     const isHostRef = useRef(false);
 
-    const [myProfile] = useProfile();
+    const [, , awardMatchResult] = useProfile({ gameId: 'dots-boxes', gameTitle: 'النقاط والصناديق' });
     const [oppProfile, setOppProfile] = useState(null);
 
     const [gameState, setGameState] = useState('lobby');
@@ -92,15 +92,14 @@ export default function DotsBoxesGame({ setView }) {
                 recordedRef.current = true;
                 const myFinalScore = isHostRef.current ? stateRef.current.scores.host : stateRef.current.scores.opp;
                 const oppFinalScore = isHostRef.current ? stateRef.current.scores.opp : stateRef.current.scores.host;
-                recordMatch({
+                awardMatchResult(overallWinner === 'draw' ? 'draw' : overallWinner === 'me' ? 'win' : 'loss', {
                     gameId: 'dots-boxes',
                     gameTitle: 'النقاط والصناديق',
                     oppName: oppProfile?.nickname || 'الخصم',
                     oppAvatar: oppProfile?.avatar || 'alien',
-                    isWin: overallWinner === 'me',
                     myScore: myFinalScore,
                     oppScore: oppFinalScore,
-                    isAI: false,
+                    isAI: Boolean(oppProfile?.isAI),
                 });
             }
         }
@@ -337,6 +336,7 @@ export default function DotsBoxesGame({ setView }) {
                         </div>
                     </header>
                 )}
+                {gameState !== 'lobby' && <GameNotifications />}
 
                 {/* Lobby */}
                 {gameState === 'lobby' && (
@@ -612,6 +612,9 @@ export default function DotsBoxesGame({ setView }) {
             </div>
             {gameState === 'playing' && (
                 <EmotesOverlay conn={connRef.current} oppProfile={opp} showStandaloneButton={false} />
+            )}
+            {gameState !== 'lobby' && (
+                <ConnectionPauseOverlay conn={connRef.current} opponentName={opp?.nickname} onLeave={() => { connRef.current?.close(); setView('hub'); }} />
             )}
         </>
     );

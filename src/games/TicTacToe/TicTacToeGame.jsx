@@ -34,7 +34,7 @@ export default function TicTacToeGame({ setView }) {
     const connRef = useRef(null);
     const isHostRef = useRef(false);
 
-    const [myProfile] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'tic-tac-toe', gameTitle: 'إكس أو' });
     const [oppProfile, setOppProfile] = useState(null);
 
     const [gameState, setGameState] = useState('lobby'); // lobby, choosing-symbol, choosing-starts, waiting-start, playing
@@ -55,6 +55,7 @@ export default function TicTacToeGame({ setView }) {
     const boardRef = useRef(Array(9).fill(null));
     const xIsNextRef = useRef(true);
     const scoresRef = useRef({ me: 0, opp: 0 });
+    const matchRecordedBoardRef = useRef(null);
 
     useEffect(() => {
         boardRef.current = board;
@@ -66,6 +67,21 @@ export default function TicTacToeGame({ setView }) {
     const mySymbol = isHost ? hostSymbol : (hostSymbol === 'X' ? 'O' : 'X');
     const isMyTurn = (mySymbol === 'X' && xIsNext) || (mySymbol === 'O' && !xIsNext);
     const winData = calculateWinner(board);
+
+    useEffect(() => {
+        if (gameState !== 'playing' || !winData) return;
+        const boardKey = board.join('');
+        if (matchRecordedBoardRef.current === boardKey) return;
+        matchRecordedBoardRef.current = boardKey;
+        const outcome = winData.winner === 'draw' ? 'draw' : winData.winner === mySymbol ? 'win' : 'loss';
+        awardMatchResult(outcome, {
+            gameId: 'tic-tac-toe',
+            gameTitle: 'إكس أو',
+            oppName: oppProfile?.nickname || 'الخصم',
+            oppAvatar: oppProfile?.avatar || 'cool',
+            isAI: Boolean(oppProfile?.isAI)
+        });
+    }, [gameState, board, winData, mySymbol, oppProfile, awardMatchResult]);
 
     const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
@@ -234,6 +250,7 @@ export default function TicTacToeGame({ setView }) {
     };
 
     const doRestart = () => {
+        matchRecordedBoardRef.current = null;
         setBoard(Array(9).fill(null));
         setMoveHistory([]);
         setShowRecap(false);
@@ -435,11 +452,12 @@ export default function TicTacToeGame({ setView }) {
             {/* Connection Pause Overlay */}
             <ConnectionPauseOverlay
                 conn={connRef.current}
+                opponentName={oppProfile?.nickname}
                 onLeave={() => { connRef.current?.close(); setView('hub'); }}
             />
 
             {/* Emotes & Chat Layer */}
-            {gameState === 'playing' && !winData && <EmotesOverlay conn={connRef.current} oppProfile={oppProfile} showStandaloneButton={false} />}
+            {connRef.current && <EmotesOverlay conn={connRef.current} oppProfile={oppProfile} showStandaloneButton={false} />}
 
             {/* Match Recap Modal */}
             <MatchRecapModal

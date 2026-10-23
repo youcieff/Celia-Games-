@@ -24,8 +24,9 @@ export default function SeaBattleGame({ setView }) {
     const connRef = useRef(null);
     const isHostRef = useRef(false);
 
-    const [myProfile] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'sea-battle', gameTitle: 'معركة البحر' });
     const [oppProfile, setOppProfile] = useState(null);
+    const matchRecordedRef = useRef(false);
 
     const [gameState, setGameState] = useState('lobby'); // lobby, setup, waiting-ready, playing, finished
 
@@ -76,6 +77,34 @@ export default function SeaBattleGame({ setView }) {
         };
     }, [placedShips, myGrid, targetGrid, currentTurn, hitsOnMe, hitsOnOpp, gameState, oppReady]);
 
+    const getPlayerSnapshot = () => ({ placedShips, myGrid, targetGrid, hitsOnMe, hitsOnOpp, moveHistory });
+
+    const restoreConnectionState = (savedState, seat = (isHostRef.current ? 'host' : 'peer')) => {
+        if (!savedState || savedState.connectionGame !== 'sea-battle') return;
+        const playerState = savedState.playerSnapshot || savedState.connectionPlayers?.[seat]?.playerSnapshot;
+        if (playerState) {
+            setPlacedShips(playerState.placedShips || []);
+            setMyGrid(playerState.myGrid || Array.from({ length: SIZE }, () => Array(SIZE).fill(null)));
+            setTargetGrid(playerState.targetGrid || Array.from({ length: SIZE }, () => Array(SIZE).fill(null)));
+            setHitsOnMe(Number(playerState.hitsOnMe) || 0);
+            setHitsOnOpp(Number(playerState.hitsOnOpp) || 0);
+            setMoveHistory(playerState.moveHistory || []);
+        }
+        setCurrentTurn(savedState.currentTurn || 'host');
+        setOppReady(Boolean(savedState.oppReady));
+        setGameState(savedState.gameState || 'setup');
+    };
+
+    useEffect(() => {
+        if (!connRef.current || gameState === 'lobby') return;
+        const seat = isHostRef.current ? 'host' : 'peer';
+        const snapshot = getPlayerSnapshot();
+        connRef.current.savePlayerState?.({ playerSnapshot: snapshot }, seat);
+        if (isHostRef.current) {
+            connRef.current.saveState?.({ connectionGame: 'sea-battle', gameState, currentTurn, oppReady });
+        }
+    }, [placedShips, myGrid, targetGrid, currentTurn, hitsOnMe, hitsOnOpp, moveHistory, gameState, oppReady]);
+
     const isHost = isHostRef.current;
     const isMyTurn = (isHost && currentTurn === 'host') || (!isHost && currentTurn === 'guest');
 
@@ -97,16 +126,56 @@ export default function SeaBattleGame({ setView }) {
         }
     }, [hitsOnMe, hitsOnOpp, gameState]);
 
+    useEffect(() => {
+        if (gameState !== 'finished' || !overallWinner || matchRecordedRef.current) return;
+        matchRecordedRef.current = true;
+        awardMatchResult(overallWinner === 'me' ? 'win' : 'loss', {
+            gameId: 'sea-battle',
+            gameTitle: 'معركة البحر',
+            oppName: oppProfile?.nickname || 'الخصم',
+            oppAvatar: oppProfile?.avatar || 'cool',
+            isAI: Boolean(oppProfile?.isAI),
+            myScore: hitsOnOpp,
+            oppScore: hitsOnMe
+        });
+    }, [gameState, overallWinner, awardMatchResult, oppProfile, hitsOnMe, hitsOnOpp]);
+
     const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
-        setGameState('setup');
+        if (savedState?.connectionGame === 'sea-battle') {
+            restoreConnectionState(savedState);
+        } else {
+            setGameState('setup');
+        }
+        if (hostMode) {
+            conn.on('peer-reconnect', () => {
+                conn.getState?.().then((sharedState) => {
+                    if (!sharedState || sharedState.connectionGame !== 'sea-battle') return;
+                    conn.send({
+                        type: 'state_sync',
+                        state: {
+                            connectionGame: sharedState.connectionGame,
+                            gameState: sharedState.gameState,
+                            currentTurn: sharedState.currentTurn,
+                            oppReady: sharedState.oppReady,
+                            playerSnapshot: sharedState.connectionPlayers?.peer?.playerSnapshot
+                        }
+                    });
+                });
+            });
+        }
     };
 
     const onData = (msg) => {
         const cur = stateRef.current;
+
+        if (msg.type === 'state_sync' && !isHostRef.current && msg.state?.connectionGame === 'sea-battle') {
+            restoreConnectionState(msg.state, 'peer');
+            return;
+        }
 
         if (msg.type === 'ready') {
             setOppReady(true);
@@ -291,6 +360,7 @@ export default function SeaBattleGame({ setView }) {
     };
 
     const doRestart = () => {
+        matchRecordedRef.current = false;
         pendingShotRef.current = null;
         setPlacedShips([]);
         setMyGrid(Array.from({ length: SIZE }, () => Array(SIZE).fill(null)));
@@ -589,11 +659,12 @@ export default function SeaBattleGame({ setView }) {
             {/* Connection Pause Overlay (10s Auto-Reconnect) */}
             <ConnectionPauseOverlay
                 conn={connRef.current}
+                opponentName={oppProfile?.nickname}
                 onLeave={() => { connRef.current?.close(); setView('hub'); }}
             />
 
             {/* Emotes & Chat Overlay */}
-            {gameState === 'playing' && <EmotesOverlay conn={connRef.current} oppProfile={oppProfile} showStandaloneButton={false} />}
+            {connRef.current && <EmotesOverlay conn={connRef.current} oppProfile={oppProfile} showStandaloneButton={false} />}
 
             {/* Match Replay Modal */}
             <MatchRecapModal

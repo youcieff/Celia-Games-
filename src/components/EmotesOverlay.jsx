@@ -7,6 +7,7 @@ import MessageCircle from 'lucide-react/dist/esm/icons/message-circle';
 import Send from 'lucide-react/dist/esm/icons/send';
 import X from 'lucide-react/dist/esm/icons/x';
 import Smile from 'lucide-react/dist/esm/icons/smile';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 
 const QUICK_PHRASES = [
     'عاش يا بطل! 👏',
@@ -34,6 +35,18 @@ const AI_REPLIES = [
  * Reusable ChatTriggerButton that can be placed in any game header bar next to Mute
  */
 export function ChatTriggerButton({ onClick, hasUnread = false, className = '' }) {
+    const [localUnread, setLocalUnread] = useState(false);
+    useEffect(() => {
+        const handleUnread = () => setLocalUnread(true);
+        const handleOpened = () => setLocalUnread(false);
+        window.addEventListener('game-chat-unread', handleUnread);
+        window.addEventListener('game-chat-opened', handleOpened);
+        return () => {
+            window.removeEventListener('game-chat-unread', handleUnread);
+            window.removeEventListener('game-chat-opened', handleOpened);
+        };
+    }, []);
+
     return (
         <button
             onClick={onClick}
@@ -41,7 +54,7 @@ export function ChatTriggerButton({ onClick, hasUnread = false, className = '' }
             title="المحادثة والتفاعلات"
         >
             <MessageCircle size={18} />
-            {hasUnread && (
+            {(hasUnread || localUnread) && (
                 <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-75" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--accent)]" />
@@ -51,15 +64,89 @@ export function ChatTriggerButton({ onClick, hasUnread = false, className = '' }
     );
 }
 
+export function GameNotifications({ className = '' }) {
+    const [notice, setNotice] = useState(null);
+    const timerRef = useRef(null);
+
+    useEffect(() => {
+        const showNotice = (type, event) => {
+            const detail = event.detail;
+            if (type === 'chat' ? !detail?.text : !detail?.emoteKey) return;
+            setNotice({ ...detail, type });
+            window.clearTimeout(timerRef.current);
+            timerRef.current = window.setTimeout(() => setNotice(null), type === 'chat' ? 5200 : 3400);
+        };
+        const handleChat = event => showNotice('chat', event);
+        const handleEmote = event => showNotice('emote', event);
+        window.addEventListener('game-chat-notice', handleChat);
+        window.addEventListener('game-emote-notice', handleEmote);
+        return () => {
+            window.removeEventListener('game-chat-notice', handleChat);
+            window.removeEventListener('game-emote-notice', handleEmote);
+            window.clearTimeout(timerRef.current);
+        };
+    }, []);
+
+    if (!notice) return null;
+
+    const isChat = notice.type === 'chat';
+    return (
+        <div
+            role="status"
+            aria-live="polite"
+            className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 shadow-xl animate-pop-in ${className}`}
+            style={{
+                background: isChat
+                    ? 'linear-gradient(135deg, #17202d 0%, #10151e 100%)'
+                    : 'linear-gradient(135deg, #201a2d 0%, #14131c 100%)',
+                borderColor: isChat ? 'color-mix(in srgb, var(--accent) 45%, #283243)' : 'rgba(192, 132, 252, 0.38)'
+            }}
+        >
+            {isChat ? (
+                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/35">
+                    <AvatarDisplay avatarId={notice.avatar} size={29} />
+                    <span className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full border border-[#17202d] bg-[var(--accent)] text-white">
+                        <MessageCircle size={9} aria-hidden="true" />
+                    </span>
+                </div>
+            ) : (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-purple-300/20 bg-purple-400/10">
+                    <EmoteDisplay emoteId={notice.emoteKey} size={29} />
+                </div>
+            )}
+            <div className="min-w-0 flex-1 text-right">
+                <div className="mb-0.5 flex items-center gap-1.5">
+                    {isChat ? <MessageCircle size={12} className="text-[var(--accent)]" /> : <Sparkles size={12} className="text-purple-300" />}
+                    <p className="truncate text-[10px] font-black text-white/90">
+                        {isChat ? (notice.isMine ? 'رسالتك' : `رسالة من ${notice.sender || 'الخصم'}`) : (notice.isMine ? 'تفاعلك' : `تفاعل من ${notice.sender || 'الخصم'}`)}
+                    </p>
+                </div>
+                {isChat ? (
+                    <p className="break-words text-xs font-bold leading-snug text-white" dir="auto">{notice.text}</p>
+                ) : (
+                    <p className="text-[10px] font-bold text-white/55">تفاعل سريع في اللعبة</p>
+                )}
+            </div>
+            <button
+                type="button"
+                onClick={() => { window.clearTimeout(timerRef.current); setNotice(null); }}
+                aria-label="إغلاق الإشعار"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-white/45 transition hover:bg-white/10 hover:text-white"
+            >
+                <X size={14} />
+            </button>
+        </div>
+    );
+}
+
 export default function EmotesOverlay({
     conn,
     oppProfile = null,
     showStandaloneButton = false,
     buttonPosition = 'top-left',
     simulateAIReplies = true,
-    initialTab = 'emotes',
-    keepChatOpenOnSend = false,
-    displayEmoteInHeader = false,
+    initialTab = 'messages',
+    keepChatOpenOnSend = true,
     pendingGameQuestion = null,
     canAnswerGameQuestion = false,
     onAnswerGameQuestion = null
@@ -68,7 +155,6 @@ export default function EmotesOverlay({
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState(initialTab); // 'emotes' | 'messages'
     const [inputText, setInputText] = useState('');
-    const [floatingItems, setFloatingItems] = useState([]);
     const [chatHistory, setChatHistory] = useState([]);
     const [hasUnread, setHasUnread] = useState(false);
     const itemId = useRef(0);
@@ -91,7 +177,10 @@ export default function EmotesOverlay({
         const handleToggle = () => {
             setIsOpen(prev => {
                 const next = !prev;
-                if (next) setHasUnread(false);
+                if (next) {
+                    setHasUnread(false);
+                    window.dispatchEvent(new CustomEvent('game-chat-opened'));
+                }
                 return next;
             });
         };
@@ -138,7 +227,6 @@ export default function EmotesOverlay({
     }, [myProfile]);
 
     const triggerEmote = (emoteKey, isMine, senderName, senderAvatar) => {
-        const id = itemId.current++;
         const resolvedSender = isMine
             ? (myProfile.nickname || 'أنت')
             : (senderName || oppProfile?.nickname || 'الخصم');
@@ -146,22 +234,9 @@ export default function EmotesOverlay({
             ? myProfile.avatar
             : (senderAvatar || oppProfile?.avatar || 'alien');
 
-        const item = {
-            id,
-            type: 'emote',
-            emoteKey,
-            isMine,
-            sender: resolvedSender,
-            avatar: resolvedAvatar
-        };
-
-        if (displayEmoteInHeader) {
-            window.dispatchEvent(new CustomEvent('game-emote-notice', {
-                detail: { emoteKey, isMine, sender: resolvedSender, avatar: resolvedAvatar }
-            }));
-        } else {
-            setFloatingItems(prev => [...prev, item]);
-        }
+        window.dispatchEvent(new CustomEvent('game-emote-notice', {
+            detail: { emoteKey, isMine, sender: resolvedSender, avatar: resolvedAvatar }
+        }));
 
         playSound('pop');
         if (!isMine) {
@@ -172,11 +247,6 @@ export default function EmotesOverlay({
             }
         }
 
-        if (!displayEmoteInHeader) {
-            setTimeout(() => {
-                setFloatingItems(prev => prev.filter(e => e.id !== id));
-            }, 3200);
-        }
     };
 
     const triggerChat = (text, isMine, senderName, senderAvatar, metadata = {}) => {
@@ -199,6 +269,7 @@ export default function EmotesOverlay({
             ...messageMetadata
         };
         setChatHistory(prev => [...prev.slice(-39), message]);
+        if (isOpenRef.current) setActiveTab('messages');
 
         // If the chat is closed, show a short notice in the shared header.
         // When it is open, the full conversation is already visible there.
@@ -266,77 +337,40 @@ export default function EmotesOverlay({
 
     return (
         <>
-            {/* ── Floating Notification Bubbles Layer (Pointer-events-none) ── */}
-            <div className="fixed inset-x-0 top-32 pointer-events-none z-[110] overflow-hidden flex flex-col items-center px-4">
-                <div className="flex flex-col gap-2.5 max-w-sm w-full">
-                    {floatingItems.map(item => (
-                        <div
-                            key={item.id}
-                            className={`flex items-end gap-2 transition-all animate-pop-in duration-300 ${
-                                item.isMine ? 'justify-end' : 'justify-start'
-                            }`}
-                        >
-                            {/* Opponent Avatar */}
-                            {!item.isMine && (
-                                <div className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden shadow-lg shrink-0">
-                                    <AvatarDisplay avatarId={item.avatar} size={22} />
-                                </div>
-                            )}
-
-                            {/* Bubble Content */}
-                            {item.type === 'emote' ? (
-                                <div className="glass-card p-2 rounded-2xl border border-white/15 shadow-2xl bg-black/70 backdrop-blur-xl animate-bounce-short">
-                                    <EmoteDisplay emoteId={item.emoteKey} size={42} />
-                                </div>
-                            ) : (
-                                <div className={`glass-card px-3.5 py-2 rounded-2xl border shadow-xl backdrop-blur-xl max-w-[230px] ${
-                                    item.isMine
-                                        ? 'bg-[var(--accent-soft)] border-[var(--accent)] text-white'
-                                        : 'themed-opponent-bubble text-white'
-                                }`}>
-                                    <p className="text-[10px] font-black opacity-60 mb-0.5 leading-none">{item.sender}</p>
-                                    <p className="text-xs font-bold leading-snug break-words">{item.text}</p>
-                                </div>
-                            )}
-
-                            {/* My Avatar */}
-                            {item.isMine && (
-                                <div className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden shadow-lg shrink-0">
-                                    <AvatarDisplay avatarId={item.avatar} size={22} />
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-
-
             {/* ── Chat & Emotes Modal / Sheet ── */}
             {isOpen && (
-                <div className="safe-area-bottom-sheet fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in pointer-events-auto"
+                <div className="safe-area-bottom-sheet fixed inset-0 z-[120] flex items-end sm:items-center justify-center bg-[#07090e]/90 p-0 backdrop-blur-md animate-fade-in pointer-events-auto sm:p-4"
                      onClick={(e) => { if (e.target === e.currentTarget) setIsOpen(false); }}>
-                    <div className="glass-card w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl border border-white/15 shadow-2xl bg-black/85 backdrop-blur-2xl p-4 animate-slide-up flex flex-col gap-3.5 max-h-[80vh]">
+                    <div
+                        className="flex max-h-[min(84dvh,760px)] w-full flex-col gap-4 overflow-hidden rounded-t-3xl border border-white/10 p-4 shadow-[0_28px_90px_rgba(0,0,0,0.7)] animate-slide-up sm:max-h-[82vh] sm:max-w-md sm:rounded-3xl"
+                        style={{ background: 'linear-gradient(180deg, #171c26 0%, #10141c 48%, #0d1118 100%)', backdropFilter: 'none' }}
+                    >
                         {/* Modal Header */}
-                        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                        <div className="flex items-center justify-between border-b border-white/10 pb-3.5">
                             <div className="flex items-center gap-2">
-                                <MessageCircle size={18} className="text-[var(--accent)]" />
-                                <h3 className="text-sm font-black">المحادثة والتفاعلات</h3>
+                                <span className="grid h-10 w-10 place-items-center rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/10 text-[var(--accent)]">
+                                    <MessageCircle size={19} />
+                                </span>
+                                <div>
+                                    <h3 className="text-sm font-black text-white">المحادثة والتفاعلات</h3>
+                                    <p className="mt-0.5 text-[10px] font-bold text-white/45">رسائلكم وتفاعلاتكم في مكان واحد</p>
+                                </div>
                             </div>
                             <button
                                 onClick={() => setIsOpen(false)}
-                                className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-white/10 active:scale-90 transition-all opacity-70 hover:opacity-100"
+                                aria-label="إغلاق المحادثة"
+                                className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-white/65 transition hover:bg-white/10 hover:text-white active:scale-90"
                             >
                                 <X size={16} />
                             </button>
                         </div>
 
                         {/* Tabs Switcher */}
-                        <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10">
+                        <div className="flex rounded-xl border border-white/10 bg-[#0a0d13] p-1">
                             <button
                                 onClick={() => setActiveTab('emotes')}
-                                className={`flex-1 py-1.5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
-                                    activeTab === 'emotes' ? 'bg-[var(--accent)] text-white shadow-md' : 'opacity-60 hover:opacity-100'
+                                className={`flex-1 rounded-lg py-2 text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+                                    activeTab === 'emotes' ? 'bg-[#252b36] text-white shadow-inner' : 'text-white/50 hover:text-white/85'
                                 }`}
                             >
                                 <Smile size={14} />
@@ -344,8 +378,8 @@ export default function EmotesOverlay({
                             </button>
                             <button
                                 onClick={() => setActiveTab('messages')}
-                                className={`flex-1 py-1.5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
-                                    activeTab === 'messages' ? 'bg-[var(--accent)] text-white shadow-md' : 'opacity-60 hover:opacity-100'
+                                className={`flex-1 rounded-lg py-2 text-xs font-black flex items-center justify-center gap-1.5 transition-all ${
+                                    activeTab === 'messages' ? 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/15' : 'text-white/50 hover:text-white/85'
                                 }`}
                             >
                                 <MessageCircle size={14} />
@@ -362,7 +396,7 @@ export default function EmotesOverlay({
                                         <button
                                             key={item.id}
                                             onClick={() => handleSendEmote(item.id)}
-                                            className="h-14 flex flex-col items-center justify-center rounded-2xl hover:scale-110 active:scale-95 transition-all bg-white/5 hover:bg-white/15 border border-white/5"
+                                            className="h-16 flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#1b212c] transition hover:-translate-y-0.5 hover:border-purple-300/30 hover:bg-[#252332] active:scale-95"
                                             title={item.label}
                                         >
                                             <Component size={34} />
@@ -374,24 +408,29 @@ export default function EmotesOverlay({
 
                         {/* Tab Content: Messages */}
                         {activeTab === 'messages' && (
-                            <div className="flex flex-col gap-3">
-                                <div className="flex min-h-24 max-h-48 flex-col gap-2 overflow-y-auto rounded-2xl border border-white/10 bg-black/25 p-2.5 custom-scrollbar">
+                            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+                                <div
+                                    role="log"
+                                    aria-live="polite"
+                                    className="flex min-h-32 flex-1 flex-col gap-2.5 overflow-y-auto rounded-2xl border border-white/10 bg-[#090c12] p-3 custom-scrollbar"
+                                >
                                     {chatHistory.length === 0 ? (
                                         <div className="flex flex-1 flex-col items-center justify-center gap-1 text-center text-white/45">
-                                            <MessageCircle size={19} />
-                                            <p className="text-[11px] font-bold">ابدأ المحادثة من هنا</p>
+                                            <span className="mb-1 grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-[#151a23] text-white/45"><MessageCircle size={20} /></span>
+                                            <p className="text-xs font-black text-white/65">المحادثة لسه فاضية</p>
+                                            <p className="text-[10px] font-bold">اكتب رسالة وابدأ الكلام</p>
                                         </div>
                                     ) : chatHistory.map(message => (
                                         <div key={message.id} className={`flex ${message.isMine ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-[88%] rounded-2xl border px-3 py-2 ${
-                                                message.isMine
-                                                    ? 'border-[var(--accent)]/25 bg-[var(--accent-soft)] text-white'
-                                                    : 'themed-opponent-bubble text-white'
-                                            }`}>
-                                                <p className={`mb-0.5 text-[9px] font-black ${message.isMine ? 'text-[var(--accent)]' : 'text-[var(--accent-secondary)]'}`}>
-                                                    {message.sender}
+                                            <div
+                                                className={`max-w-[88%] rounded-2xl border px-3.5 py-2.5 text-white shadow-md ${message.isMine ? 'rounded-br-md border-[var(--accent)]/35' : 'rounded-bl-md border-sky-300/20'}`}
+                                                style={{ background: message.isMine ? 'color-mix(in srgb, var(--accent) 20%, #111720)' : '#19222e' }}
+                                            >
+                                                <p className={`mb-1 flex items-center gap-1.5 text-[9px] font-black ${message.isMine ? 'text-[var(--accent)]' : 'text-sky-300'}`}>
+                                                    {message.isMine ? 'أنت' : message.sender}
+                                                    <span className="font-medium text-white/35">· {new Date(message.sentAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>
                                                 </p>
-                                                <p className="break-words text-xs font-bold leading-snug" dir="auto">{message.text}</p>
+                                                <p className="break-words text-[13px] font-bold leading-relaxed" dir="auto">{message.text}</p>
                                                 {message.gameQuestion && canAnswerGameQuestion && pendingGameQuestion?.id === message.questionId && (
                                                     <div className="mt-2 grid grid-cols-2 gap-2">
                                                         <button type="button" onClick={() => onAnswerGameQuestion?.('yes')} className="rounded-lg bg-emerald-500 px-3 py-2 text-[11px] font-black text-slate-950">أيوه</button>
@@ -407,7 +446,7 @@ export default function EmotesOverlay({
                                 {/* Custom text input */}
                                 <form
                                     onSubmit={(e) => { e.preventDefault(); handleSendChat(inputText); }}
-                                    className="flex items-center gap-2 bg-white/5 border border-white/15 rounded-2xl p-1.5 focus-within:border-[var(--accent)] transition-colors"
+                                    className="flex items-center gap-2 rounded-2xl border border-white/10 bg-[#080b11] p-1.5 transition-colors focus-within:border-[var(--accent)]/65"
                                 >
                                     <input
                                         ref={inputRef}
@@ -416,13 +455,13 @@ export default function EmotesOverlay({
                                         value={inputText}
                                         onChange={(e) => setInputText(e.target.value)}
                                         placeholder={oppProfile?.isAI || oppProfile?.avatar === 'robot' ? 'اسألني عن بطاقتي...' : 'اكتب رسالتك...'}
-                                        className="flex-1 bg-transparent px-2.5 py-1.5 text-xs font-bold outline-none text-white placeholder:text-white/30"
+                                        className="flex-1 bg-transparent px-3 py-2 text-sm font-bold outline-none text-white placeholder:text-white/35"
                                         dir="auto"
                                     />
                                     <button
                                         type="submit"
                                         disabled={!inputText.trim()}
-                                        className="w-9 h-9 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95 transition-all shrink-0"
+                                        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/20 transition hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
                                     >
                                         <Send size={15} />
                                     </button>
@@ -430,13 +469,13 @@ export default function EmotesOverlay({
 
                                 {/* Quick Phrases Chips */}
                                 <div className="flex flex-col gap-1.5">
-                                    <span className="text-[10px] font-black opacity-40 px-1">عبارات سريعة بنقرة واحدة:</span>
-                                    <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto pr-1">
+                                    <span className="px-1 text-[10px] font-black text-white/45">عبارات سريعة</span>
+                                    <div className="grid max-h-28 grid-cols-2 gap-1.5 overflow-y-auto pr-1">
                                         {QUICK_PHRASES.map((phrase, idx) => (
                                             <button
                                                 key={idx}
                                                 onClick={() => handleSendChat(phrase)}
-                                                className="text-right px-2.5 py-2 rounded-xl bg-white/5 hover:bg-white/15 border border-white/5 text-[11px] font-bold active:scale-95 transition-all truncate hover:border-white/20"
+                                                className="truncate rounded-xl border border-white/10 bg-[#171d27] px-2.5 py-2 text-right text-[11px] font-bold text-white/75 transition hover:border-white/20 hover:bg-[#222a36] hover:text-white active:scale-[0.98]"
                                             >
                                                 {phrase}
                                             </button>

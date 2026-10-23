@@ -60,6 +60,16 @@ const GAMES = [
         accentVar: 'var(--game-5-accent)',
     },
     {
+        id: 'guess-time',
+        title: '\u062e\u0645\u0646 \u0627\u0644\u0648\u0642\u062a',
+        desc: '\u0648\u0642\u0651\u0641 \u0627\u0644\u0633\u0627\u0639\u0629 \u0641\u064a \u0627\u0644\u0644\u062d\u0638\u0629 \u0627\u0644\u0645\u0636\u0628\u0648\u0637\u0629',
+        isNew: true,
+        badgeLabel: '\u0645\u0648\u062f \u062c\u062f\u064a\u062f',
+        badgeKind: 'mode',
+        online: true,
+        accentVar: 'var(--game-20-accent)',
+    },
+    {
         id: 'speed-sudoku',
         title: 'سودوكو السرعة',
         desc: 'حل السودوكو قبل خصمك',
@@ -162,13 +172,6 @@ const GAMES = [
         desc: 'حرب السفن الاستراتيجية',
         online: true,
         accentVar: 'var(--game-19-accent)',
-    },
-    {
-        id: 'guess-time',
-        title: 'خمن الوقت',
-        desc: 'وقّف الساعة في اللحظة المضبوطة',
-        online: true,
-        accentVar: 'var(--game-20-accent)',
     },
     {
         id: 'bus-complete',
@@ -279,15 +282,15 @@ function WhoAmIGameSelector({ onSelect, onClose }) {
                     <GameIcon gameId="whoami-online" size={25} />
                 </div>
                 <h3 className="mb-1 text-base font-black text-white">أنا مين؟</h3>
-                <p className="mb-4 text-xs text-white/50">اختاروا طريقة التواصل قبل إنشاء الغرفة:</p>
+                <p className="mb-4 text-xs text-white/50">اختاروا طريقة اللعب:</p>
                 <div className="flex flex-col gap-2.5">
                     <button onClick={() => onSelect('whoami-online')} className="glass-card group flex items-center gap-3 rounded-2xl border border-white/10 px-3 py-3 text-right transition hover:border-[var(--accent)] active:scale-[0.99]">
                         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)] transition group-hover:scale-110"><MessageCircle size={20} /></span>
-                        <span><span className="block text-sm font-black">عن بُعد · بالدردشة</span><span className="mt-0.5 block text-[10px] font-medium text-white/45">كل لاعب على جهازه مع دردشة داخل اللعبة</span></span>
+                        <span><span className="block text-sm font-black">عن بُعد</span><span className="mt-0.5 block text-[10px] font-medium text-white/45">كل لاعب على جهازه</span></span>
                     </button>
                     <button onClick={() => onSelect('whoami-together')} className="glass-card group flex items-center gap-3 rounded-2xl border border-white/10 px-3 py-3 text-right transition hover:border-[var(--accent)] active:scale-[0.99]">
                         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)] transition group-hover:scale-110"><IconWifi size={20} /></span>
-                        <span><span className="block text-sm font-black">سوا · دردشة من الأيقونة</span><span className="mt-0.5 block text-[10px] font-medium text-white/45">اتصال بين جهازين؛ افتحوا الدردشة من الأيقونة عند الحاجة</span></span>
+                        <span><span className="block text-sm font-black">سوا · جهازين</span><span className="mt-0.5 block text-[10px] font-medium text-white/45">اللعب متزامن بين الجهازين</span></span>
                     </button>
                 </div>
             </div>
@@ -295,7 +298,15 @@ function WhoAmIGameSelector({ onSelect, onClose }) {
     );
 }
 
+function getGameBadgeLabel(game) {
+    return game.badgeLabel || (game.exclusive
+        ? '\u062d\u0635\u0631\u064a'
+        : '\u0648\u0635\u0644 \u062d\u062f\u064a\u062b\u064b\u0627');
+}
+
 function HubGameCard({ game, onClick, index = 0, rail = false, featuredKind = '' }) {
+    const badgeKind = game.badgeKind || (game.exclusive ? 'exclusive' : 'new');
+
     return (
         <button
             type="button"
@@ -305,9 +316,9 @@ function HubGameCard({ game, onClick, index = 0, rail = false, featuredKind = ''
         >
             <div className="hub-card-top">
                 {game.exclusive || game.isNew ? (
-                    <span className={`hub-card-label ${game.exclusive ? 'exclusive-chip' : 'plain-chip'}`}>
+                    <span className={`hub-card-label ${game.exclusive ? 'exclusive-chip' : 'plain-chip'} hub-card-label--${badgeKind}`}>
                         <Sparkles size={10} />
-                        <span>{game.exclusive ? 'حصري' : 'جديد'}</span>
+                        <span>{getGameBadgeLabel(game)}</span>
                     </span>
                 ) : <span className="hub-card-label-placeholder" aria-hidden="true" />}
 
@@ -518,9 +529,9 @@ export default function Hub({ setView }) {
                                 >
                                     <div className="hub-card-top">
                                         {game.exclusive || game.isNew ? (
-                                            <span className={`hub-card-label ${game.exclusive ? 'exclusive-chip' : 'plain-chip'}`}>
+                                            <span className={`hub-card-label ${game.exclusive ? 'exclusive-chip' : 'plain-chip'} hub-card-label--${game.badgeKind || (game.exclusive ? 'exclusive' : 'new')}`}>
                                                 <Sparkles size={10} />
-                                                <span>{game.exclusive ? '\u062d\u0635\u0631\u064a' : '\u062c\u062f\u064a\u062f'}</span>
+                                                <span>{getGameBadgeLabel(game)}</span>
                                             </span>
                                         ) : <span className="hub-card-label-placeholder" aria-hidden="true" />}
 
@@ -579,8 +590,8 @@ export default function Hub({ setView }) {
                                                     {game.title}
                                                 </h3>
                                                 {(game.exclusive || game.isNew) && (
-                                                        <span className={`${game.exclusive ? 'exclusive-chip' : 'plain-chip'} text-[8px] font-black px-1.5 py-0.2 rounded-full shrink-0`}>
-                                                        {game.exclusive ? 'حصري' : 'جديد'}
+                                                        <span className={`${game.exclusive ? 'exclusive-chip' : 'plain-chip'} hub-card-label--${game.badgeKind || (game.exclusive ? 'exclusive' : 'new')} text-[8px] font-black px-1.5 py-0.2 rounded-full shrink-0`}>
+                                                        {getGameBadgeLabel(game)}
                                                     </span>
                                                 )}
                                             </div>

@@ -6,6 +6,9 @@ import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 import Check from 'lucide-react/dist/esm/icons/check';
 import createAIConn from '../ai/createAIConn';
+import { ensureProfileIdentity } from '../lib/profileIdentity';
+import { dismissGameInvite, loadSocialData, sendGameInvite } from '../lib/socialClient';
+import { UserPlus } from 'lucide-react';
 import { 
     IconCopy, IconJoin, IconChip, IconHourglass,
     IconBusComplete, IconConnect4, IconDotsBoxes, IconCodeGame, 
@@ -22,7 +25,7 @@ const genId = () => {
 };
 
 // Creates a virtual "connection" object that mimics PeerJS API using Firebase
-function createFirebaseConn(roomPath, isHost, roomCode, gameIdPrefix, clientId, ignoreHistory = false) {
+function createFirebaseConn(roomPath, isHost, roomCode, gameIdPrefix, clientId, ignoreHistory = false, inviteGameId = gameIdPrefix) {
     const listeners = { data: [], 'peer-disconnect': [], 'peer-reconnect': [], 'peer-online': [] };
     const outbox = isHost ? 'h2g' : 'g2h';
     const inbox = isHost ? 'g2h' : 'h2g';
@@ -99,6 +102,23 @@ function createFirebaseConn(roomPath, isHost, roomCode, gameIdPrefix, clientId, 
     }
 
     return {
+        async inviteOpponentBack() {
+            if (typeof window === 'undefined' || !roomCode) return;
+            // A player may have left through the game's leave button, which marks
+            // the room closed. Reopen it so the shared invite can actually rejoin.
+            set(ref(db, `${roomPath}/status`), 'waiting').catch(() => {});
+            const inviteUrl = `${window.location.origin}/?game=${encodeURIComponent(inviteGameId)}&room=${encodeURIComponent(roomCode)}`;
+            const message = `ارجع نكمل اللعبة معايا: ${inviteUrl}`;
+            try {
+                if (navigator.share) {
+                    await navigator.share({ title: 'دعوة للرجوع للعبة', text: message, url: inviteUrl });
+                    return;
+                }
+            } catch (error) {
+                if (error?.name === 'AbortError') return;
+            }
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+        },
         send(data) {
             if (closed) return;
             try {
@@ -118,7 +138,14 @@ function createFirebaseConn(roomPath, isHost, roomCode, gameIdPrefix, clientId, 
         },
         // Save game state to Firebase (host calls after every move so rejoiners can restore)
         saveState(state) {
-            try { set(ref(db, `${roomPath}/gameState`), state); } catch (e) {}
+            return runTransaction(ref(db, `${roomPath}/gameState`), (current) => {
+                const previous = current && typeof current === 'object' ? current : {};
+                const nextState = state && typeof state === 'object' ? state : {};
+                return {
+                    ...nextState,
+                    connectionPlayers: previous.connectionPlayers || nextState.connectionPlayers || {}
+                };
+            }, { applyLocally: false }).catch(() => {});
         },
         // Merge a player's private clock/input state into the shared snapshot without
         // overwriting the other seat's independently running timer.
@@ -126,11 +153,18 @@ function createFirebaseConn(roomPath, isHost, roomCode, gameIdPrefix, clientId, 
             if (!['host', 'peer'].includes(seat)) return Promise.resolve();
             return runTransaction(ref(db, `${roomPath}/gameState`), (current) => {
                 const previous = current && typeof current === 'object' ? current : {};
+                const previousConnectionPlayers = previous.connectionPlayers && typeof previous.connectionPlayers === 'object'
+                    ? previous.connectionPlayers
+                    : {};
                 const previousTarget = previous.target && typeof previous.target === 'object' ? previous.target : {};
                 const nextTarget = state?.target && typeof state.target === 'object' ? state.target : {};
                 return {
                     ...previous,
                     ...state,
+                    connectionPlayers: {
+                        ...previousConnectionPlayers,
+                        [seat]: state
+                    },
                     target: {
                         ...previousTarget,
                         ...nextTarget,
@@ -165,19 +199,19 @@ function createFirebaseConn(roomPath, isHost, roomCode, gameIdPrefix, clientId, 
                 return snap.val() || null;
             } catch (e) { return null; }
         },
-        close() {
+        close({ preserveRoom = false } = {}) {
             if (closed) return;
             closed = true;
             try {
                 set(myPresenceRef, 'offline');
-                set(ref(db, `${roomPath}/status`), 'closed');
+                if (!preserveRoom) set(ref(db, `${roomPath}/status`), 'closed');
                 if (roomCode) {
                     try {
-                        if (sessionStorage.getItem(`celia_last_room:${gameIdPrefix}`) === roomCode) {
+                        if (!preserveRoom && sessionStorage.getItem(`celia_last_room:${gameIdPrefix}`) === roomCode) {
                             sessionStorage.removeItem(`celia_last_room:${gameIdPrefix}`);
                             sessionStorage.removeItem(`celia_last_room_role:${gameIdPrefix}`);
                         }
-                        if (sessionStorage.getItem('celia_last_room') === roomCode) {
+                        if (!preserveRoom && sessionStorage.getItem('celia_last_room') === roomCode) {
                             sessionStorage.removeItem('celia_last_room');
                             sessionStorage.removeItem('celia_last_game');
                         }
@@ -240,7 +274,7 @@ function readLocalProfile() {
         const stored = localStorage.getItem('celia_games_profile');
         if (stored) profile = JSON.parse(stored);
     } catch (e) { }
-    return profile;
+    return ensureProfileIdentity(profile);
 }
 
 async function claimRejoinRole(roomPath, preferredRole, clientId) {
@@ -349,6 +383,11 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
     const [copiedCode, setCopiedCode] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
     const [roomCreated, setRoomCreated] = useState(false);
+    const [showFriendInvites, setShowFriendInvites] = useState(false);
+    const [inviteFriends, setInviteFriends] = useState([]);
+    const [inviteSentTo, setInviteSentTo] = useState('');
+    const [inviteLoading, setInviteLoading] = useState(false);
+    const [inviteMessage, setInviteMessage] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
     const [rejoinCode, setRejoinCode] = useState(() => {
         try {
@@ -437,7 +476,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                         // Wait briefly so guest's Firebase listeners are ready before we connect
                         setTimeout(() => {
                             if (cancelled || isHandedOffRef.current) return;
-                            const conn = createFirebaseConn(roomPath, true, myId, gameIdPrefix, clientId);
+                            const conn = createFirebaseConn(roomPath, true, myId, gameIdPrefix, clientId, false, inviteGameId);
                             connRef.current = conn;
                             attachLobbyData(conn);
                             setLobbyState('connected');
@@ -490,7 +529,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
             await set(ref(db, `${targetRoom}/guestReady`), true);
 
             isHostRef.current = false;
-            const conn = createFirebaseConn(targetRoom, false, joinId.trim().toUpperCase(), gameIdPrefix, clientId);
+            const conn = createFirebaseConn(targetRoom, false, joinId.trim().toUpperCase(), gameIdPrefix, clientId, false, inviteGameId);
             connRef.current = conn;
             attachLobbyData(conn);
 
@@ -510,7 +549,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
             const stored = localStorage.getItem('celia_games_profile');
             if (stored) prof = JSON.parse(stored);
         } catch (e) { }
-        connRef.current?.send({ type: 'global_ready', profile: prof });
+        connRef.current?.send({ type: 'global_ready', profile: ensureProfileIdentity(prof) });
     };
 
     // Both ready → start game
@@ -524,6 +563,15 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                 if (isRejoinRef.current && !stateToRestore) {
                     stateToRestore = await connRef.current.getState();
                 }
+                try {
+                    const pendingInvite = JSON.parse(sessionStorage.getItem('celia_autojoin_invite') || 'null');
+                    if (pendingInvite?.id
+                        && pendingInvite.gameId === inviteGameId
+                        && pendingInvite.roomCode === joinId.trim().toUpperCase()) {
+                        sessionStorage.removeItem('celia_autojoin_invite');
+                        void dismissGameInvite(pendingInvite.id).catch(error => console.warn('Could not dismiss the joined invite', error));
+                    }
+                } catch { }
                 onGameStart(connRef.current, isHostRef.current, oppProfile, stateToRestore);
             }, 600);
             return () => clearTimeout(timeout);
@@ -540,7 +588,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                 if (stored) prof = JSON.parse(stored);
             } catch (e) { }
             interval = setInterval(() => {
-                connRef.current?.send({ type: 'global_ready', profile: prof });
+                connRef.current?.send({ type: 'global_ready', profile: ensureProfileIdentity(prof) });
             }, 1000);
         }
         return () => { if (interval) clearInterval(interval); };
@@ -564,6 +612,36 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
         if (!roomCreated) return;
         const text = `تعال اتحداك في ألعاب سيليا! 🎮🔥\nاضغط على الرابط وادخل الجولة معايا فوراً:\n${inviteUrl}`;
         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+    };
+
+    const handleOpenFriendInvites = async () => {
+        setInviteLoading(true);
+        setInviteMessage('');
+        try {
+            const data = await loadSocialData();
+            setInviteFriends(data.friends);
+            setShowFriendInvites(true);
+            if (data.friends.length === 0) setInviteMessage('أضف صديقًا من ملفك الشخصي الأول');
+        } catch (error) {
+            setInviteMessage(error.message);
+            setShowFriendInvites(true);
+        } finally {
+            setInviteLoading(false);
+        }
+    };
+
+    const handleInviteFriend = async friend => {
+        setInviteLoading(true);
+        setInviteMessage('');
+        try {
+            await sendGameInvite(friend.uid, inviteGameId, gameIdPrefix, myId);
+            setInviteSentTo(friend.uid);
+            setInviteMessage(`اتبعت دعوة لـ ${friend.nickname}`);
+        } catch (error) {
+            setInviteMessage(error.message);
+        } finally {
+            setInviteLoading(false);
+        }
     };
 
     // Auto-join from URL / sessionStorage
@@ -609,7 +687,11 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                 return;
             }
 
-            const isRejoin = normalizedCode === rejoinCode;
+            const presenceSnapshot = await get(ref(db, `${targetRoom}/presence`)).catch(() => null);
+            const presence = presenceSnapshot?.val() || {};
+            const peerAlreadyDisconnected = (presence.host === 'online' && presence.guest === 'offline')
+                || (presence.guest === 'online' && presence.host === 'offline');
+            const isRejoin = normalizedCode === rejoinCode || peerAlreadyDisconnected;
             isRejoinRef.current = isRejoin;
             let joinRole = 'guest';
             if (isRejoin) {
@@ -622,7 +704,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
             if (joinRole === 'guest') await set(ref(db, `${targetRoom}/guestReady`), true);
 
             isHostRef.current = joinRole === 'host';
-            const conn = createFirebaseConn(targetRoom, joinRole === 'host', normalizedCode, gameIdPrefix, clientId, isRejoin);
+            const conn = createFirebaseConn(targetRoom, joinRole === 'host', normalizedCode, gameIdPrefix, clientId, isRejoin, inviteGameId);
             connRef.current = conn;
             attachLobbyData(conn, isRejoin);
 
@@ -806,6 +888,38 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                         واتساب
                     </button>
                 </div>
+                <button
+                    type="button"
+                    onClick={handleOpenFriendInvites}
+                    disabled={!roomCreated || inviteLoading}
+                    className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[var(--accent)]/25 bg-[var(--accent)]/10 text-xs font-black text-[var(--accent)] transition hover:bg-[var(--accent)]/15 disabled:opacity-40"
+                >
+                    <UserPlus size={15} />
+                    {inviteLoading ? 'لحظة...' : 'ادعُ صديقًا من حسابك'}
+                </button>
+                {showFriendInvites && (
+                    <div className="mt-2 rounded-xl border border-white/10 bg-black/30 p-3">
+                        <div className="mb-2 flex items-center justify-between">
+                            <p className="text-xs font-black">اختار صديقًا</p>
+                            <button type="button" onClick={() => setShowFriendInvites(false)} className="text-[10px] font-bold text-white/45 hover:text-white">إغلاق</button>
+                        </div>
+                        {inviteFriends.length > 0 && <div className="flex flex-col gap-1.5">
+                            {inviteFriends.map(friend => (
+                                <button
+                                    key={friend.uid}
+                                    type="button"
+                                    onClick={() => void handleInviteFriend(friend)}
+                                    disabled={inviteLoading || Boolean(inviteSentTo)}
+                                    className="flex h-9 items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.035] px-3 text-right text-xs font-bold hover:border-[var(--accent)]/30 disabled:opacity-50"
+                                >
+                                    <span className="truncate">{friend.nickname} <span className="text-white/40">@{friend.username}</span></span>
+                                    <span className="shrink-0 text-[10px] text-[var(--accent)]">{inviteSentTo === friend.uid ? 'تم الإرسال' : 'إرسال'}</span>
+                                </button>
+                            ))}
+                        </div>}
+                        {inviteMessage && <p role="status" className="mt-2 text-center text-[10px] font-bold text-amber-200">{inviteMessage}</p>}
+                    </div>
+                )}
             </div>
 
             {/* ── Divider ── */}

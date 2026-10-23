@@ -21,7 +21,7 @@ const OPTION_LABELS = ['أ', 'ب', 'ج', 'د'];
 export default function TriviaGame({ setView }) {
     const connRef = useRef(null);
     const isHostRef = useRef(false);
-    const [myProfile, , awardMatchResult] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'trivia-duel', gameTitle: 'تحدي المعلومات' });
     const [oppProfile, setOppProfile] = useState(null);
 
     // States: 'lobby' | 'playing' | 'revealing' | 'gameover'
@@ -29,6 +29,7 @@ export default function TriviaGame({ setView }) {
     const [questions, setQuestions] = useState([]);
     const [currentIdx, setCurrentIdx] = useState(0);
     const [timeLeft, setTimeLeft] = useState(QUESTION_TIME_SEC);
+    const [connectionPaused, setConnectionPaused] = useState(false);
 
     // Player states for current question
     const [myAnswer, setMyAnswer] = useState(null); // index or null
@@ -38,6 +39,7 @@ export default function TriviaGame({ setView }) {
 
     const timerRef = useRef(null);
     const startTimeRef = useRef(Date.now());
+    const pausedQuestionElapsedRef = useRef(null);
     const myScoreRef = useRef(0);
     const oppScoreRef = useRef(0);
 
@@ -117,6 +119,34 @@ export default function TriviaGame({ setView }) {
 
     const handleTimeUp = () => {
         revealQuestion();
+    };
+
+    const pauseForConnection = () => {
+        if (gameState === 'playing' && pausedQuestionElapsedRef.current === null) {
+            pausedQuestionElapsedRef.current = Math.max(0, Date.now() - startTimeRef.current);
+        }
+        if (timerRef.current) clearInterval(timerRef.current);
+        timerRef.current = null;
+        setConnectionPaused(true);
+    };
+
+    const resumeAfterConnection = () => {
+        if (gameState === 'playing' && pausedQuestionElapsedRef.current !== null) {
+            startTimeRef.current = Date.now() - pausedQuestionElapsedRef.current;
+            pausedQuestionElapsedRef.current = null;
+            timerRef.current = setInterval(() => {
+                setTimeLeft(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timerRef.current);
+                        handleTimeUp();
+                        return 0;
+                    }
+                    if (prev <= 4) { playSound('tick'); playHaptic(10); }
+                    return prev - 1;
+                });
+            }, 1000);
+        }
+        setConnectionPaused(false);
     };
 
     const onData = (msg) => {
@@ -357,7 +387,7 @@ export default function TriviaGame({ setView }) {
                                     <button
                                         key={i}
                                         onClick={() => handleSelectOption(i)}
-                                        disabled={myAnswer !== null || gameState !== 'playing'}
+                                        disabled={connectionPaused || myAnswer !== null || gameState !== 'playing'}
                                         className={`w-full min-h-14 py-3 px-4 rounded-2xl flex items-center justify-between transition-all duration-300 font-black text-sm select-none active:scale-98 relative overflow-hidden ${btnStyle}`}
                                     >
                                         <div className="flex items-center gap-3">
@@ -439,10 +469,8 @@ export default function TriviaGame({ setView }) {
 
             </div>
 
-            <ConnectionPauseOverlay conn={connRef.current} onLeave={() => { connRef.current?.close(); setView('hub'); }} />
-            {(gameState === 'playing' || gameState === 'revealing') && (
-                <EmotesOverlay conn={connRef.current} oppProfile={oppProfile} showStandaloneButton={false} />
-            )}
+            <ConnectionPauseOverlay conn={connRef.current} opponentName={oppProfile?.nickname} onConnectionPause={pauseForConnection} onConnectionResume={resumeAfterConnection} onLeave={() => { connRef.current?.close(); setView('hub'); }} />
+            {connRef.current && <EmotesOverlay conn={connRef.current} oppProfile={oppProfile} showStandaloneButton={false} />}
         </>
     );
 }

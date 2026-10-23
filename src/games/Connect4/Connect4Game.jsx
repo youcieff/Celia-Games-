@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import P2PConnectionManager from '../../components/P2PConnectionManager';
+import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
 import Logo from '../../components/Logo';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Wifi from 'lucide-react/dist/esm/icons/wifi';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
-import EmotesOverlay, { ChatTriggerButton } from '../../components/EmotesOverlay';
+import EmotesOverlay, { ChatTriggerButton, GameNotifications } from '../../components/EmotesOverlay';
 import useProfile from '../../hooks/useProfile';
 import { triggerVictoryEffects, triggerDefeatEffects, triggerDrawEffects } from '../../lib/effectsEngine';
 import { AvatarDisplay } from '../../components/icons/AvatarIcons';
@@ -66,7 +67,7 @@ export default function Connect4Game({ setView }) {
     const connRef = useRef(null);
     const isHostRef = useRef(false);
 
-    const [myProfile] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'connect-four', gameTitle: 'كونكت 4' });
     const [oppProfile, setOppProfile] = useState(null);
 
     const [gameState, setGameState] = useState('lobby');
@@ -89,6 +90,7 @@ export default function Connect4Game({ setView }) {
     const hostTurnRef = useRef(true);
     const myScoreRef = useRef(0);
     const oppScoreRef = useRef(0);
+    const matchRecordedBoardRef = useRef(null);
 
     useEffect(() => {
         boardRef.current = board;
@@ -105,7 +107,18 @@ export default function Connect4Game({ setView }) {
     const winData = checkWin(board);
 
     useEffect(() => {
-        if (winData) {
+        if (gameState === 'playing' && winData) {
+            const boardKey = board.map(row => row.join('')).join('|');
+            if (matchRecordedBoardRef.current === boardKey) return;
+            matchRecordedBoardRef.current = boardKey;
+            const outcome = winData.winner === 'draw' ? 'draw' : winData.winner === (isHost ? 'host' : 'opp') ? 'win' : 'loss';
+            awardMatchResult(outcome, {
+                gameId: 'connect-four',
+                gameTitle: 'كونكت 4',
+                oppName: oppProfile?.nickname || 'الخصم',
+                oppAvatar: oppProfile?.avatar || 'cool',
+                isAI: Boolean(oppProfile?.isAI)
+            });
             if (winData.winner === 'draw') {
                 triggerDrawEffects();
             } else if (winData.winner === (isHost ? 'host' : 'opp')) {
@@ -115,7 +128,7 @@ export default function Connect4Game({ setView }) {
                 triggerDefeatEffects();
             }
         }
-    }, [winData, isHost]);
+    }, [winData, isHost, gameState, board, oppProfile, awardMatchResult]);
 
     const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
@@ -267,6 +280,7 @@ export default function Connect4Game({ setView }) {
     };
 
     const handleStartGame = () => {
+        matchRecordedBoardRef.current = null;
         const config = { hostColor, oppColor, hostPlaysFirst };
         hostTurnRef.current = hostPlaysFirst;
         setHostTurn(hostPlaysFirst);
@@ -283,6 +297,7 @@ export default function Connect4Game({ setView }) {
     };
 
     const doRestart = (newMyScore, newOppScore, nextHostStarts = !hostPlaysFirst) => {
+        matchRecordedBoardRef.current = null;
         const emptyBoard = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
         boardRef.current = emptyBoard;
         setBoard(emptyBoard);
@@ -375,6 +390,7 @@ export default function Connect4Game({ setView }) {
                         </div>
                     </header>
                 )}
+                {gameState !== 'lobby' && <GameNotifications />}
 
                 {/* Lobby */}
                 {gameState === 'lobby' && <div className="flex-1 flex pb-16 safe-area-pb px-4"><P2PConnectionManager gameIdPrefix="celia-c4" onGameStart={handleGameStart} /></div>}
@@ -607,6 +623,9 @@ export default function Connect4Game({ setView }) {
             </div>
             {gameState === 'playing' && (
                 <EmotesOverlay conn={connRef.current} oppProfile={opp} showStandaloneButton={false} />
+            )}
+            {gameState !== 'lobby' && (
+                <ConnectionPauseOverlay conn={connRef.current} opponentName={opp?.nickname} onLeave={() => { connRef.current?.close(); setView('hub'); }} />
             )}
         </>
     );

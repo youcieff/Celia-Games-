@@ -102,7 +102,7 @@ function floodFill(ctx, startX, startY, fillColor) {
 export default function QuickDrawGame({ setView }) {
     const connRef = useRef(null);
     const isHostRef = useRef(false);
-    const [myProfile, , awardMatchResult] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'quick-draw', gameTitle: 'ارسم وخمن' });
     const [oppProfile, setOppProfile] = useState(null);
 
     const [gameState, setGameState] = useState('lobby');
@@ -134,6 +134,7 @@ export default function QuickDrawGame({ setView }) {
     const isDrawing = useRef(false);
     const lastPos = useRef(null);
     const timerRef = useRef(null);
+    const connectionPausedRef = useRef(false);
     const myScoreRef = useRef(0);
     const oppScoreRef = useRef(0);
     const roundRef = useRef(0);
@@ -143,6 +144,23 @@ export default function QuickDrawGame({ setView }) {
     const activeToolRef = useRef(TOOL_PEN);
     const brushColorRef = useRef('#1e293b');
     const brushSizeIdxRef = useRef(2);
+    const connectionSnapshotRef = useRef(null);
+    connectionSnapshotRef.current = {
+        connectionGame: 'quick-draw',
+        gameState,
+        hostScore: myScoreRef.current,
+        oppScore: oppScoreRef.current,
+        round: roundRef.current,
+        firstDrawerRole: firstDrawerRoleRef.current,
+        isDrawer,
+        currentWord: currentWordRef.current,
+        receivedImageUrl,
+        timeLeft,
+        guessAttemptsLeft,
+        chatGuesses,
+        roundMsg,
+        winner
+    };
 
     // Keep refs in sync
     useEffect(() => { activeToolRef.current = activeTool; }, [activeTool]);
@@ -178,10 +196,92 @@ export default function QuickDrawGame({ setView }) {
     }, []);
 
     // ── Game Handlers ─────────────────────────────────────────────────────────
+    const getPeerConnectionSnapshot = () => {
+        const snapshot = connectionSnapshotRef.current;
+        if (!snapshot) return null;
+        const peerGameState = snapshot.gameState === 'word_choice' || snapshot.gameState === 'drawing'
+            ? 'waiting_for_drawing'
+            : snapshot.gameState === 'waiting_for_drawing'
+                ? 'drawing'
+                : snapshot.gameState === 'waiting_for_guess'
+                    ? 'guessing'
+                    : snapshot.gameState === 'guessing'
+                        ? 'waiting_for_guess'
+                        : snapshot.gameState;
+        const peerCurrentWord = snapshot.isDrawer
+            ? (snapshot.currentWord ? {
+                hint: snapshot.currentWord.hint || `${snapshot.currentWord.category || ''} — ${snapshot.currentWord.wordLength || snapshot.currentWord.word?.length || 0} حروف`,
+                category: snapshot.currentWord.category,
+                wordLength: snapshot.currentWord.wordLength || snapshot.currentWord.word?.length
+            } : null)
+            : snapshot.currentWord;
+        let peerImageData = snapshot.receivedImageUrl;
+        if (snapshot.isDrawer && snapshot.gameState === 'waiting_for_guess' && canvasRef.current) {
+            try { peerImageData = canvasRef.current.toDataURL('image/jpeg', 0.65); } catch { /* Canvas can be unavailable during route changes. */ }
+        }
+        return {
+            ...snapshot,
+            peerGameState,
+            peerFirstDrawerRole: snapshot.firstDrawerRole === 'me' ? 'opp' : 'me',
+            peerCurrentWord,
+            peerImageData
+        };
+    };
+
+    const restoreConnectionSnapshot = (snapshot, hostMode = isHostRef.current) => {
+        if (!snapshot || snapshot.connectionGame !== 'quick-draw') return false;
+        const localIsDrawer = hostMode ? Boolean(snapshot.isDrawer) : !Boolean(snapshot.isDrawer);
+        const localWord = hostMode
+            ? snapshot.currentWord
+            : (localIsDrawer && currentWordRef.current?.word ? currentWordRef.current : snapshot.peerCurrentWord);
+        let localGameState = hostMode ? snapshot.gameState : (snapshot.peerGameState || snapshot.gameState);
+        if (localIsDrawer && ['word_choice', 'drawing', 'waiting_for_guess'].includes(localGameState) && !localWord?.word) {
+            localGameState = 'role_select';
+        }
+        setGameState(localGameState || 'role_select');
+        setMyScore(hostMode ? Number(snapshot.hostScore) || 0 : Number(snapshot.oppScore) || 0);
+        setOppScore(hostMode ? Number(snapshot.oppScore) || 0 : Number(snapshot.hostScore) || 0);
+        myScoreRef.current = hostMode ? Number(snapshot.hostScore) || 0 : Number(snapshot.oppScore) || 0;
+        oppScoreRef.current = hostMode ? Number(snapshot.oppScore) || 0 : Number(snapshot.hostScore) || 0;
+        const localFirstDrawerRole = hostMode ? snapshot.firstDrawerRole : snapshot.peerFirstDrawerRole;
+        setFirstDrawerRole(localFirstDrawerRole || 'me');
+        firstDrawerRoleRef.current = localFirstDrawerRole || 'me';
+        const restoredRound = Number(snapshot.round) || 0;
+        setRound(restoredRound);
+        roundRef.current = restoredRound;
+        setIsDrawer(localIsDrawer);
+        setCurrentWord(localWord || null);
+        currentWordRef.current = localWord || null;
+        setReceivedImageUrl(hostMode ? snapshot.receivedImageUrl || null : snapshot.peerImageData || null);
+        const restoredTimeLeft = Number(snapshot.timeLeft);
+        setTimeLeft(Number.isFinite(restoredTimeLeft) ? Math.max(0, restoredTimeLeft) : DRAW_TIME_SEC);
+        setGuessAttemptsLeft(Math.max(0, Number(snapshot.guessAttemptsLeft) || 0));
+        guessAttemptsRef.current = Math.max(0, Number(snapshot.guessAttemptsLeft) || 0);
+        setChatGuesses(Array.isArray(snapshot.chatGuesses) ? snapshot.chatGuesses : []);
+        setRoundMsg(snapshot.roundMsg || '');
+        setWinner(hostMode
+            ? (snapshot.winner || null)
+            : (snapshot.winner === 'me' ? 'opp' : snapshot.winner === 'opp' ? 'me' : (snapshot.winner || null)));
+        return true;
+    };
+
     const saveGameState = () => {
         if (!isHostRef.current || !connRef.current) return;
+        const snapshot = connectionSnapshotRef.current;
+        const peerSnapshot = getPeerConnectionSnapshot();
+        const safeWord = (word) => word ? {
+            hint: word.hint || `${word.category || ''} — ${word.wordLength || word.word?.length || 0} حروف`,
+            category: word.category,
+            wordLength: word.wordLength || word.word?.length
+        } : null;
         connRef.current.saveState({
-            gameState, hostScore: myScoreRef.current, oppScore: oppScoreRef.current, round, firstDrawerRole
+            ...snapshot,
+            currentWord: safeWord(snapshot.currentWord),
+            receivedImageUrl: null,
+            peerGameState: peerSnapshot?.peerGameState,
+            peerFirstDrawerRole: peerSnapshot?.peerFirstDrawerRole,
+            peerCurrentWord: safeWord(peerSnapshot?.peerCurrentWord),
+            peerImageData: null
         });
     };
 
@@ -189,36 +289,30 @@ export default function QuickDrawGame({ setView }) {
         saveGameState();
     }, [gameState, myScore, oppScore, round, firstDrawerRole]);
 
+    useEffect(() => {
+        if (!isHostRef.current || !connRef.current || !['drawing', 'guessing', 'waiting_for_guess'].includes(gameState)) return undefined;
+        const interval = setInterval(saveGameState, 1000);
+        return () => clearInterval(interval);
+    }, [gameState]);
+
     const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', (msg) => { if (onDataRef.current) onDataRef.current(msg); });
 
-        if (savedState && savedState.gameState) {
-            setGameState(savedState.gameState);
-            setMyScore(hostMode ? savedState.hostScore : savedState.oppScore);
-            setOppScore(hostMode ? savedState.oppScore : savedState.hostScore);
-            myScoreRef.current = hostMode ? savedState.hostScore : savedState.oppScore;
-            oppScoreRef.current = hostMode ? savedState.oppScore : savedState.hostScore;
-            setRound(savedState.round || 0);
-            roundRef.current = savedState.round || 0;
-            setFirstDrawerRole(savedState.firstDrawerRole || 'me');
-            firstDrawerRoleRef.current = savedState.firstDrawerRole || 'me';
-
-            if (hostMode) {
-                conn.on('peer-reconnect', () => {
-                    conn.send({ type: 'state_sync', state: savedState });
-                });
-            }
+        if (savedState?.connectionGame === 'quick-draw' && restoreConnectionSnapshot(savedState, hostMode)) {
+            if (hostMode) conn.on('peer-reconnect', () => {
+                const state = getPeerConnectionSnapshot();
+                if (state) conn.send({ type: 'state_sync', state });
+            });
             return;
         }
 
         if (hostMode) {
             conn.on('peer-reconnect', () => {
-                conn.send({ type: 'state_sync', state: {
-                    gameState, hostScore: myScoreRef.current, oppScore: oppScoreRef.current, round: roundRef.current, firstDrawerRole: firstDrawerRoleRef.current
-                }});
+                const state = getPeerConnectionSnapshot();
+                if (state) conn.send({ type: 'state_sync', state });
             });
         }
 
@@ -265,6 +359,7 @@ export default function QuickDrawGame({ setView }) {
 
     const startDrawTimer = () => {
         if (timerRef.current) clearInterval(timerRef.current);
+        if (connectionPausedRef.current) return;
         timerRef.current = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev <= 1) { clearInterval(timerRef.current); handleSendDrawing(); return 0; }
@@ -276,6 +371,7 @@ export default function QuickDrawGame({ setView }) {
 
     const startGuessTimer = () => {
         if (timerRef.current) clearInterval(timerRef.current);
+        if (connectionPausedRef.current) return;
         timerRef.current = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev <= 1) { clearInterval(timerRef.current); handleGuessTimeUp(); return 0; }
@@ -323,6 +419,7 @@ export default function QuickDrawGame({ setView }) {
 
     const startDrawerWaitingTimer = () => {
         if (timerRef.current) clearInterval(timerRef.current);
+        if (connectionPausedRef.current) return;
         timerRef.current = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev <= 1) {
@@ -334,6 +431,19 @@ export default function QuickDrawGame({ setView }) {
                 return prev - 1;
             });
         }, 1000);
+    };
+
+    const pauseForConnection = () => {
+        connectionPausedRef.current = true;
+        if (timerRef.current) clearInterval(timerRef.current);
+        timerRef.current = null;
+    };
+
+    const resumeAfterConnection = () => {
+        connectionPausedRef.current = false;
+        if (gameState === 'drawing') startDrawTimer();
+        else if (gameState === 'guessing') startGuessTimer();
+        else if (gameState === 'waiting_for_guess') startDrawerWaitingTimer();
     };
 
     // ── Immediate win check after every score change ───────────────────────────
@@ -355,6 +465,9 @@ export default function QuickDrawGame({ setView }) {
     const onData = useCallback((msg) => {
         if (!msg || !msg.type) return;
         switch (msg.type) {
+            case 'state_sync':
+                if (!isHostRef.current) restoreConnectionSnapshot(msg.state, false);
+                break;
             case 'init_roles': {
                 setFirstDrawerRole(msg.firstDrawerRole);
                 firstDrawerRoleRef.current = msg.firstDrawerRole;
@@ -362,7 +475,10 @@ export default function QuickDrawGame({ setView }) {
                 break;
             }
             case 'drawer_started': {
-                setCurrentWord({ hint: `${msg.category} — ${msg.wordLength} حروف`, category: msg.category, wordLength: msg.wordLength });
+                const hint = `${msg.category} — ${msg.wordLength} حروف`;
+                const wordHint = { hint, category: msg.category, wordLength: msg.wordLength };
+                setCurrentWord(wordHint);
+                currentWordRef.current = wordHint;
                 break;
             }
             case 'drawing_sent': {
@@ -1015,7 +1131,7 @@ export default function QuickDrawGame({ setView }) {
                 </div>
             )}
 
-            <ConnectionPauseOverlay conn={connRef.current} />
+            <ConnectionPauseOverlay conn={connRef.current} opponentName={oppProfile?.nickname} onConnectionPause={pauseForConnection} onConnectionResume={resumeAfterConnection} onLeave={() => { connRef.current?.close?.(); setView('hub'); }} />
             <EmotesOverlay conn={connRef.current} />
         </div>
     );

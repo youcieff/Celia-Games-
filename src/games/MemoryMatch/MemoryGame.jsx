@@ -126,8 +126,9 @@ export default function MemoryGame({ setView }) {
     const connRef = useRef(null);
     const isHostRef = useRef(false);
 
-    const [myProfile] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'memory-match', gameTitle: 'لعبة الذاكرة' });
     const [oppProfile, setOppProfile] = useState(null);
+    const matchRecordedRef = useRef(false);
 
     const [gameState, setGameState] = useState('lobby'); // lobby, setup, waiting-start, playing
     const [theme, setTheme] = useState('random');
@@ -160,6 +161,19 @@ export default function MemoryGame({ setView }) {
 
     useEffect(() => {
         if (isGameOver) {
+            if (!matchRecordedRef.current) {
+                matchRecordedRef.current = true;
+                const outcome = overallWinner === 'draw' ? 'draw' : overallWinner === 'me' ? 'win' : 'loss';
+                awardMatchResult(outcome, {
+                    gameId: 'memory-match',
+                    gameTitle: 'لعبة الذاكرة',
+                    oppName: oppProfile?.nickname || 'الخصم',
+                    oppAvatar: oppProfile?.avatar || 'cool',
+                    isAI: Boolean(oppProfile?.isAI),
+                    myScore: isHostRef.current ? scores.host : scores.client,
+                    oppScore: isHostRef.current ? scores.client : scores.host
+                });
+            }
             if (overallWinner === 'draw') {
                 triggerDrawEffects();
             } else if (overallWinner === 'me') {
@@ -169,7 +183,7 @@ export default function MemoryGame({ setView }) {
                 triggerDefeatEffects();
             }
         }
-    }, [isGameOver, overallWinner]);
+    }, [isGameOver, overallWinner, awardMatchResult, oppProfile, scores]);
 
     const onDataRef = useRef(null);
     const activeKeyRef = useRef('');
@@ -273,6 +287,7 @@ export default function MemoryGame({ setView }) {
     onDataRef.current = onData;
 
     const handleStartGame = () => {
+        matchRecordedRef.current = false;
         const { deck, activeKey } = generateDeck(theme);
         // Send only card ID order — tiny payload, guest reconstructs full objects locally
         const cardOrder = deck.map(c => c.cardId);
@@ -364,6 +379,7 @@ export default function MemoryGame({ setView }) {
     };
 
     const doRestart = () => {
+        matchRecordedRef.current = false;
         setCards([]);
         setScores({ host: 0, client: 0 });
         setFlippedIndices([]);
@@ -599,11 +615,12 @@ export default function MemoryGame({ setView }) {
             {/* Auto-Reconnect & Pause */}
             <ConnectionPauseOverlay
                 conn={connRef.current}
+                opponentName={oppProfile?.nickname}
                 onLeave={() => { connRef.current?.close(); setView('hub'); }}
             />
 
             {/* Emotes & Chat Overlay */}
-            {gameState === 'playing' && <EmotesOverlay conn={connRef.current} oppProfile={oppProfile} showStandaloneButton={false} />}
+            {connRef.current && <EmotesOverlay conn={connRef.current} oppProfile={oppProfile} showStandaloneButton={false} />}
         </>
     );
 }

@@ -8,17 +8,17 @@ import { IconGuessTime } from '../../components/icons/GameIcons';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Timer from 'lucide-react/dist/esm/icons/timer';
 import Users from 'lucide-react/dist/esm/icons/users';
-import Edit3 from 'lucide-react/dist/esm/icons/edit-3';
 import Trophy from 'lucide-react/dist/esm/icons/trophy';
+import { RPSChoiceButton, RPSTieNotice } from '../../components/RPSChoiceButton';
 import { playSound, playHaptic } from '../../lib/audioEngine';
 import useProfile from '../../hooks/useProfile';
 import { triggerVictoryEffects, triggerDefeatEffects, triggerDrawEffects } from '../../lib/effectsEngine';
 
 const TARGET_TIMES = [3, 5, 10]; // seconds
 const TURN_RPS_OPTIONS = [
-    { id: 'rock', label: 'حجر', emoji: '✊' },
-    { id: 'paper', label: 'ورقة', emoji: '✋' },
-    { id: 'scissors', label: 'مقص', emoji: '✌️' }
+    { id: 'rock', label: 'حجر' },
+    { id: 'paper', label: 'ورقة' },
+    { id: 'scissors', label: 'مقص' }
 ];
 const RPS_BEATS = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
 const TURN_COUNTDOWN_MS = 3000;
@@ -42,12 +42,14 @@ export default function GuessTimeGame({ setView }) {
     const persistWriteRef = useRef(Promise.resolve());
     const pausedByDisconnectRef = useRef(false);
     const guessBySeatRef = useRef({ host: '', peer: '' });
-    const [myProfile] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'guess-time', gameTitle: 'خمن الوقت' });
     const [oppProfile, setOppProfile] = useState(null);
     const [isPeerDisconnected, setIsPeerDisconnected] = useState(false);
 
     // lobby → picking-mode → picking-target | picking-roles → ...
     const [gameState, setGameState] = useState('lobby');
+    const gameStateRef = useRef(gameState);
+    gameStateRef.current = gameState;
     const [gameMode, setGameMode] = useState('target'); // target | roles | turns
 
     // Target Mode States
@@ -87,6 +89,9 @@ export default function GuessTimeGame({ setView }) {
 
     const holdStartRef = useRef(null);
     const intervalRef = useRef(null);
+    const countdownIntervalRef = useRef(null);
+    const countdownValueRef = useRef(null);
+    const targetCountdownPausedRef = useRef(false);
     const myResultRef = useRef(null);
     const scoresRef = useRef(scores);
     scoresRef.current = scores;
@@ -110,6 +115,8 @@ export default function GuessTimeGame({ setView }) {
     const turnCountdownIntervalRef = useRef(null);
     const turnIntermissionRef = useRef(null);
     const turnScoresRef = useRef({ host: 0, peer: 0 });
+    const turnMatchRecordedRef = useRef(false);
+    const matchRecordedRef = useRef(false);
 
     const BLIND_DELAY = 1000;
 
@@ -143,6 +150,7 @@ export default function GuessTimeGame({ setView }) {
         turnAwaitingNextRef.current = false;
         turnSettledRef.current = false;
         turnAttemptHandledRef.current = false;
+        turnMatchRecordedRef.current = false;
         turnClockOwnerRef.current = null;
         turnClockElapsedRef.current = 0;
         turnClockSyncAtRef.current = 0;
@@ -161,6 +169,10 @@ export default function GuessTimeGame({ setView }) {
 
     const resetRound = () => {
         clearHoldInterval();
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+        countdownValueRef.current = null;
+        targetCountdownPausedRef.current = false;
         resetTurnRound();
         setElapsed(0);
         setIsHolding(false);
@@ -173,6 +185,7 @@ export default function GuessTimeGame({ setView }) {
         setGuessValue('');
         guessBySeatRef.current = { host: '', peer: '' };
         myResultRef.current = null;
+        matchRecordedRef.current = false;
     };
 
     const getGameSnapshot = () => {
@@ -357,6 +370,11 @@ export default function GuessTimeGame({ setView }) {
 
         const handlePeerDisconnect = () => {
             setIsPeerDisconnected(true);
+            if (gameStateRef.current === 'countdown' && countdownIntervalRef.current) {
+                clearInterval(countdownIntervalRef.current);
+                countdownIntervalRef.current = null;
+                targetCountdownPausedRef.current = true;
+            }
             const current = gameSnapshotRef.current;
             const localSeat = isHostRef.current ? 'host' : 'peer';
             if (current?.target?.players?.[localSeat]?.isHolding && holdStartRef.current) {
@@ -385,6 +403,10 @@ export default function GuessTimeGame({ setView }) {
 
         const handlePeerReconnect = () => {
             setIsPeerDisconnected(false);
+            if (targetCountdownPausedRef.current) {
+                targetCountdownPausedRef.current = false;
+                runTargetCountdown(countdownValueRef.current || 1);
+            }
             const localSeat = isHostRef.current ? 'host' : 'peer';
             const localTarget = gameSnapshotRef.current?.target?.players?.[localSeat];
             if (pausedByDisconnectRef.current && localTarget?.isHolding && holdStartRef.current) {
@@ -523,12 +545,20 @@ export default function GuessTimeGame({ setView }) {
     const startCountdown = () => {
         setGameState('countdown');
         resetRound();
-        let c = 3;
+        runTargetCountdown(3);
+    };
+
+    const runTargetCountdown = (startFrom) => {
+        let c = Math.max(1, Number(startFrom) || 1);
+        countdownValueRef.current = c;
         setCountdown(c);
-        const iv = setInterval(() => {
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = setInterval(() => {
             c--;
+            countdownValueRef.current = c;
             if (c <= 0) {
-                clearInterval(iv);
+                clearInterval(countdownIntervalRef.current);
+                countdownIntervalRef.current = null;
                 setCountdown(null);
                 setGameState('playing-target');
                 playSound('ding');
@@ -597,6 +627,7 @@ export default function GuessTimeGame({ setView }) {
         if (gameState !== 'turn-rps' || turnRpsChoiceRef.current) return;
         turnRpsChoiceRef.current = choice;
         setTurnRpsChoice(choice);
+        setTurnNotice('');
         connRef.current?.send({ type: 'turn_rps_choice', seat: isHostRef.current ? 'host' : 'peer', choice });
         playSound('tap');
         playHaptic(20);
@@ -608,6 +639,7 @@ export default function GuessTimeGame({ setView }) {
         if (msg.seat === localSeat || !['rock', 'paper', 'scissors'].includes(msg.choice)) return;
         turnOppRpsChoiceRef.current = msg.choice;
         setTurnOppRpsChoice(msg.choice);
+        setTurnNotice('');
         if (isHostRef.current && turnRpsChoiceRef.current) resolveTurnRps();
     };
 
@@ -804,6 +836,15 @@ export default function GuessTimeGame({ setView }) {
         connRef.current?.send({ type: 'turn_round_result', ...result });
 
         const localSeat = isHostRef.current ? 'host' : 'peer';
+        if (!turnMatchRecordedRef.current) {
+            turnMatchRecordedRef.current = true;
+            awardMatchResult(winnerSeat === 'draw' ? 'draw' : winnerSeat === localSeat ? 'win' : 'loss', {
+                gameId: 'guess-time',
+                gameTitle: 'خمن الوقت',
+                oppName: oppProfile?.nickname || 'الخصم',
+                oppAvatar: oppProfile?.avatar || 'cool'
+            });
+        }
         if (details.loserSeat && details.loserSeat !== localSeat) playSound('stopwatch_stop');
         if (winnerSeat === 'draw') {
             playSound('ding');
@@ -865,6 +906,15 @@ export default function GuessTimeGame({ setView }) {
             : { me: msg.peerScore, opp: msg.hostScore });
         setGameState('result-turns');
         const localSeat = isHostRef.current ? 'host' : 'peer';
+        if (!turnMatchRecordedRef.current) {
+            turnMatchRecordedRef.current = true;
+            awardMatchResult(msg.winnerSeat === 'draw' ? 'draw' : msg.winnerSeat === localSeat ? 'win' : 'loss', {
+                gameId: 'guess-time',
+                gameTitle: 'خمن الوقت',
+                oppName: oppProfile?.nickname || 'الخصم',
+                oppAvatar: oppProfile?.avatar || 'cool'
+            });
+        }
         if (msg.loserSeat && msg.loserSeat !== localSeat) playSound('stopwatch_stop');
         if (msg.winnerSeat === 'draw') triggerDrawEffects();
         else if (msg.winnerSeat === localSeat) triggerVictoryEffects();
@@ -976,6 +1026,15 @@ export default function GuessTimeGame({ setView }) {
                     playSound('ding');
                     triggerDrawEffects();
                 }
+                if (!matchRecordedRef.current) {
+                    matchRecordedRef.current = true;
+                    awardMatchResult(myDiff < oppDiff ? 'win' : oppDiff < myDiff ? 'loss' : 'draw', {
+                        gameId: 'guess-time',
+                        gameTitle: 'خمن الوقت',
+                        oppName: oppProfile?.nickname || 'الخصم',
+                        oppAvatar: oppProfile?.avatar || 'cool'
+                    });
+                }
                 setGameState('result-target');
             }
         } else if (gameMode === 'roles') {
@@ -999,6 +1058,15 @@ export default function GuessTimeGame({ setView }) {
 
                 const guesserWonLocally = diff <= 1000;
                 const iWonLocally = (myRole === 'guesser' && guesserWonLocally) || (myRole === 'hider' && !guesserWonLocally);
+                if (!matchRecordedRef.current) {
+                    matchRecordedRef.current = true;
+                    awardMatchResult(iWonLocally ? 'win' : 'loss', {
+                        gameId: 'guess-time',
+                        gameTitle: 'خمن الوقت',
+                        oppName: oppProfile?.nickname || 'الخصم',
+                        oppAvatar: oppProfile?.avatar || 'cool'
+                    });
+                }
                 if (iWonLocally) {
                     triggerVictoryEffects();
                     if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
@@ -1054,6 +1122,7 @@ export default function GuessTimeGame({ setView }) {
     useEffect(() => () => {
         clearHoldInterval();
         clearTurnTimers();
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     }, []); // eslint-disable-line
 
 
@@ -1227,22 +1296,29 @@ export default function GuessTimeGame({ setView }) {
                             <p className="opacity-65 text-sm font-bold">الحد المشترك: {formatTime(targetMs)} — اختاروا حجر ورقة مقص</p>
                             <div className="grid grid-cols-3 gap-3 mt-6">
                                 {TURN_RPS_OPTIONS.map(option => (
-                                    <button
+                                    <RPSChoiceButton
                                         key={option.id}
+                                        choice={option.id}
+                                        label={option.label}
                                         disabled={Boolean(turnRpsChoice)}
                                         onClick={() => handleTurnRpsChoice(option.id)}
-                                        className={'glass-card rounded-2xl py-4 flex flex-col items-center gap-2 border transition-all disabled:opacity-60 ' + (turnRpsChoice === option.id ? 'border-amber-400 bg-amber-400/10' : 'border-white/10 hover:border-sky-400/50')}
-                                    >
-                                        <span className="text-3xl">{option.emoji}</span>
-                                        <span className="font-black">{option.label}</span>
-                                    </button>
+                                        selected={turnRpsChoice === option.id}
+                                        iconSize={34}
+                                        selectedClassName="border-amber-300/70 bg-amber-300/10 text-amber-100 shadow-[0_0_24px_rgba(252,211,77,0.12)]"
+                                        idleClassName="glass-card border-white/10 text-white/90 hover:-translate-y-0.5 hover:border-sky-300/45"
+                                        selectedIconClassName="text-amber-200"
+                                    />
                                 ))}
                             </div>
-                            <p className="mt-5 text-sm font-bold text-amber-300" aria-live="polite">
-                                {turnRpsWinner
-                                    ? (turnRpsWinner === localSeat ? 'أنت تبدأ!' : 'الخصم هيبدأ')
-                                    : turnRpsChoice ? 'اختيارك اتسجل — مستنيين اختيار الخصم...' : turnNotice || 'اختاروا في نفس الوقت'}
-                            </p>
+                            {turnNotice.startsWith('تعادل') ? (
+                                <RPSTieNotice className="mt-5" />
+                            ) : (
+                                <p className="mt-5 text-sm font-bold text-amber-300" aria-live="polite">
+                                    {turnRpsWinner
+                                        ? (turnRpsWinner === localSeat ? 'أنت تبدأ!' : 'الخصم هيبدأ')
+                                        : turnRpsChoice ? 'اختيارك اتسجل — مستنيين اختيار الخصم...' : turnNotice || 'اختاروا في نفس الوقت'}
+                                </p>
+                            )}
                             {turnOppRpsChoice && <p className="mt-1 text-xs opacity-60">اختيار الخصم اتسجل</p>}
                         </div>
                     </div>
@@ -1548,10 +1624,11 @@ export default function GuessTimeGame({ setView }) {
                 )}
             </div>
 
-            {gameState.startsWith('playing') && <EmotesOverlay conn={connRef.current} oppProfile={oppProfile} showStandaloneButton={false} />}
+            {gameState !== 'lobby' && connRef.current && <EmotesOverlay conn={connRef.current} oppProfile={oppProfile} showStandaloneButton={false} />}
             {gameState !== 'lobby' && (
                 <ConnectionPauseOverlay
                     conn={connRef.current}
+                    opponentName={oppProfile?.nickname}
                     onLeave={() => { connRef.current?.close(); setView('hub'); }}
                 />
             )}

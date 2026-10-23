@@ -1,26 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import WifiOff from 'lucide-react/dist/esm/icons/wifi-off';
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 import Home from 'lucide-react/dist/esm/icons/home';
 import Zap from 'lucide-react/dist/esm/icons/zap';
+import Share2 from 'lucide-react/dist/esm/icons/share-2';
 import { playSound } from '../lib/audioEngine';
 
-export default function ConnectionPauseOverlay({ conn, onLeave }) {
+export default function ConnectionPauseOverlay({ conn, onLeave, opponentName, onInvite, onConnectionPause, onConnectionResume }) {
     const [isPaused, setIsPaused] = useState(false);
     const [timeLeft, setTimeLeft] = useState(30);
     const [isReconnected, setIsReconnected] = useState(false);
+    const pauseNotifiedRef = useRef(false);
+    const inviteOpponent = onInvite || conn?.inviteOpponentBack;
 
     useEffect(() => {
         if (!conn) return;
 
-        const handlePeerDisconnect = () => {
-            playSound('lose');
+        const markPaused = () => {
+            if (!pauseNotifiedRef.current) {
+                onConnectionPause?.();
+                playSound('lose');
+            }
+            pauseNotifiedRef.current = true;
             setIsPaused(true);
             setIsReconnected(false);
             setTimeLeft(30);
         };
 
-        const handlePeerReconnect = () => {
+        const resumeIfConnected = async (verifyPeerPresence = true) => {
+            if (!pauseNotifiedRef.current) return;
+            if (window.navigator.onLine === false) return;
+            if (verifyPeerPresence) {
+                try {
+                    if (conn.isPeerOnline && !(await conn.isPeerOnline())) return;
+                } catch { return; }
+            }
+            if (!pauseNotifiedRef.current) return;
+            pauseNotifiedRef.current = false;
+            onConnectionResume?.();
             playSound('ding');
             setIsReconnected(true);
             setTimeout(() => {
@@ -29,21 +46,15 @@ export default function ConnectionPauseOverlay({ conn, onLeave }) {
             }, 1200);
         };
 
+        const handlePeerDisconnect = markPaused;
+        const handlePeerReconnect = () => resumeIfConnected(false);
+
         conn.on('peer-disconnect', handlePeerDisconnect);
         conn.on('peer-reconnect', handlePeerReconnect);
 
         // Also check local network online/offline
-        const handleOffline = () => {
-            setIsPaused(true);
-            setTimeLeft(30);
-        };
-        const handleOnline = () => {
-            setIsReconnected(true);
-            setTimeout(() => {
-                setIsPaused(false);
-                setIsReconnected(false);
-            }, 1200);
-        };
+        const handleOffline = markPaused;
+        const handleOnline = () => resumeIfConnected(true);
         window.addEventListener('offline', handleOffline);
         window.addEventListener('online', handleOnline);
 
@@ -53,7 +64,7 @@ export default function ConnectionPauseOverlay({ conn, onLeave }) {
             window.removeEventListener('offline', handleOffline);
             window.removeEventListener('online', handleOnline);
         };
-    }, [conn]);
+    }, [conn, onConnectionPause, onConnectionResume]);
 
     // Countdown timer during pause
     useEffect(() => {
@@ -84,9 +95,9 @@ export default function ConnectionPauseOverlay({ conn, onLeave }) {
                         <div className="w-16 h-16 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-3 animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.3)]">
                             <WifiOff size={28} />
                         </div>
-                        <h3 className="text-xl font-black text-amber-300 mb-1">انقطع اتصال الخصم!</h3>
+                        <h3 className="text-xl font-black text-amber-300 mb-1">اتقطع اتصال {opponentName || 'الخصم'}</h3>
                         <p className="text-xs opacity-75 font-bold mb-4">
-                            تم إيقاف اللعبة مؤقتاً لحفظ التقدم.. ننتظر عودة الخصم
+                            وقفنا الجولة مؤقتًا وبنستنى رجوعه.
                         </p>
 
                         {/* Progress Bar */}
@@ -100,6 +111,16 @@ export default function ConnectionPauseOverlay({ conn, onLeave }) {
                         <div className="text-2xl font-mono font-black text-amber-400 mb-6">
                             {String(Math.floor(timeLeft / 60)).padStart(2,'0')}:{String(timeLeft % 60).padStart(2,'0')}
                         </div>
+
+                        {inviteOpponent && (
+                            <button
+                                type="button"
+                                onClick={inviteOpponent}
+                                className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-sky-300/25 bg-sky-400/10 py-3 text-xs font-black text-sky-100 transition hover:bg-sky-400/15 active:scale-[0.98]"
+                            >
+                                <Share2 size={15} /> ابعت دعوة لـ {opponentName || 'الخصم'} عشان يرجع
+                            </button>
+                        )}
 
                         {timeLeft === 0 ? (
                             <div className="flex flex-col gap-2">

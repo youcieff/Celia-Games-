@@ -143,7 +143,7 @@ export default function SnakeArenaGame({ setView }) {
     const isHostRef = useRef(false);
     const isAIRef = useRef(false);
     const hasStartedRef = useRef(false);
-    const [myProfile, , awardMatchResult] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'snake-arena', gameTitle: 'ساحة الأفعى' });
     const [oppProfile, setOppProfile] = useState(null);
 
     // Game State
@@ -167,6 +167,8 @@ export default function SnakeArenaGame({ setView }) {
     const [powerEffects, setPowerEffects] = useState({ p1: {}, p2: {} });
     const [powerNotice, setPowerNotice] = useState('');
     const [roundResult, setRoundResult] = useState(null); // 'win', 'lose', 'draw'
+    const uiSnapshotRef = useRef({ myScore, oppScore, roundNum, gameState });
+    uiSnapshotRef.current = { myScore, oppScore, roundNum, gameState };
 
     // Refs for Game Loop (Host Only)
     const stateRef = useRef({
@@ -194,6 +196,8 @@ export default function SnakeArenaGame({ setView }) {
     const gameLoopRef = useRef(null);
     const activeTickRateRef = useRef(TICK_RATE);
     const countdownRef = useRef(null);
+    const connectionPausedAtRef = useRef(null);
+    const lastConnectionSaveAtRef = useRef(0);
     const touchStartRef = useRef(null);
 
     // --- Core Logic ---
@@ -423,6 +427,19 @@ export default function SnakeArenaGame({ setView }) {
             }
         });
 
+        if (isHostRef.current && now - lastConnectionSaveAtRef.current >= 1000) {
+            lastConnectionSaveAtRef.current = now;
+            connRef.current?.saveState?.({
+                connectionGame: 'snake-arena',
+                gameState: uiSnapshotRef.current.gameState,
+                p1Score: uiSnapshotRef.current.myScore,
+                p2Score: uiSnapshotRef.current.oppScore,
+                round: uiSnapshotRef.current.roundNum,
+                state: { ...s },
+                savedAt: Date.now()
+            });
+        }
+
         const desiredTickRate = now < s.p1SpeedUntil || now < s.p2SpeedUntil ? BOOSTED_TICK_RATE : TICK_RATE;
         if (desiredTickRate !== activeTickRateRef.current) {
             activeTickRateRef.current = desiredTickRate;
@@ -519,7 +536,41 @@ export default function SnakeArenaGame({ setView }) {
 
     // --- Network Handling ---
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const restoreConnectionState = (savedState, hostMode) => {
+        if (!savedState || savedState.connectionGame !== 'snake-arena' || !savedState.state) return false;
+        const state = { ...savedState.state };
+        const pausedFor = Math.max(0, Date.now() - Number(savedState.savedAt || Date.now()));
+        state.nextPowerUpAt += pausedFor;
+        ['p1SpeedUntil', 'p2SpeedUntil', 'p1FrozenUntil', 'p2FrozenUntil'].forEach((key) => {
+            if (state[key] > 0) state[key] += pausedFor;
+        });
+        if (state.powerUp?.expiresAt) state.powerUp.expiresAt += pausedFor;
+        stateRef.current = state;
+        setP1Snake(state.p1Snake);
+        setP2Snake(state.p2Snake);
+        setApple(state.apple);
+        setPowerUp(state.powerUp || null);
+        setP1FruitCount(state.p1FruitCount || 0);
+        setP2FruitCount(state.p2FruitCount || 0);
+        setPowerEffects({
+            p1: { speed: Date.now() < state.p1SpeedUntil, frozen: Date.now() < state.p1FrozenUntil, shield: state.p1Shield },
+            p2: { speed: Date.now() < state.p2SpeedUntil, frozen: Date.now() < state.p2FrozenUntil, shield: state.p2Shield }
+        });
+        const p1Score = Number(savedState.p1Score) || 0;
+        const p2Score = Number(savedState.p2Score) || 0;
+        setMyScore(hostMode ? p1Score : p2Score);
+        setOppScore(hostMode ? p2Score : p1Score);
+        setRoundNum(Number(savedState.round) || 1);
+        setGameState(savedState.gameState || 'playing');
+        if (hostMode && savedState.gameState === 'playing') {
+            state.status = 'playing';
+            gameLoopRef.current = setInterval(hostTick, activeTickRateRef.current);
+        }
+        hasStartedRef.current = true;
+        return true;
+    };
+
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         setIsHost(hostMode);
         connRef.current = conn;
@@ -530,7 +581,33 @@ export default function SnakeArenaGame({ setView }) {
             isAIRef.current = !!oppProf.isAI;
         }
         conn.on('data', onData);
-        setGameState('starting');
+        const restored = restoreConnectionState(savedState, hostMode);
+        if (hostMode) {
+            conn.on('peer-reconnect', () => {
+                const state = stateRef.current;
+                conn.send({
+                    type: 'state_sync',
+                    p1Snake: state.p1Snake,
+                    p2Snake: state.p2Snake,
+                    p1Dir: state.p1Dir,
+                    p2Dir: state.p2Dir,
+                    apple: state.apple,
+                    p1FruitCount: state.p1FruitCount,
+                    p2FruitCount: state.p2FruitCount,
+                    powerUp: state.powerUp,
+                    powerEffects: {
+                        p1: { speed: Date.now() < state.p1SpeedUntil, frozen: Date.now() < state.p1FrozenUntil, shield: state.p1Shield },
+                        p2: { speed: Date.now() < state.p2SpeedUntil, frozen: Date.now() < state.p2FrozenUntil, shield: state.p2Shield }
+                    },
+                    p1Score: isHostRef.current ? uiSnapshotRef.current.myScore : uiSnapshotRef.current.oppScore,
+                    p2Score: isHostRef.current ? uiSnapshotRef.current.oppScore : uiSnapshotRef.current.myScore,
+                    round: uiSnapshotRef.current.roundNum,
+                    gameState: uiSnapshotRef.current.gameState,
+                    status: state.status
+                });
+            });
+        }
+        if (!restored) setGameState('starting');
     };
 
     const onData = (data) => {
@@ -574,6 +651,11 @@ export default function SnakeArenaGame({ setView }) {
             setP2FruitCount(data.p2FruitCount || 0);
             setPowerUp(data.powerUp || null);
             setPowerEffects(data.powerEffects || { p1: {}, p2: {} });
+            if (data.status) stateRef.current.status = data.status;
+            if (data.gameState) setGameState(data.gameState);
+            if (Number.isFinite(data.round)) setRoundNum(data.round);
+            if (Number.isFinite(data.p1Score)) setOppScore(data.p1Score);
+            if (Number.isFinite(data.p2Score)) setMyScore(data.p2Score);
         }
         if (data.type === 'powerup_picked') {
             const localPlayer = isHostRef.current ? 'p1' : 'p2';
@@ -804,7 +886,31 @@ export default function SnakeArenaGame({ setView }) {
             className="game-fullscreen-shell fixed inset-0 bg-[#0B101A] flex flex-col font-arabic select-none"
         >
             
-            <ConnectionPauseOverlay />
+            <ConnectionPauseOverlay
+                conn={connRef.current}
+                opponentName={oppProfile?.nickname}
+                onConnectionPause={() => {
+                    if (connectionPausedAtRef.current === null) connectionPausedAtRef.current = Date.now();
+                    if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+                    gameLoopRef.current = null;
+                }}
+                onConnectionResume={() => {
+                    if (connectionPausedAtRef.current !== null && isHostRef.current) {
+                        const pausedFor = Date.now() - connectionPausedAtRef.current;
+                        const state = stateRef.current;
+                        state.nextPowerUpAt += pausedFor;
+                        ['p1SpeedUntil', 'p2SpeedUntil', 'p1FrozenUntil', 'p2FrozenUntil'].forEach((key) => {
+                            if (state[key] > 0) state[key] += pausedFor;
+                        });
+                        if (state.powerUp?.expiresAt) state.powerUp.expiresAt += pausedFor;
+                    }
+                    connectionPausedAtRef.current = null;
+                    if (isHostRef.current && stateRef.current.status === 'playing' && !gameLoopRef.current) {
+                        gameLoopRef.current = setInterval(hostTick, activeTickRateRef.current);
+                    }
+                }}
+                onLeave={() => { connRef.current?.close(); setView('hub'); }}
+            />
             <EmotesOverlay conn={connection} />
 
             <div className="animated-bg"><div className="bg-orb-1" /><div className="bg-orb-2" /></div>

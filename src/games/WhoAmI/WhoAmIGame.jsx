@@ -14,11 +14,19 @@ import GuessModal from './GuessModal';
 import CardPortrait from './CardPortrait';
 import { getMatchCondition } from './matchConditions';
 import { isValidWhoAmITransfer, otherWhoAmIPlayer, resolveWhoAmIAnswer } from './turnRules';
+import { RPSChoiceButton, RPSTieNotice } from '../../components/RPSChoiceButton';
+import Trophy from 'lucide-react/dist/esm/icons/trophy';
+import Skull from 'lucide-react/dist/esm/icons/skull';
+import LayoutGrid from 'lucide-react/dist/esm/icons/layout-grid';
+import Target from 'lucide-react/dist/esm/icons/target';
+import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
+import LogOut from 'lucide-react/dist/esm/icons/log-out';
+import Timer from 'lucide-react/dist/esm/icons/timer';
 
 import { PACKS } from './packs';
 import { playSound } from '../../lib/audioEngine';
-import { recordMatch } from '../../lib/statsEngine';
-import { recordRealPlayer } from '../../lib/leaderboardEngine';
+import { identifyRealPlayer, recordRealPlayer } from '../../lib/leaderboardEngine';
+import useProfile from '../../hooks/useProfile';
 
 const QUESTION_LIMIT = 3;
 const TURN_SECONDS = 30;
@@ -29,9 +37,9 @@ const playWhoAmISound = (type, options = {}) => playSound(type, {
 });
 const RPS_BEATS = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
 const RPS_OPTIONS = [
-    { id: 'rock', label: 'حجر', icon: '✊' },
-    { id: 'paper', label: 'ورقة', icon: '✋' },
-    { id: 'scissors', label: 'مقص', icon: '✌️' }
+    { id: 'rock', label: 'حجر' },
+    { id: 'paper', label: 'ورقة' },
+    { id: 'scissors', label: 'مقص' }
 ];
 const QUESTION_ATTRIBUTES = {
     gender: 'النوع', hairColor: 'لون الشعر', hairLength: 'طول الشعر', glasses: 'النظارة',
@@ -73,6 +81,10 @@ function getSecretHint(card) {
 }
 
 export default function WhoAmIGame({ setView, mode }) {
+    const [, , awardMatchResult] = useProfile({
+        gameId: mode === 'together' ? 'celia-whoami-together' : 'celia-whoami',
+        gameTitle: mode === 'together' ? 'أنا مين سوا' : 'أنا مين؟'
+    });
     const [conn, setConn] = useState(null);
     const connRef = useRef(null);
     const [myProfile, setMyProfile] = useState(null);
@@ -167,6 +179,7 @@ export default function WhoAmIGame({ setView, mode }) {
     const hasAskedAnyQuestionRef = useRef(hasAskedAnyQuestion);
     const hintUsedRef = useRef(hintUsed);
     const turnDeadlineRef = useRef(turnDeadline);
+    const pausedTurnRemainingRef = useRef(null);
     const myQuestionsAskedRef = useRef(myQuestionsAsked);
     const myClosedCardsRef = useRef(myClosedCards);
     const mySecretIdsRef = useRef(mySecretIds);
@@ -309,6 +322,24 @@ export default function WhoAmIGame({ setView, mode }) {
         turnDeadlineRef.current = deadline;
         setTurnDeadline(deadline);
     };
+    const pauseTurnClockForConnection = useCallback(() => {
+        if (pausedTurnRemainingRef.current !== null
+            || gameStateRef.current !== 'playing'
+            || selectedConditionRef.current !== 'turn_timer'
+            || turnDeadlineRef.current == null) return;
+        pausedTurnRemainingRef.current = Math.max(0, turnDeadlineRef.current - Date.now());
+        turnDeadlineRef.current = null;
+        setTurnDeadline(null);
+    }, []);
+    const resumeTurnClockAfterConnection = useCallback(() => {
+        const remaining = pausedTurnRemainingRef.current;
+        if (remaining === null) return;
+        pausedTurnRemainingRef.current = null;
+        if (gameStateRef.current !== 'playing' || selectedConditionRef.current !== 'turn_timer') return;
+        const resumedDeadline = Date.now() + remaining;
+        turnDeadlineRef.current = resumedDeadline;
+        setTurnDeadline(resumedDeadline);
+    }, []);
     const isTurnDeadlineExpired = () => selectedConditionRef.current === 'turn_timer'
         && turnDeadlineRef.current != null
         && Date.now() >= turnDeadlineRef.current;
@@ -442,6 +473,7 @@ export default function WhoAmIGame({ setView, mode }) {
         setMyProfile(myProf);
         setOppProfile(oppProf);
         setIsAI(isAIGame);
+        if (!isAIGame && oppProf) identifyRealPlayer(oppProf);
         
         updateGameState('pack_select');
 
@@ -1405,21 +1437,19 @@ export default function WhoAmIGame({ setView, mode }) {
 
         if (!isAI && oppProfile) {
             recordRealPlayer(oppProfile, isWin ? 0 : 1, isWin ? 1 : 0);
-            recordMatch({
-                gameId: 'celia-whoami',
-                gameTitle: 'أنا مين؟',
+            awardMatchResult(isWin ? 'win' : 'loss', {
+                gameId: mode === 'together' ? 'celia-whoami-together' : 'celia-whoami',
+                gameTitle: mode === 'together' ? 'أنا مين سوا' : 'أنا مين؟',
                 oppName: oppProfile.nickname,
                 oppAvatar: oppProfile.avatar,
-                isWin,
                 isAI: false
             });
         } else if (isAI) {
-            recordMatch({
-                gameId: 'celia-whoami',
-                gameTitle: 'أنا مين؟',
+            awardMatchResult(isWin ? 'win' : 'loss', {
+                gameId: mode === 'together' ? 'celia-whoami-together' : 'celia-whoami',
+                gameTitle: mode === 'together' ? 'أنا مين سوا' : 'أنا مين؟',
                 oppName: 'الذكاء الاصطناعي',
                 oppAvatar: 'bot',
-                isWin,
                 isAI: true
             });
         }
@@ -1433,6 +1463,10 @@ export default function WhoAmIGame({ setView, mode }) {
     const requestRematch = () => {
         sendWhoAmIMessage({ type: 'rematch_request' });
         handleRematch();
+    };
+
+    const inviteOpponentBack = async () => {
+        await connRef.current?.inviteOpponentBack?.();
     };
 
     const handleRematch = () => {
@@ -1502,7 +1536,7 @@ export default function WhoAmIGame({ setView, mode }) {
         }
 
         if (targetState === 'lobby') {
-            connRef.current?.close?.();
+            connRef.current?.close?.({ preserveRoom: !isAIRef.current });
             connRef.current?._unsubscribe?.();
             connRef.current = null;
             setConn(null);
@@ -1568,7 +1602,14 @@ export default function WhoAmIGame({ setView, mode }) {
 
     return (
         <div className="fixed inset-0 flex h-[100dvh] flex-col overflow-hidden font-arabic select-none" style={{ background: 'var(--bg-base)' }}>
-            <ConnectionPauseOverlay />
+            <ConnectionPauseOverlay
+                conn={conn}
+                opponentName={oppProfile?.nickname}
+                onInvite={!isAI && conn ? inviteOpponentBack : undefined}
+                onConnectionPause={pauseTurnClockForConnection}
+                onConnectionResume={resumeTurnClockAfterConnection}
+                onLeave={() => { conn?.close?.(); setView('hub'); }}
+            />
             {showChat && (
                 <EmotesOverlay
                     conn={conn}
@@ -1576,7 +1617,6 @@ export default function WhoAmIGame({ setView, mode }) {
                     simulateAIReplies={isAI}
                     initialTab="messages"
                     keepChatOpenOnSend
-                    displayEmoteInHeader
                 />
             )}
 
@@ -1613,12 +1653,6 @@ export default function WhoAmIGame({ setView, mode }) {
 
             {gameState === 'lobby' && (
                 <div className="flex-1 flex flex-col pb-16 safe-area-pb">
-                    <div className="mx-auto mb-2 w-full max-w-md px-4">
-                        <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-center">
-                            <p className="text-xs font-black text-white">{useGameChat ? 'عن بُعد · بالدردشة' : isTogetherMode ? 'سوا · بالدردشة الاختيارية' : 'اللعب مع الذكاء الاصطناعي'}</p>
-                            <p className="mt-1 text-[10px] font-medium text-white/45">{useGameChat ? 'اتصال بين جهازين مع أيقونة دردشة صغيرة' : isTogetherMode ? 'اتصال بين جهازين؛ الدردشة متاحة من الأيقونة فقط' : 'الدردشة متاحة من الأيقونة الصغيرة'}</p>
-                        </div>
-                    </div>
                     <div className="min-h-0 flex-1">
                         <P2PConnectionManager
                             // Keep both WhoAmI modes on the original Firebase room path
@@ -1678,24 +1712,28 @@ export default function WhoAmIGame({ setView, mode }) {
             {gameState === 'rps_setup' && (
                 <div className="flex flex-1 flex-col items-center justify-center gap-5 px-4 text-center">
                     <div>
-                        <div className="mb-2 text-5xl">✊ ✋ ✌️</div>
                         <h2 className="text-2xl font-black">حجر ورقة مقص</h2>
-                        <p className="mt-2 text-sm text-white/60">{isTogetherMode ? 'الفائز يبدأ الدور. لو تعادلتوا، العبوا مرة ثانية.' : 'الفائز يبدأ بالسؤال. لو تعادلتوا، العبوا مرة ثانية.'}</p>
+                        <p className="mt-2 text-sm text-white/60">{isTogetherMode ? 'اختاروا حركة واحدة في نفس الوقت لتحديد من يبدأ الدور.' : 'اختاروا حركة واحدة في نفس الوقت لتحديد من يبدأ بالسؤال.'}</p>
                     </div>
                     <div className="grid w-full max-w-md grid-cols-3 gap-3">
                         {RPS_OPTIONS.map(option => (
-                            <button
+                            <RPSChoiceButton
                                 key={option.id}
+                                choice={option.id}
+                                label={option.label}
                                 onClick={() => chooseRps(option.id)}
                                 disabled={Boolean(rpsChoice)}
-                                className={`glass-card rounded-2xl border p-4 transition hover:-translate-y-1 disabled:opacity-60 ${rpsChoice === option.id ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-white/10'}`}
-                            >
-                                <span className="block text-4xl">{option.icon}</span>
-                                <span className="mt-2 block text-sm font-black">{option.label}</span>
-                            </button>
+                                selected={rpsChoice === option.id}
+                                iconSize={34}
+                                selectedClassName="border-[var(--accent)] bg-[var(--accent-soft)] text-white shadow-[0_0_24px_var(--accent-soft)]"
+                                idleClassName="glass-card border-white/10 text-white/90 hover:-translate-y-1 hover:border-[var(--accent)]/50"
+                                selectedIconClassName="text-[var(--accent)]"
+                            />
                         ))}
                     </div>
-                    <div className="text-sm font-bold text-white/65">{rpsChoice ? 'اختيارك اتسجل، في انتظار الخصم...' : rpsMessage}</div>
+                    {!rpsChoice && rpsMessage.startsWith('تعادل')
+                        ? <RPSTieNotice className="w-full max-w-md" />
+                        : <div className="text-sm font-bold text-white/65">{rpsChoice ? 'اختيارك اتسجل، في انتظار الخصم...' : rpsMessage}</div>}
                     {opponentRpsChoice && <div className="text-xs text-sky-300">الخصم اختار، النتيجة لحظات...</div>}
                 </div>
             )}
@@ -1703,7 +1741,7 @@ export default function WhoAmIGame({ setView, mode }) {
             {gameState === 'rps_result' && rpsFirstPlayer && (
                 <div className="flex flex-1 flex-col items-center justify-center px-4 text-center animate-fade-in">
                     <section className="glass-card w-full max-w-md rounded-3xl border border-[var(--accent)]/35 p-7 shadow-[0_0_32px_var(--accent-soft)]">
-                        <div className="mb-3 text-5xl" aria-hidden="true">🏆</div>
+                        <Trophy size={42} className="mx-auto mb-3 text-amber-300" aria-hidden="true" />
                         <p className="text-xs font-black text-white/55">نتيجة حجر ورقة مقص</p>
                         <h2 className="mt-2 text-3xl font-black text-[var(--accent)]">{rpsWinnerName} فاز!</h2>
                         <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-400/[0.08] px-4 py-3">
@@ -1762,9 +1800,9 @@ export default function WhoAmIGame({ setView, mode }) {
                         {isTogetherMode
                             ? (isMyTurn ? 'دورك — استبعد أو خمّن، وبعدها سلّم الدور' : 'دور الخصم')
                             : pendingQuestion && pendingQuestion.from === myPlayerId
-                            ? '💬 في انتظار إجابة الخصم...'
+                            ? 'في انتظار إجابة الخصم...'
                             : pendingQuestion && pendingQuestion.from !== myPlayerId
-                                ? '💬 أجب عن سؤال الخصم'
+                                ? 'أجب عن سؤال الخصم'
                                 : isMyTurn && noAnswerActionOnly
                                     ? 'الإجابة لأ — استبعد أو خمّن ثم سلّم الدور'
                                 : isMyTurn && selectedConditionId === 'interrupt_once' && lastAnswer === 'no'
@@ -1885,10 +1923,10 @@ export default function WhoAmIGame({ setView, mode }) {
                         <button
                             type="button"
                             onClick={() => setShowBoardModal(true)}
-                            className="flex-1 rounded-xl border py-2.5 text-xs font-black transition active:scale-95"
+                            className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-black transition active:scale-95"
                             style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)', color: 'var(--text-color)' }}
                         >
-                            🗂️ عرض اللوحة
+                            <LayoutGrid size={15} /> عرض اللوحة
                         </button>
                         <button
                             onClick={() => setShowGuessModal(true)}
@@ -1902,7 +1940,7 @@ export default function WhoAmIGame({ setView, mode }) {
                                 background: canGuess ? 'var(--accent)' : 'var(--glass-bg)',
                             }}
                         >
-                            تخمين 🎯
+                            <span className="inline-flex items-center justify-center gap-1.5"><Target size={16} /> تخمين</span>
                         </button>
                         
                         <button
@@ -1916,7 +1954,7 @@ export default function WhoAmIGame({ setView, mode }) {
                                 borderColor: 'var(--glass-border)',
                             }}
                         >
-                            سلّم الدور ⏳
+                            <span className="inline-flex items-center justify-center gap-1.5"><Timer size={15} /> سلّم الدور</span>
                         </button>
 
                         </div>
@@ -2017,9 +2055,9 @@ export default function WhoAmIGame({ setView, mode }) {
                             className="p-6 text-center"
                             style={{ background: winner === myPlayerId ? 'var(--accent-soft)' : 'rgba(251,54,64,0.1)' }}
                         >
-                            <div className="text-5xl mb-2">
-                                {winner === myPlayerId ? '🏆' : '💀'}
-                            </div>
+                            {winner === myPlayerId
+                                ? <Trophy size={42} className="mx-auto mb-2 text-amber-300" aria-hidden="true" />
+                                : <Skull size={42} className="mx-auto mb-2 text-rose-300" aria-hidden="true" />}
                             <h2 className="text-2xl font-black" style={{ color: winner === myPlayerId ? 'var(--accent)' : '#FB3640' }}>
                                 {winner === myPlayerId ? 'كشفت السر!' : 'اكتشفوك!'}
                             </h2>
@@ -2080,27 +2118,27 @@ export default function WhoAmIGame({ setView, mode }) {
                             <button
                                 type="button"
                                 onClick={() => { playWhoAmISound('click'); setShowBoardModal(true); }}
-                                className="mb-3 w-full rounded-2xl border py-3 text-sm font-black transition active:scale-95"
+                                className="mb-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-black transition active:scale-95"
                                 style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)', color: 'var(--text-color)' }}
                             >
-                                🗂️ عرض اللوحة كاملة بدون استبعاد
+                                <LayoutGrid size={17} /> عرض اللوحة فقط
                             </button>
 
                             {/* Actions */}
                             <div className="flex gap-2">
                                 <button
                                     onClick={requestRematch}
-                                    className="flex-1 py-3.5 rounded-2xl font-black text-sm transition-all active:scale-95"
+                                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl py-3.5 font-black text-sm transition-all active:scale-95"
                                     style={{ background: 'var(--accent)', color: 'var(--bg-base)' }}
                                 >
-                                    إعادة اللعب 🔄
+                                    <RotateCcw size={16} /> إعادة اللعب
                                 </button>
                                 <button
                                     onClick={() => { playWhoAmISound('click'); setView('hub'); }}
-                                    className="flex-1 py-3.5 rounded-2xl font-black text-sm border transition-all active:scale-95"
+                                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl border py-3.5 font-black text-sm transition-all active:scale-95"
                                     style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)', color: 'var(--text-color)' }}
                                 >
-                                    الخروج 🚪
+                                    <LogOut size={16} /> الخروج
                                 </button>
                             </div>
                         </div>

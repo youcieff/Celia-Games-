@@ -3,12 +3,11 @@ import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import Volume2 from 'lucide-react/dist/esm/icons/volume-2';
 import VolumeX from 'lucide-react/dist/esm/icons/volume-x';
 import MessageCircle from 'lucide-react/dist/esm/icons/message-circle';
-import X from 'lucide-react/dist/esm/icons/x';
 import useProfile from '../hooks/useProfile';
 import { toggleMute, getMuted, playSound } from '../lib/audioEngine';
 import { AvatarDisplay } from './icons/AvatarIcons';
-import { EmoteDisplay } from './icons/EmoteIcons';
 import { GameIcon, IconTarget, IconHourglass } from './icons/GameIcons';
+import { GameNotifications } from './EmotesOverlay';
 
 const GAME_TITLES = {
     'taboo-game': 'الكلمة الممنوعة',
@@ -18,7 +17,7 @@ const GAME_TITLES = {
     'quick-draw': 'الرسم السريع',
     'domino': 'الدومينو',
     'domino-game': 'الدومينو',
-    'rps-arena': 'حجرة ورقة مقص ⚡',
+    'rps-arena': 'حجرة ورقة مقص',
     'trivia-duel': 'تحدي المعلومات',
     'code-game': 'خمن الكود',
     'word-game': 'خمن الكلمة',
@@ -60,38 +59,16 @@ export default function PlayerGameHeader({
     const [myProfile] = useProfile();
     const [muted, setMutedState] = useState(() => getMuted());
     const [hasUnread, setHasUnread] = useState(false);
-    const [chatNotice, setChatNotice] = useState(null);
-    const [emoteNotice, setEmoteNotice] = useState(null);
 
     useEffect(() => {
         const handleUnread = () => setHasUnread(true);
         const handleOpened = () => setHasUnread(false);
-        let noticeTimer;
-        let emoteTimer;
-        const handleChatNotice = (event) => {
-            if (!event.detail?.text) return;
-            setChatNotice(event.detail);
-            window.clearTimeout(noticeTimer);
-            noticeTimer = window.setTimeout(() => setChatNotice(null), 5000);
-        };
-        const handleEmoteNotice = (event) => {
-            if (!event.detail?.emoteKey) return;
-            setEmoteNotice(event.detail);
-            window.clearTimeout(emoteTimer);
-            emoteTimer = window.setTimeout(() => setEmoteNotice(null), 2800);
-        };
         window.addEventListener('game-chat-unread', handleUnread);
         window.addEventListener('game-chat-opened', handleOpened);
-        window.addEventListener('game-chat-notice', handleChatNotice);
-        window.addEventListener('game-emote-notice', handleEmoteNotice);
 
         return () => {
             window.removeEventListener('game-chat-unread', handleUnread);
             window.removeEventListener('game-chat-opened', handleOpened);
-            window.removeEventListener('game-chat-notice', handleChatNotice);
-            window.removeEventListener('game-emote-notice', handleEmoteNotice);
-            window.clearTimeout(noticeTimer);
-            window.clearTimeout(emoteTimer);
         };
     }, []);
 
@@ -130,7 +107,6 @@ export default function PlayerGameHeader({
                     {showChatButton && <button
                         onClick={() => {
                             setHasUnread(false);
-                            setChatNotice(null);
                             window.dispatchEvent(new CustomEvent('toggle-game-chat'));
                         }}
                         className="glass-card w-11 h-11 flex items-center justify-center rounded-2xl hover:scale-105 active:scale-95 transition-all text-[var(--accent)] relative"
@@ -230,56 +206,7 @@ export default function PlayerGameHeader({
                 </div>
             </div>
 
-            {showChatButton && emoteNotice && (
-                <div
-                    role="status"
-                    className={`flex items-center gap-2.5 rounded-2xl border px-3 py-2 shadow-lg animate-pop-in ${
-                        emoteNotice.isMine
-                            ? 'border-[var(--accent)]/25 bg-[var(--accent-soft)]'
-                            : 'themed-opponent-bubble'
-                    }`}
-                >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/25">
-                        <EmoteDisplay emoteId={emoteNotice.emoteKey} size={30} />
-                    </div>
-                    <div className="min-w-0 flex-1 text-right">
-                        <p className="text-[10px] font-black text-white">{emoteNotice.sender}</p>
-                        <p className="text-[10px] font-bold text-white/55">بعت تفاعل</p>
-                    </div>
-                    <div className="h-2 w-2 shrink-0 rounded-full bg-[var(--accent)] animate-pulse" />
-                </div>
-            )}
-
-            {showChatButton && chatNotice && (
-                <div
-                    role="status"
-                    className={`flex items-start gap-2.5 rounded-2xl border px-3 py-2.5 shadow-lg animate-pop-in ${
-                        chatNotice.isMine
-                            ? 'border-[var(--accent)]/30 bg-[var(--accent-soft)]'
-                            : 'themed-opponent-bubble'
-                    }`}
-                >
-                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/35">
-                        <AvatarDisplay avatarId={chatNotice.avatar} size={23} />
-                    </div>
-                    <div className="min-w-0 flex-1 text-right">
-                        <p className={`mb-0.5 text-[10px] font-black ${chatNotice.isMine ? 'text-[var(--accent)]' : 'text-[var(--accent-secondary)]'}`}>
-                            {chatNotice.sender}
-                        </p>
-                        <p className="break-words text-xs font-bold leading-snug text-white" dir="auto">
-                            {chatNotice.text}
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => setChatNotice(null)}
-                        aria-label="إغلاق الرسالة"
-                        className="game-topbar-close mt-0.5 grid h-11 w-11 shrink-0 place-items-center rounded-lg text-white/45 transition hover:bg-white/10 hover:text-white"
-                    >
-                        <X size={14} />
-                    </button>
-                </div>
-            )}
+            {showChatButton && <GameNotifications />}
 
             {/* Optional Status Banner */}
             {statusText && (

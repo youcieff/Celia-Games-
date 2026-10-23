@@ -70,7 +70,7 @@ export default function MathSpeedGame({ setView }) {
     const isHostRef = useRef(false);
     const isAIRef = useRef(false);
     const hasStartedRef = useRef(false);
-    const [myProfile, , awardMatchResult] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'math-speed', gameTitle: 'تحدي الرياضيات' });
     const [oppProfile, setOppProfile] = useState(null);
 
     // State
@@ -109,6 +109,103 @@ export default function MathSpeedGame({ setView }) {
     const roundTimeoutRef = useRef(null);
     const aiAnswerTimeoutRef = useRef(null);
     const nextRoundTimeoutRef = useRef(null);
+    const connectionPausedAtRef = useRef(null);
+    const connectionSnapshotRef = useRef(null);
+
+    const buildConnectionSnapshot = () => {
+        const round = roundRef.current;
+        const hostScore = isHostRef.current ? scoreRef.current.my : scoreRef.current.opp;
+        const guestScore = isHostRef.current ? scoreRef.current.opp : scoreRef.current.my;
+        const effectiveNow = connectionPausedAtRef.current ?? performance.now();
+        const elapsedMs = gameState === 'playing' && round.isActive
+            ? Math.max(0, effectiveNow - round.startTime)
+            : 0;
+        return {
+            connectionGame: 'math-speed',
+            gameState,
+            question: round.q || (question ? { ...question } : null),
+            roundId: round.id || roundCounterRef.current,
+            elapsedMs: Math.min(ROUND_TIME_MS, elapsedMs),
+            hostScore,
+            guestScore,
+            hostCombo: streakRef.current.p1,
+            guestCombo: streakRef.current.p2,
+            difficulty: streakRef.current.difficulty,
+            hostAnswer: round.p1Answer,
+            guestAnswer: round.p2Answer,
+            hostTime: round.p1Time,
+            guestTime: round.p2Time,
+            roundPoints,
+            roundResult,
+            timeLeft,
+            savedAt: Date.now()
+        };
+    };
+
+    connectionSnapshotRef.current = buildConnectionSnapshot();
+
+    const restoreConnectionSnapshot = (snapshot) => {
+        if (!snapshot || snapshot.connectionGame !== 'math-speed') return false;
+        const hostScore = Number(snapshot.hostScore) || 0;
+        const guestScore = Number(snapshot.guestScore) || 0;
+        scoreRef.current = isHostRef.current
+            ? { my: hostScore, opp: guestScore }
+            : { my: guestScore, opp: hostScore };
+        setMyScore(scoreRef.current.my);
+        setOppScore(scoreRef.current.opp);
+        setMyCombo(isHostRef.current ? snapshot.hostCombo || 0 : snapshot.guestCombo || 0);
+        setOppCombo(isHostRef.current ? snapshot.guestCombo || 0 : snapshot.hostCombo || 0);
+        streakRef.current = { p1: snapshot.hostCombo || 0, p2: snapshot.guestCombo || 0, difficulty: snapshot.difficulty || 0 };
+        roundCounterRef.current = Number(snapshot.roundId) || 0;
+        const restoredQuestion = !isHostRef.current && snapshot.gameState === 'playing' && snapshot.question
+            ? { text: snapshot.question.text, options: snapshot.question.options, difficulty: snapshot.question.difficulty }
+            : snapshot.question;
+        setQuestion(restoredQuestion || null);
+        setDifficultyLevel(Number(snapshot.question?.difficulty ?? snapshot.difficulty) || 0);
+        setRoundPoints(Number(snapshot.roundPoints) || 0);
+        setRoundResult(snapshot.roundResult || null);
+        setMyAnswer(isHostRef.current ? snapshot.hostAnswer : snapshot.guestAnswer);
+        setOppAnswer(isHostRef.current ? snapshot.guestAnswer : null);
+        setTimeLeft(Number(snapshot.timeLeft) || 0);
+        const isPlaying = snapshot.gameState === 'playing' && snapshot.question;
+        const elapsedMs = Math.max(0, Math.min(ROUND_TIME_MS, Number(snapshot.elapsedMs) || 0));
+        roundRef.current = {
+            id: roundCounterRef.current,
+            isActive: Boolean(isPlaying && isHostRef.current),
+            q: isHostRef.current ? snapshot.question || null : restoredQuestion || null,
+            p1Answer: snapshot.hostAnswer ?? null,
+            p2Answer: snapshot.guestAnswer ?? null,
+            p1Time: Number(snapshot.hostTime) || 0,
+            p2Time: Number(snapshot.guestTime) || 0,
+            startTime: performance.now() - elapsedMs
+        };
+        answerStartedAtRef.current = performance.now() - elapsedMs;
+        hasStartedRef.current = snapshot.gameState !== 'starting';
+        setGameState(snapshot.gameState || 'starting');
+
+        if (isPlaying) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            timerRef.current = setInterval(() => {
+                const elapsed = performance.now() - answerStartedAtRef.current;
+                const pct = Math.max(0, 100 - (elapsed / ROUND_TIME_MS) * 100);
+                setTimeLeft(pct);
+                if (pct <= 0) clearInterval(timerRef.current);
+            }, 30);
+            if (isHostRef.current) {
+                if (roundTimeoutRef.current) clearTimeout(roundTimeoutRef.current);
+                roundTimeoutRef.current = setTimeout(evaluateRoundHost, Math.max(0, ROUND_TIME_MS + LATE_ANSWER_GRACE_MS - elapsedMs));
+            }
+        }
+        return true;
+    };
+
+    useEffect(() => {
+        if (!connRef.current || !isHostRef.current || gameState === 'lobby') return undefined;
+        const save = () => connRef.current?.saveState?.(connectionSnapshotRef.current);
+        save();
+        const interval = gameState === 'playing' ? setInterval(save, 500) : null;
+        return () => { if (interval) clearInterval(interval); };
+    }, [gameState, question, myScore, oppScore, myAnswer, oppAnswer, myCombo, oppCombo, roundPoints, roundResult]);
 
     // --- Host Logic ---
 
@@ -299,7 +396,7 @@ export default function MathSpeedGame({ setView }) {
 
     const selectOption = (opt) => {
         const elapsed = performance.now() - answerStartedAtRef.current;
-        if (gameState !== 'playing' || myAnswer !== null || timeLeft <= 0 || elapsed > ROUND_TIME_MS) return;
+        if (connectionPausedAtRef.current !== null || gameState !== 'playing' || myAnswer !== null || timeLeft <= 0 || elapsed > ROUND_TIME_MS) return;
         
         playSound('tap');
         setMyAnswer(opt);
@@ -332,7 +429,7 @@ export default function MathSpeedGame({ setView }) {
         return () => window.removeEventListener('keydown', handleAnswerShortcut);
     }, [gameState, question]);
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         hasStartedRef.current = false;
@@ -341,13 +438,24 @@ export default function MathSpeedGame({ setView }) {
             isAIRef.current = !!oppProf.isAI;
         }
         conn.on('data', onData);
-        setGameState('starting');
+        if (restoreConnectionSnapshot(savedState)) {
+            if (hostMode) conn.on('peer-reconnect', () => {
+                const snapshot = connectionSnapshotRef.current;
+                if (snapshot?.connectionGame === 'math-speed') conn.send({ type: 'state_sync', state: snapshot });
+            });
+        } else {
+            setGameState('starting');
+        }
     };
 
     const nextMultiplier = Math.min(5, Math.floor(myCombo / 3) + 1);
     const secondsRemaining = Math.max(0, Math.ceil((timeLeft / 100) * (ROUND_TIME_MS / 1000)));
 
     const onData = (data) => {
+        if (data.type === 'state_sync' && data.state?.connectionGame === 'math-speed') {
+            restoreConnectionSnapshot(data.state);
+            return;
+        }
         if (data.type === 'round_start' && !isHostRef.current) {
             setQuestion(data.question);
             roundCounterRef.current = data.roundId;
@@ -419,6 +527,44 @@ export default function MathSpeedGame({ setView }) {
         }
     };
 
+    const pauseForConnection = () => {
+        if (connectionPausedAtRef.current !== null) return;
+        connectionPausedAtRef.current = performance.now();
+        if (timerRef.current) clearInterval(timerRef.current);
+        if (roundTimeoutRef.current) clearTimeout(roundTimeoutRef.current);
+        timerRef.current = null;
+        roundTimeoutRef.current = null;
+    };
+
+    const resumeAfterConnection = () => {
+        if (connectionPausedAtRef.current === null) return;
+        const pausedFor = Math.max(0, performance.now() - connectionPausedAtRef.current);
+        connectionPausedAtRef.current = null;
+        if (gameState !== 'playing' || !question) return;
+
+        if (isHostRef.current && roundRef.current.isActive) {
+            roundRef.current.startTime += pausedFor;
+            answerStartedAtRef.current += pausedFor;
+        } else {
+            answerStartedAtRef.current += pausedFor;
+        }
+
+        const startTime = isHostRef.current && roundRef.current.isActive
+            ? roundRef.current.startTime
+            : answerStartedAtRef.current;
+        timerRef.current = setInterval(() => {
+            const elapsed = performance.now() - startTime;
+            const pct = Math.max(0, 100 - (elapsed / ROUND_TIME_MS) * 100);
+            setTimeLeft(pct);
+            if (pct <= 0) clearInterval(timerRef.current);
+        }, 30);
+
+        if (isHostRef.current && roundRef.current.isActive) {
+            const elapsed = performance.now() - roundRef.current.startTime;
+            roundTimeoutRef.current = setTimeout(evaluateRoundHost, Math.max(0, ROUND_TIME_MS + LATE_ANSWER_GRACE_MS - elapsed));
+        }
+    };
+
     useEffect(() => {
         if (gameState === 'starting' && isHostRef.current && !hasStartedRef.current) {
             hasStartedRef.current = true;
@@ -463,7 +609,7 @@ export default function MathSpeedGame({ setView }) {
 
     return (
         <div className="game-fullscreen-shell fixed inset-0 bg-[#0B0C10] flex flex-col font-arabic select-none">
-            <ConnectionPauseOverlay />
+            <ConnectionPauseOverlay conn={connRef.current} opponentName={oppProfile?.nickname} onConnectionPause={pauseForConnection} onConnectionResume={resumeAfterConnection} onLeave={() => { connRef.current?.close(); setView('hub'); }} />
             <EmotesOverlay conn={connRef.current} />
 
             <div className="animated-bg opacity-30"><div className="bg-orb-1" /><div className="bg-orb-2" /></div>

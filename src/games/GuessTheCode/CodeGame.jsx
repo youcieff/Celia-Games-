@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import P2PConnectionManager from '../../components/P2PConnectionManager';
+import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
 import CodeKeypad from './CodeKeypad';
 import HistoryBoard from './HistoryBoard';
 import Logo from '../../components/Logo';
@@ -13,20 +14,22 @@ import GlobalMuteButton from '../../components/GlobalMuteButton';
 import useProfile from '../../hooks/useProfile';
 import { triggerVictoryEffects, triggerDefeatEffects } from '../../lib/effectsEngine';
 import { AvatarDisplay } from '../../components/icons/AvatarIcons';
-import EmotesOverlay, { ChatTriggerButton } from '../../components/EmotesOverlay';
+import EmotesOverlay, { ChatTriggerButton, GameNotifications } from '../../components/EmotesOverlay';
 import { IconCodeGame, IconTarget, IconHourglass, IconTrophy } from '../../components/icons/GameIcons';
 
 export default function CodeGame({ setView }) {
     // ── stable refs (no stale closures) ──────────────────────────────
     const connRef = useRef(null);
     const isHostRef = useRef(false);
+    const isAIRef = useRef(false);
+    const matchRecordedRef = useRef(false);
     const secretRef = useRef('');
     const turnRef = useRef(false);
     const oppReadyRef = useRef(false);
     const codeLengthRef = useRef(4); // shared with both players
 
     // ── ui state ────────────────────────────────────────────────────
-    const [myProfile] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'guess-code', gameTitle: 'خمن الكود' });
     const [oppProfile, setOppProfile] = useState(null);
     const opp = oppProfile || { nickname: 'الخصم', avatar: 'alien' };
 
@@ -60,6 +63,7 @@ export default function CodeGame({ setView }) {
     const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         connRef.current = conn;
         isHostRef.current = hostMode;
+        isAIRef.current = !!oppProf?.isAI;
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
 
@@ -160,6 +164,14 @@ export default function CodeGame({ setView }) {
                 connRef.current.send({ type: 'guess_result', code: msg.code, result });
                 if (result.every(r => r === 'green')) {
                     setGameState('lost');
+                    if (!matchRecordedRef.current) {
+                        matchRecordedRef.current = true;
+                        awardMatchResult('loss', {
+                            gameId: 'guess-code', gameTitle: 'خمن الكود',
+                            oppName: oppProfile?.nickname || 'الخصم',
+                            oppAvatar: oppProfile?.avatar || 'cool', isAI: isAIRef.current
+                        });
+                    }
                     triggerDefeatEffects();
                 } else {
                     turnRef.current = true;
@@ -177,6 +189,14 @@ export default function CodeGame({ setView }) {
                 setMyGuesses(newGuesses);
                 if (result.every(r => r === 'green')) {
                     setGameState('won');
+                    if (!matchRecordedRef.current) {
+                        matchRecordedRef.current = true;
+                        awardMatchResult('win', {
+                            gameId: 'guess-code', gameTitle: 'خمن الكود',
+                            oppName: oppProfile?.nickname || 'الخصم',
+                            oppAvatar: oppProfile?.avatar || 'cool', isAI: isAIRef.current
+                        });
+                    }
                     triggerVictoryEffects();
                     if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100, 50, 200]);
                 } else {
@@ -269,6 +289,7 @@ export default function CodeGame({ setView }) {
 
     // ── reset ────────────────────────────────────────────────────────
     const resetAll = () => {
+        matchRecordedRef.current = false;
         secretRef.current = '';
         oppReadyRef.current = false;
         oppConfirmedRef.current = Array(codeLengthRef.current).fill(false);
@@ -357,6 +378,7 @@ export default function CodeGame({ setView }) {
                         </div>
                     </header>
                 )}
+                {gameState !== 'lobby' && <GameNotifications />}
 
                 {/* ── Lobby ── */}
                 {gameState === 'lobby' && (
@@ -521,6 +543,9 @@ export default function CodeGame({ setView }) {
             </div>
             {['setting-secret', 'waiting-start', 'playing', 'won', 'lost'].includes(gameState) && (
                 <EmotesOverlay conn={connRef.current} oppProfile={opp} showStandaloneButton={false} />
+            )}
+            {gameState !== 'lobby' && (
+                <ConnectionPauseOverlay conn={connRef.current} opponentName={opp?.nickname} onLeave={() => { connRef.current?.close(); setView('hub'); }} />
             )}
         </>
     );

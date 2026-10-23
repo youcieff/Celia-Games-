@@ -350,11 +350,12 @@ function HandDominoTile({ tile, isSelected, isPlayable, isOpeningTile = false, o
 export default function DominoGame({ setView }) {
     const connRef = useRef(null);
     const isHostRef = useRef(false);
-    const [myProfile, , awardMatchResult] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'dominoes', gameTitle: 'الدومينو' });
     const [oppProfile, setOppProfile] = useState(null);
 
     // Match States: 'lobby' | 'playing' | 'round_over' | 'gameover'
     const [gameState, setGameState] = useState('lobby');
+    const [connectionPaused, setConnectionPaused] = useState(false);
 
     // 151 Cumulative Match Scores
     const [myMatchScore, setMyMatchScore] = useState(0);
@@ -399,7 +400,10 @@ export default function DominoGame({ setView }) {
             gameState, hostScore: myMatchScoreRef.current, oppScore: oppMatchScoreRef.current, roundNum: roundNumRef.current,
             hostHand: isHostRef.current ? myHand : peerHandRef.current,
             peerHand: isHostRef.current ? peerHandRef.current : myHand,
-            boneyard, boardChain, currentTurn, rootTileId: rootTileIdRef.current
+            boneyard, boardChain, currentTurn, rootTileId: rootTileIdRef.current,
+            openingTileInfo, openingStarter, lastRoundWinner: lastRoundWinnerRef.current,
+            consecutivePasses: consecutivePassesRef.current, roundWinner, roundPointsEarned,
+            roundOverReason, matchWinner
         });
     };
 
@@ -407,7 +411,7 @@ export default function DominoGame({ setView }) {
         if (gameState === 'playing' || gameState === 'round_over' || gameState === 'gameover') {
             saveGameState();
         }
-    }, [gameState, myMatchScore, oppMatchScore, roundNum, myHand, boneyard, boardChain, currentTurn]);
+    }, [gameState, myMatchScore, oppMatchScore, roundNum, myHand, boneyard, boardChain, currentTurn, openingTileInfo, openingStarter, roundWinner, roundPointsEarned, roundOverReason, matchWinner]);
 
     const getChainEnds = useCallback(() => {
         if (boardChain.length === 0) return { left: null, right: null };
@@ -431,7 +435,7 @@ export default function DominoGame({ setView }) {
 
     // Auto-pass: when it's my turn, I have no valid moves, and boneyard is empty → pass automatically
     useEffect(() => {
-        if (gameState !== 'playing' || blockedResolutionRef.current || roundEndedRef.current) return;
+        if (gameState !== 'playing' || connectionPaused || blockedResolutionRef.current || roundEndedRef.current) return;
         if (!isMyTurn) return;
         if (boneyard.length > 0) return; // still can draw
         if (myHand.some(t => canPlayTile(t))) return; // still can play
@@ -456,17 +460,54 @@ export default function DominoGame({ setView }) {
         }, 800);
         return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isMyTurn, boneyard.length, myHand, gameState, boardChain, openingTileInfo, canPlayTile]);
+    }, [isMyTurn, boneyard.length, myHand, gameState, boardChain, openingTileInfo, canPlayTile, connectionPaused]);
+
+    const restoreGameState = (snapshot) => {
+        if (!snapshot || !snapshot.gameState || !Array.isArray(snapshot.hostHand) || !Array.isArray(snapshot.peerHand)) return false;
+        const ownHand = isHostRef.current ? snapshot.hostHand : snapshot.peerHand;
+        const opponentHand = isHostRef.current ? snapshot.peerHand : snapshot.hostHand;
+        setMyHand(ownHand);
+        myHandRef.current = ownHand;
+        peerHandRef.current = opponentHand;
+        setOppHandCount(opponentHand.length);
+        setMyMatchScore(Number(isHostRef.current ? snapshot.hostScore : snapshot.oppScore) || 0);
+        setOppMatchScore(Number(isHostRef.current ? snapshot.oppScore : snapshot.hostScore) || 0);
+        myMatchScoreRef.current = Number(isHostRef.current ? snapshot.hostScore : snapshot.oppScore) || 0;
+        oppMatchScoreRef.current = Number(isHostRef.current ? snapshot.oppScore : snapshot.hostScore) || 0;
+        setRoundNum(Number(snapshot.roundNum) || 1);
+        roundNumRef.current = Number(snapshot.roundNum) || 1;
+        setBoneyard(Array.isArray(snapshot.boneyard) ? snapshot.boneyard : []);
+        setBoardChain(Array.isArray(snapshot.boardChain) ? snapshot.boardChain : []);
+        setCurrentTurn(snapshot.currentTurn || 'host');
+        setOpeningTileInfo(snapshot.openingTileInfo || null);
+        setOpeningStarter(snapshot.openingStarter || null);
+        rootTileIdRef.current = snapshot.rootTileId || null;
+        lastRoundWinnerRef.current = snapshot.lastRoundWinner || null;
+        consecutivePassesRef.current = Number(snapshot.consecutivePasses) || 0;
+        blockedResolutionRef.current = consecutivePassesRef.current >= 2;
+        roundEndedRef.current = ['round_over', 'gameover'].includes(snapshot.gameState);
+        setRoundWinner(snapshot.roundWinner || null);
+        setRoundPointsEarned(Number(snapshot.roundPointsEarned) || 0);
+        setRoundOverReason(snapshot.roundOverReason || null);
+        setMatchWinner(snapshot.matchWinner || null);
+        setGameState(snapshot.gameState);
+        return true;
+    };
 
     const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', onData);
-
-        if (hostMode) {
+        const restored = restoreGameState(savedState);
+        if (hostMode && !restored) {
             startFreshMatch(conn);
         }
+        if (hostMode) conn.on('peer-reconnect', () => {
+            conn.getState?.().then((latest) => {
+                if (latest?.hostHand && latest?.peerHand) conn.send({ type: 'state_sync', state: latest });
+            });
+        });
     };
 
     const startFreshMatch = (connInstance) => {
@@ -550,6 +591,11 @@ export default function DominoGame({ setView }) {
 
     const onData = (msg) => {
         if (!msg || !msg.type) return;
+
+        if (msg.type === 'state_sync' && msg.state) {
+            restoreGameState(msg.state);
+            return;
+        }
 
         switch (msg.type) {
             case 'dominoes_ack':
@@ -692,7 +738,7 @@ export default function DominoGame({ setView }) {
                 setMyMatchScore(myScore);
                 setOppMatchScore(oppScore);
                 setGameState('gameover');
-                awardMatchResult(winnerKey === 'me');
+                awardMatchResult(winnerKey === 'draw' ? 'draw' : winnerKey === 'me' ? 'win' : 'loss');
                 
                 if (winnerKey === 'draw') {
                     triggerDrawEffects();
@@ -1545,7 +1591,13 @@ export default function DominoGame({ setView }) {
                 </div>
             )}
 
-            <ConnectionPauseOverlay conn={connRef.current} />
+            <ConnectionPauseOverlay
+                conn={connRef.current}
+                opponentName={oppProfile?.nickname}
+                onConnectionPause={() => setConnectionPaused(true)}
+                onConnectionResume={() => setConnectionPaused(false)}
+                onLeave={() => { connRef.current?.close?.(); setView('hub'); }}
+            />
             <EmotesOverlay conn={connRef.current} showStandaloneButton={false} />
         </div>
     );

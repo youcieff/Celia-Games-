@@ -10,6 +10,7 @@ import X from 'lucide-react/dist/esm/icons/x';
 import Flame from 'lucide-react/dist/esm/icons/flame';
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
 import Lock from 'lucide-react/dist/esm/icons/lock';
+import AccountAccessPanel from './AccountAccessPanel';
 
 export default function ProfileWidget() {
     const [profile, updateProfile] = useProfile();
@@ -118,6 +119,8 @@ export default function ProfileWidget() {
                         {/* ── TAB 1: Profile & Avatar ── */}
                         {activeTab === 'profile' && (
                             <div className="flex flex-col gap-4 animate-fade-in">
+                                <AccountAccessPanel profile={profile} />
+
                                 {/* Level & XP Progression Card */}
                                 <div className="glass-card rounded-2xl p-3 border border-white/10 flex flex-col gap-2.5 bg-gradient-to-r from-white/[0.04] to-transparent">
                                     <div className="flex items-center justify-between text-xs font-bold">
@@ -216,17 +219,19 @@ export default function ProfileWidget() {
                                         >
                                             <div className="flex items-center gap-2.5 min-w-0">
                                                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 font-black text-xs ${
-                                                    item.isWin ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                                    item.outcome === 'draw'
+                                                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                                        : item.isWin ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
                                                 }`}>
-                                                    {item.isWin ? '🏆' : '💀'}
+                                                    {item.outcome === 'draw' ? '—' : item.isWin ? '🏆' : '×'}
                                                 </div>
                                                 <div className="flex flex-col min-w-0">
                                                     <div className="flex items-center gap-1.5">
                                                         <span className="text-xs font-black text-white truncate">{item.gameTitle || 'لعبة'}</span>
                                                         <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded-full ${
-                                                            item.isWin ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
+                                                            item.outcome === 'draw' ? 'bg-amber-500/20 text-amber-300' : item.isWin ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
                                                         }`}>
-                                                            {item.isWin ? 'فوز' : 'خسارة'}
+                                                            {item.outcome === 'draw' ? 'تعادل' : item.isWin ? 'فوز' : 'خسارة'}
                                                         </span>
                                                     </div>
                                                     <span className="text-[10px] text-white/50 font-bold truncate">

@@ -60,7 +60,7 @@ export function getWinStreakStats() {
   }
 }
 
-export function recordMatch({ gameId, gameTitle, oppName = 'الذكاء الاصطناعي', oppAvatar = 'bot', isWin, myScore = 0, oppScore = 0, isAI = false }) {
+export function recordMatch({ gameId, gameTitle, oppName = 'خصم', oppAvatar = 'cool', isWin, outcome, myScore = 0, oppScore = 0, isAI = false }) {
   try {
     // 1. Update streak
     const streakStats = getWinStreakStats();
@@ -71,12 +71,13 @@ export function recordMatch({ gameId, gameTitle, oppName = 'الذكاء الا�
     // 2. Add match item
     const matches = getMatchHistory();
     const newMatch = {
-      id: 'm_' + Date.now(),
+      id: 'm_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`),
       gameId,
       gameTitle,
       oppName: oppName || (isAI ? 'الذكاء الاصطناعي 🤖' : 'خصم مجهول'),
       oppAvatar,
       isWin,
+      outcome: ['win', 'loss', 'draw'].includes(outcome) ? outcome : (isWin ? 'win' : 'loss'),
       myScore,
       oppScore,
       isAI,
@@ -87,7 +88,7 @@ export function recordMatch({ gameId, gameTitle, oppName = 'الذكاء الا�
     const updatedMatches = [newMatch, ...matches].slice(0, 25);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedMatches));
 
-    return { currentStreak, maxStreak };
+    return { currentStreak, maxStreak, match: newMatch };
   } catch (e) {
     console.error('Failed to record match', e);
     return { currentStreak: 0, maxStreak: 0 };

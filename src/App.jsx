@@ -23,25 +23,35 @@ import SpeedSudokuGame from './games/SpeedSudoku/SpeedSudokuGame';
 import WhoAmIGame from './games/WhoAmI/WhoAmIGame';
 import TabooGame from './games/Taboo/TabooGame';
 import GlobalMuteButton from './components/GlobalMuteButton';
+import AdminDashboard from './components/AdminDashboard';
 
 function App() {
-  const [view, setView] = React.useState('hub');
+  const [view, setView] = React.useState(() => window.location.pathname.replace(/\/$/, '') === '/admin' ? 'admin' : 'hub');
 
   React.useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const gameParam = params.get('game');
       const roomParam = params.get('room');
+      const inviteParam = params.get('invite');
 
       if (gameParam) {
         if (roomParam) {
           sessionStorage.setItem('celia_autojoin_room', roomParam);
+        }
+        if (inviteParam) {
+          sessionStorage.setItem('celia_autojoin_invite', JSON.stringify({
+            id: inviteParam,
+            gameId: gameParam,
+            roomCode: roomParam?.toUpperCase()
+          }));
         }
         const prefixToView = {
           'celia-code': 'code-game',
           'celia-word': 'word-game-online',
           'celia-xo': 'xo-game',
           'celia-big-xo': 'big-xo-game',
+          'celia-uxo': 'big-xo-game',
           'celia-c4': 'connect-4',
           'celia-mem': 'memory-game',
           'celia-db': 'dots-boxes',
@@ -76,6 +86,7 @@ function App() {
     <ThemeProvider>
       <div className="min-h-dvh w-full text-[var(--text-color)] font-arabic selection:bg-[var(--primary-color)]/40 relative">
         {view === 'hub' && <Hub setView={setView} />}
+        {view === 'admin' && <AdminDashboard setView={setView} />}
         {view === 'code-game' && <CodeGame setView={setView} />}
         {view === 'word-game-local' && <WordGame setView={setView} mode="local" />}
         {view === 'word-game-online' && <WordGame setView={setView} mode="online" />}

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import P2PConnectionManager from '../../components/P2PConnectionManager';
+import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
 import Logo from '../../components/Logo';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw';
 import Wifi from 'lucide-react/dist/esm/icons/wifi';
 import GlobalMuteButton from '../../components/GlobalMuteButton';
-import EmotesOverlay, { ChatTriggerButton } from '../../components/EmotesOverlay';
+import EmotesOverlay, { ChatTriggerButton, GameNotifications } from '../../components/EmotesOverlay';
 import useProfile from '../../hooks/useProfile';
 import { triggerVictoryEffects, triggerDefeatEffects, triggerDrawEffects } from '../../lib/effectsEngine';
 import { AvatarDisplay } from '../../components/icons/AvatarIcons';
@@ -34,8 +35,9 @@ export default function UltimateGame({ setView }) {
     const connRef = useRef(null);
     const isHostRef = useRef(false);
 
-    const [myProfile] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'ultimate-tic-tac-toe', gameTitle: 'إكس أو المطورة' });
     const [oppProfile, setOppProfile] = useState(null);
+    const matchRecordedRef = useRef(false);
 
     const [gameState, setGameState] = useState('lobby');
 
@@ -61,7 +63,18 @@ export default function UltimateGame({ setView }) {
     const opp = oppProfile || { nickname: 'الخصم', avatar: 'alien' };
 
     useEffect(() => {
-        if (overallWinner) {
+        if (gameState === 'playing' && overallWinner) {
+            if (!matchRecordedRef.current) {
+                matchRecordedRef.current = true;
+                const outcome = overallWinner === 'draw' ? 'draw' : overallWinner === mySymbol ? 'win' : 'loss';
+                awardMatchResult(outcome, {
+                    gameId: 'ultimate-tic-tac-toe',
+                    gameTitle: 'إكس أو المطورة',
+                    oppName: oppProfile?.nickname || 'الخصم',
+                    oppAvatar: oppProfile?.avatar || 'cool',
+                    isAI: Boolean(oppProfile?.isAI)
+                });
+            }
             if (overallWinner === 'draw') {
                 triggerDrawEffects();
             } else if (overallWinner === mySymbol) {
@@ -72,7 +85,7 @@ export default function UltimateGame({ setView }) {
                 triggerDefeatEffects();
             }
         }
-    }, [overallWinner, mySymbol]);
+    }, [overallWinner, mySymbol, gameState, oppProfile, awardMatchResult]);
 
     const saveGameState = () => {
         if (!isHostRef.current || !connRef.current) return;
@@ -199,6 +212,7 @@ export default function UltimateGame({ setView }) {
     };
 
     const doRestart = () => {
+        matchRecordedRef.current = false;
         setBoards(Array.from({ length: 9 }, () => Array(9).fill(null)));
         setBigBoard(Array(9).fill(null));
         setXIsNext(true);
@@ -256,6 +270,7 @@ export default function UltimateGame({ setView }) {
                         </div>
                     </header>
                 )}
+                {gameState !== 'lobby' && <GameNotifications />}
 
                 {/* Lobby */}
                 {gameState === 'lobby' && (
@@ -425,6 +440,9 @@ export default function UltimateGame({ setView }) {
             </div>
             {gameState === 'playing' && (
                 <EmotesOverlay conn={connRef.current} oppProfile={opp} showStandaloneButton={false} />
+            )}
+            {gameState !== 'lobby' && (
+                <ConnectionPauseOverlay conn={connRef.current} opponentName={opp?.nickname} onLeave={() => { connRef.current?.close(); setView('hub'); }} />
             )}
         </>
     );

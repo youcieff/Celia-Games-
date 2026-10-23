@@ -10,24 +10,26 @@ import Shield from 'lucide-react/dist/esm/icons/shield';
 import Zap from 'lucide-react/dist/esm/icons/zap';
 import Snowflake from 'lucide-react/dist/esm/icons/snowflake';
 import Trophy from 'lucide-react/dist/esm/icons/trophy';
+import LockKeyhole from 'lucide-react/dist/esm/icons/lock-keyhole';
+import Equal from 'lucide-react/dist/esm/icons/equal';
+import { RPSChoiceButton, RPSChoiceIcon } from '../../components/RPSChoiceButton';
 import { playSound, playHaptic } from '../../lib/audioEngine';
 import useProfile from '../../hooks/useProfile';
 import { triggerVictoryEffects, triggerDefeatEffects } from '../../lib/effectsEngine';
 
 const CHOICES = [
-    { id: 'rock', label: 'حجر', emoji: '🪨', color: 'from-amber-600 to-amber-800 border-amber-500/40' },
-    { id: 'paper', label: 'ورقة', emoji: '📄', color: 'from-blue-600 to-blue-800 border-blue-500/40' },
-    { id: 'scissors', label: 'مقص', emoji: '✂️', color: 'from-rose-600 to-rose-800 border-rose-500/40' }
+    { id: 'rock', label: 'حجر', color: 'from-amber-600 to-amber-800 border-amber-500/40' },
+    { id: 'paper', label: 'ورقة', color: 'from-blue-600 to-blue-800 border-blue-500/40' },
+    { id: 'scissors', label: 'مقص', color: 'from-rose-600 to-rose-800 border-rose-500/40' }
 ];
 
-const CHOICE_EMOJIS = { rock: '🪨', paper: '📄', scissors: '✂️' };
 const CHOICE_LABELS = { rock: 'حجر', paper: 'ورقة', scissors: 'مقص' };
 const WIN_SCORE = 5;
 
 const POWER_CARDS = [
-    { id: 'shield', label: 'درع الحماية', desc: 'يحول الخسارة لتعادل', emoji: '🛡️', icon: Shield, color: 'text-sky-400 border-sky-500/40 bg-sky-500/10' },
-    { id: 'double', label: 'مضاعفة النقاط', desc: 'تكسب نقطتين بدل نقطة', emoji: '⚡', icon: Zap, color: 'text-amber-400 border-amber-500/40 bg-amber-500/10' },
-    { id: 'freeze', label: 'تجميد الخصم', desc: 'يخفي بطاقتك وتأثيرها', emoji: '❄️', icon: Snowflake, color: 'text-cyan-300 border-cyan-500/40 bg-cyan-500/10' },
+    { id: 'shield', label: 'درع الحماية', desc: 'يحول الخسارة لتعادل', icon: Shield, color: 'text-sky-400 border-sky-500/40 bg-sky-500/10' },
+    { id: 'double', label: 'مضاعفة النقاط', desc: 'تكسب نقطتين بدل نقطة', icon: Zap, color: 'text-amber-400 border-amber-500/40 bg-amber-500/10' },
+    { id: 'freeze', label: 'تجميد الخصم', desc: 'يخفي بطاقتك وتأثيرها', icon: Snowflake, color: 'text-cyan-300 border-cyan-500/40 bg-cyan-500/10' },
 ];
 
 function beats(a, b) {
@@ -39,7 +41,7 @@ function beats(a, b) {
 export default function RPSArenaGame({ setView }) {
     const connRef = useRef(null);
     const isHostRef = useRef(false);
-    const [myProfile, , awardMatchResult] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'rps-arena', gameTitle: 'حلبة حجر ورقة مقص' });
     const [oppProfile, setOppProfile] = useState(null);
 
     const [gameState, setGameState] = useState('lobby'); // lobby | playing | revealing | gameover
@@ -61,12 +63,19 @@ export default function RPSArenaGame({ setView }) {
     const myScoreRef = useRef(0);
     const oppScoreRef = useRef(0);
     const isResolvingRef = useRef(false);
+    const connectionSnapshotRef = useRef(null);
+    connectionSnapshotRef.current = {
+        connectionGame: 'rps-arena',
+        gameState,
+        hostScore: myScoreRef.current,
+        oppScore: oppScoreRef.current,
+        roundNum,
+        winner
+    };
 
     const saveGameState = () => {
         if (!isHostRef.current || !connRef.current) return;
-        connRef.current.saveState({
-            gameState, hostScore: myScoreRef.current, oppScore: oppScoreRef.current, roundNum
-        });
+        connRef.current.saveState(connectionSnapshotRef.current);
     };
 
     useEffect(() => {
@@ -80,18 +89,25 @@ export default function RPSArenaGame({ setView }) {
         conn.on('data', onData);
 
         if (savedState && savedState.gameState) {
-            setGameState(savedState.gameState);
+            const restoredState = savedState.gameState === 'gameover' ? 'gameover' : 'playing';
+            setGameState(restoredState);
             setMyScore(hostMode ? savedState.hostScore : savedState.oppScore);
             setOppScore(hostMode ? savedState.oppScore : savedState.hostScore);
             myScoreRef.current = hostMode ? savedState.hostScore : savedState.oppScore;
             oppScoreRef.current = hostMode ? savedState.oppScore : savedState.hostScore;
             setRoundNum(savedState.roundNum || 1);
+            setWinner(hostMode ? (savedState.winner || null) : (savedState.winner === 'me' ? 'opp' : savedState.winner === 'opp' ? 'me' : null));
+            setMyChoice(null);
+            setOppChoice(null);
+            myChoiceRef.current = null;
+            oppChoiceRef.current = null;
+            isResolvingRef.current = false;
+            setRoundResult(null);
+            setShowReveal(false);
 
             if (hostMode) {
                 conn.on('peer-reconnect', () => {
-                    conn.send({ type: 'state_sync', state: {
-                        gameState: savedState.gameState, hostScore: myScoreRef.current, oppScore: oppScoreRef.current, roundNum: savedState.roundNum
-                    }});
+                    conn.send({ type: 'state_sync', state: connectionSnapshotRef.current });
                 });
             }
             return;
@@ -99,9 +115,7 @@ export default function RPSArenaGame({ setView }) {
 
         if (hostMode) {
             conn.on('peer-reconnect', () => {
-                conn.send({ type: 'state_sync', state: {
-                    gameState, hostScore: myScoreRef.current, oppScore: oppScoreRef.current, roundNum
-                }});
+                conn.send({ type: 'state_sync', state: connectionSnapshotRef.current });
             });
         }
 
@@ -134,6 +148,27 @@ export default function RPSArenaGame({ setView }) {
         if (!msg || !msg.type) return;
 
         switch (msg.type) {
+            case 'state_sync': {
+                if (isHostRef.current || !msg.state) break;
+                const state = msg.state;
+                setMyScore(Number(state.oppScore) || 0);
+                setOppScore(Number(state.hostScore) || 0);
+                myScoreRef.current = Number(state.oppScore) || 0;
+                oppScoreRef.current = Number(state.hostScore) || 0;
+                setRoundNum(Number(state.roundNum) || 1);
+                setWinner(state.winner === 'me' ? 'opp' : state.winner === 'opp' ? 'me' : null);
+                setGameState(state.gameState === 'gameover' ? 'gameover' : 'playing');
+                setMyChoice(null);
+                setOppChoice(null);
+                myChoiceRef.current = null;
+                oppChoiceRef.current = null;
+                isResolvingRef.current = false;
+                setRoundResult(null);
+                setShowReveal(false);
+                setActivePower(null);
+                activePowerRef.current = null;
+                break;
+            }
             case 'rps_choice': {
                 const theirChoice = msg.choice;
                 const theirPower = msg.power || null;
@@ -216,12 +251,12 @@ export default function RPSArenaGame({ setView }) {
         if (!isDraw && !myWins && myPow === 'shield') {
             isDraw = true;
             oppWins = false;
-            notice = '🛡️ درع الحماية أنقذك من الخسارة! (تعادل)';
+            notice = 'درع الحماية أنقذك من الخسارة وحوّل الجولة إلى تعادل.';
         }
         if (!isDraw && !oppWins && oppPow === 'shield') {
             isDraw = true;
             myWins = false;
-            notice = '🛡️ درع الخصم صد فوزك! (تعادل)';
+            notice = 'درع الخصم صد فوزك وحوّل الجولة إلى تعادل.';
         }
 
         let myPoints = myWins ? 1 : 0;
@@ -230,15 +265,15 @@ export default function RPSArenaGame({ setView }) {
         // Double points
         if (myWins && myPow === 'double') {
             myPoints = 2;
-            notice = '⚡ مضاعفة النقاط! كسبت +2 نقطة!';
+            notice = 'مضاعفة النقاط: كسبت نقطتين.';
         }
         if (oppWins && oppPow === 'double') {
             oppPoints = 2;
-            notice = '⚡ الخصم ضاعف نقاطه وكسب +2 نقطة!';
+            notice = 'الخصم ضاعف نقاطه وكسب نقطتين.';
         }
 
         if (oppPow === 'freeze') {
-            notice = notice ? `${notice} | ❄️ الخصم استخدم التجميد` : '❄️ الخصم استخدم بطاقة التجميد!';
+            notice = notice ? `${notice} | الخصم استخدم التجميد` : 'الخصم استخدم بطاقة التجميد.';
         }
 
         setRoundNotice(notice);
@@ -373,13 +408,13 @@ export default function RPSArenaGame({ setView }) {
                         >
                             {showReveal && oppChoice ? (
                                 <>
-                                    <span className="text-5xl animate-pop-in">{CHOICE_EMOJIS[oppChoice]}</span>
+                                    <RPSChoiceIcon choice={oppChoice} size={48} className="animate-pop-in text-rose-300" />
                                     <span className="text-xs font-black text-rose-300 mt-2">{CHOICE_LABELS[oppChoice]}</span>
                                 </>
                             ) : oppChoice ? (
-                                <span className="text-xs font-bold text-amber-300 animate-pulse">جاهز! 🔒</span>
+                                <span className="flex items-center gap-1.5 text-xs font-bold text-amber-300 animate-pulse"><LockKeyhole size={14} /> جاهز</span>
                             ) : (
-                                <span className="text-xs font-bold text-slate-500">يفكر... ⌛</span>
+                                <span className="text-xs font-bold text-slate-500">يختار حركته...</span>
                             )}
                         </div>
                     </div>
@@ -394,11 +429,11 @@ export default function RPSArenaGame({ setView }) {
                         >
                             {myChoice ? (
                                 <>
-                                    <span className="text-5xl animate-pop-in">{CHOICE_EMOJIS[myChoice]}</span>
+                                    <RPSChoiceIcon choice={myChoice} size={48} className="animate-pop-in text-emerald-300" />
                                     <span className="text-xs font-black text-emerald-300 mt-2">{CHOICE_LABELS[myChoice]}</span>
                                 </>
                             ) : (
-                                <span className="text-xs font-bold text-slate-500">اختر أدناه 👇</span>
+                                <span className="px-2 text-center text-xs font-bold text-slate-500">اختار حركة من الأسفل</span>
                             )}
                         </div>
                     </div>
@@ -406,12 +441,18 @@ export default function RPSArenaGame({ setView }) {
 
                 {/* Round Result Banner */}
                 {roundResult && (
-                    <div className="text-center py-2 animate-pop-in">
-                        <span className={`text-sm font-black px-6 py-2 rounded-full border shadow-lg
-                            ${roundResult === 'win' ? 'text-emerald-400 bg-emerald-950/80 border-emerald-500/50' : roundResult === 'lose' ? 'text-rose-400 bg-rose-950/80 border-rose-500/50' : 'text-amber-400 bg-amber-950/80 border-amber-500/50'}`}
+                    <div className="flex flex-col items-center gap-2 py-2 text-center animate-pop-in">
+                        <span className={`inline-flex items-center gap-2 text-sm font-black px-6 py-2 rounded-full border shadow-lg
+                            ${roundResult === 'win' ? 'text-emerald-300 bg-emerald-950/80 border-emerald-500/50' : roundResult === 'lose' ? 'text-rose-300 bg-rose-950/80 border-rose-500/50' : 'text-amber-200 bg-amber-950/80 border-amber-500/50'}`}
                         >
-                            {roundResult === 'win' ? '🎉 فزت بالجولة!' : roundResult === 'lose' ? '💥 خسرت الجولة!' : '🤝 تعادل!'}
+                            {roundResult === 'win' ? <Trophy size={16} /> : roundResult === 'lose' ? <LockKeyhole size={16} /> : <Equal size={17} />}
+                            {roundResult === 'win' ? 'فزت بالجولة' : roundResult === 'lose' ? 'خسرت الجولة' : 'تعادل في الجولة'}
                         </span>
+                        {roundResult === 'draw' && (
+                            <p className="max-w-xs text-xs font-bold text-amber-100/70">
+                                {myChoice === oppChoice ? 'اخترتما الحركة نفسها؛ لا نقاط لهذه الجولة.' : 'الدرع حوّل النتيجة إلى تعادل؛ لا نقاط لهذه الجولة.'}
+                            </p>
+                        )}
                     </div>
                 )}
 
@@ -428,7 +469,7 @@ export default function RPSArenaGame({ setView }) {
                                 className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5
                                     ${isActive ? 'ring-2 ring-amber-400 scale-105 ' + p.color : available && !myChoice ? 'glass-card hover:scale-105 border-white/10 text-slate-300' : 'opacity-30 grayscale cursor-not-allowed border-transparent'}`}
                             >
-                                <span>{p.emoji}</span>
+                                <p.icon size={16} strokeWidth={2.2} />
                                 <span>{p.label}</span>
                             </button>
                         );
@@ -438,16 +479,19 @@ export default function RPSArenaGame({ setView }) {
                 {/* Main 3 Choices (Rock, Paper, Scissors) */}
                 <div className="grid grid-cols-3 gap-3 pt-2">
                     {CHOICES.map(c => (
-                        <button
+                        <RPSChoiceButton
                             key={c.id}
+                            choice={c.id}
+                            label={c.label}
                             disabled={Boolean(myChoice) || gameState !== 'playing'}
                             onClick={() => handleChoiceSelect(c.id)}
-                            className={`p-4 rounded-3xl border-2 flex flex-col items-center justify-center gap-2 transition-all duration-200 active:scale-95 shadow-xl
-                                ${myChoice === c.id ? 'ring-2 ring-emerald-400 scale-105 bg-gradient-to-b ' + c.color : !myChoice && gameState === 'playing' ? 'glass-card hover:scale-105 hover:-translate-y-1 bg-gradient-to-b ' + c.color : 'opacity-40 grayscale cursor-not-allowed border-white/10'}`}
-                        >
-                            <span className="text-4xl">{c.emoji}</span>
-                            <span className="text-xs font-black text-white">{c.label}</span>
-                        </button>
+                            selected={myChoice === c.id}
+                            iconSize={34}
+                            className="min-h-[96px] rounded-3xl shadow-xl"
+                            selectedClassName={`ring-2 ring-emerald-300 scale-105 bg-gradient-to-b text-white ${c.color}`}
+                            idleClassName={`glass-card hover:scale-105 hover:-translate-y-1 bg-gradient-to-b text-white ${c.color}`}
+                            selectedIconClassName="text-emerald-200"
+                        />
                     ))}
                 </div>
             </div>
@@ -463,7 +507,7 @@ export default function RPSArenaGame({ setView }) {
                         </div>
 
                         <h2 className="text-xl font-black text-white mb-2">
-                            {winner === 'me' ? '🎉 فوز ساحق بالبطولة!' : 'حظ أوفر في الجولة القادمة'}
+                            {winner === 'me' ? 'فوز ساحق بالبطولة!' : 'حظ أوفر في الجولة القادمة'}
                         </h2>
 
                         <div className="glass-card py-2 px-6 rounded-xl text-lg font-black text-amber-400 mb-6 inline-block border border-amber-500/30">
@@ -488,7 +532,7 @@ export default function RPSArenaGame({ setView }) {
                 </div>
             )}
 
-            <ConnectionPauseOverlay conn={connRef.current} />
+            <ConnectionPauseOverlay conn={connRef.current} opponentName={oppProfile?.nickname} onLeave={() => { connRef.current?.close?.(); setView('hub'); }} />
             <EmotesOverlay conn={connRef.current} />
         </div>
     );

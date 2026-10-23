@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import P2PConnectionManager from '../../components/P2PConnectionManager';
+import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
 import PlayerGameHeader from '../../components/PlayerGameHeader';
 import VirtualKeyboard from './VirtualKeyboard';
 import Visualizer from './Visualizer';
@@ -74,8 +75,9 @@ export default function WordGame({ setView, mode }) {
     const p1WordRef = useRef('');
     const p2WordRef = useRef('');
     const dataHandlerRef = useRef(null);
+    const matchRecordedRef = useRef(false);
 
-    const [myProfile] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'guess-word', gameTitle: 'خمن الكلمة' });
     const [oppProfile, setOppProfile] = useState(null);
     const opp = oppProfile || { nickname: 'الخصم', avatar: 'alien' };
 
@@ -94,17 +96,52 @@ export default function WordGame({ setView, mode }) {
     const [winner, setWinner] = useState(null);
     const maxMistakes = 7;
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const getConnectionSnapshot = () => ({
+        connectionGame: 'guess-word', gameState, p1Word: p1WordRef.current || p1Word,
+        p2Word: p2WordRef.current || p2Word, p1GuessedLetters, p2GuessedLetters,
+        p1Mistakes, p2Mistakes, turn, winner
+    });
+
+    const restoreConnectionSnapshot = (snapshot) => {
+        if (!snapshot || snapshot.connectionGame !== 'guess-word') return false;
+        p1WordRef.current = snapshot.p1Word || '';
+        p2WordRef.current = snapshot.p2Word || '';
+        setP1Word(p1WordRef.current);
+        setP2Word(p2WordRef.current);
+        setP1GuessedLetters(snapshot.p1GuessedLetters || []);
+        setP2GuessedLetters(snapshot.p2GuessedLetters || []);
+        setP1Mistakes(Number(snapshot.p1Mistakes) || 0);
+        setP2Mistakes(Number(snapshot.p2Mistakes) || 0);
+        setTurn(snapshot.turn || 'host');
+        setWinner(snapshot.winner || null);
+        setGameState(snapshot.gameState || 'setup');
+        return true;
+    };
+
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         connRef.current = conn;
         isHostRef.current = hostMode;
         isAIRef.current = !!oppProf?.isAI;
         if (oppProf) setOppProfile(oppProf);
         conn.on('data', data => dataHandlerRef.current?.(data));
-        setGameState('setup');
+        if (restoreConnectionSnapshot(savedState)) {
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.getState?.().then((latest) => {
+                        const state = latest?.connectionGame === 'guess-word' ? latest : null;
+                        if (state) conn.send({ type: 'state_sync', state });
+                    });
+                });
+            }
+        } else {
+            setGameState('setup');
+        }
     };
 
     const onData = (data) => {
-        if (data.type === 'human_word' && isHostRef.current && isAIRef.current) {
+        if (data.type === 'state_sync' && data.state?.connectionGame === 'guess-word') {
+            restoreConnectionSnapshot(data.state);
+        } else if (data.type === 'human_word' && isHostRef.current && isAIRef.current) {
             p1WordRef.current = data.word;
             setP1Word(data.word);
         } else if (data.type === 'ai_word' && isAIRef.current) {
@@ -146,6 +183,14 @@ export default function WordGame({ setView, mode }) {
             resetGame();
         }
     };
+
+    useEffect(() => {
+        if (!isOnline || !connRef.current || gameState === 'lobby' || isAIRef.current) return;
+        const snapshot = getConnectionSnapshot();
+        const seat = isHostRef.current ? 'host' : 'peer';
+        connRef.current.savePlayerState?.({ playerSnapshot: snapshot }, seat);
+        if (isHostRef.current) connRef.current.saveState?.(snapshot);
+    }, [isOnline, gameState, p1Word, p2Word, p1GuessedLetters, p2GuessedLetters, p1Mistakes, p2Mistakes, turn, winner]);
 
     const startGame = (w1, w2) => {
         p1WordRef.current = w1;
@@ -247,6 +292,19 @@ export default function WordGame({ setView, mode }) {
         if (curWinner) {
             setWinner(curWinner);
             setGameState('game_over');
+
+            if (isOnline && !matchRecordedRef.current) {
+                matchRecordedRef.current = true;
+                const localPlayer = isHostRef.current ? 'host' : 'guest';
+                const outcome = curWinner === 'draw' ? 'draw' : curWinner === localPlayer ? 'win' : 'loss';
+                awardMatchResult(outcome, {
+                    gameId: 'guess-word',
+                    gameTitle: 'خمن الكلمة',
+                    oppName: opp.nickname,
+                    oppAvatar: opp.avatar,
+                    isAI: isAIRef.current
+                });
+            }
             
             if (isOnline) {
                 const iWon = (isHostRef.current && curWinner === 'host') || (!isHostRef.current && curWinner === 'guest');
@@ -260,6 +318,7 @@ export default function WordGame({ setView, mode }) {
     }, [p1GuessedLetters, p2GuessedLetters, p1Mistakes, p2Mistakes, p1Word, p2Word, gameState]);
 
     const resetGame = () => {
+        matchRecordedRef.current = false;
         p1WordRef.current = '';
         p2WordRef.current = '';
         setP1Word('');
@@ -473,8 +532,9 @@ export default function WordGame({ setView, mode }) {
                 )}
             </div>
             
-            {isOnline && ['playing', 'game_over'].includes(gameState) && (
-                <EmotesOverlay conn={connRef.current} oppProfile={opp} showStandaloneButton={false} />
+            {isOnline && connRef.current && <EmotesOverlay conn={connRef.current} oppProfile={opp} showStandaloneButton={false} />}
+            {isOnline && gameState !== 'lobby' && (
+                <ConnectionPauseOverlay conn={connRef.current} opponentName={opp?.nickname} onLeave={() => { connRef.current?.close(); setView('hub'); }} />
             )}
         </>
     );

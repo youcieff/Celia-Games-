@@ -197,7 +197,7 @@ const calcRoundScores = (myAnswers, oppAnswers, letter, manualOverrides = {}, mo
 export default function BusCompleteGame({ setView }) {
     const connRef       = useRef(null);
     const isHostRef     = useRef(false);
-    const [myProfile]   = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'bus-complete', gameTitle: 'باص كامل' });
     const [oppProfile, setOppProfile] = useState(null);
 
     // States: lobby → setup → waiting-letter | picking-letter → reveal → playing → review → scoreboard
@@ -226,8 +226,26 @@ export default function BusCompleteGame({ setView }) {
     const currentLetterRef   = useRef('');
     const modeRef            = useRef('ar');
     const scoredRoundKeyRef  = useRef('');
+    const recordedResultRoundRef = useRef('');
     const usedLettersRef     = useRef([]);
     const onDataRef          = useRef(null);
+    const connectionSnapshotRef = useRef(null);
+    connectionSnapshotRef.current = {
+        gameState,
+        letter: currentLetterRef.current || letter,
+        mode: modeRef.current || mode,
+        round: roundRef.current || round,
+        scores: scoresRef.current,
+        myAnswers: myAnswersRef.current,
+        oppAnswers: oppAnswersRef.current,
+        busCallerName,
+        inputsLocked: inputsLockedRef.current,
+        usedLetters: usedLettersRef.current,
+        myRoundScore,
+        oppRoundScore,
+        breakdown,
+        manualOverrides
+    };
 
     // Keep refs in sync with state
     useEffect(() => {
@@ -297,13 +315,15 @@ export default function BusCompleteGame({ setView }) {
         connRef.current.saveState({
             gameState, letter: currentLetterRef.current, mode: modeRef.current, round: roundRef.current,
             scores: scoresRef.current, myAnswers: myAnswersRef.current, oppAnswers: oppAnswersRef.current,
-            busCallerName, inputsLocked: inputsLockedRef.current, usedLetters: usedLettersRef.current
+            busCallerName, inputsLocked: inputsLockedRef.current, usedLetters: usedLettersRef.current,
+            myRoundScore, oppRoundScore, breakdown, manualOverrides
         });
     };
 
     useEffect(() => {
         saveGameState();
-    }, [gameState, letter, mode, round, scores, myAnswers, oppAnswers, busCallerName, inputsLocked]);
+    }, [gameState, letter, mode, round, scores, myAnswers, oppAnswers, busCallerName, inputsLocked,
+        myRoundScore, oppRoundScore, breakdown, manualOverrides]);
 
     const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
@@ -341,7 +361,7 @@ export default function BusCompleteGame({ setView }) {
 
             if (hostMode) {
                 conn.on('peer-reconnect', () => {
-                    conn.send({ type: 'state_sync', state: savedState });
+                    conn.send({ type: 'state_sync', state: connectionSnapshotRef.current });
                 });
             }
             return;
@@ -349,11 +369,7 @@ export default function BusCompleteGame({ setView }) {
 
         if (hostMode) {
             conn.on('peer-reconnect', () => {
-                conn.send({ type: 'state_sync', state: {
-                    gameState, letter: currentLetterRef.current, mode: modeRef.current, round: roundRef.current,
-                    scores: scoresRef.current, myAnswers: myAnswersRef.current, oppAnswers: oppAnswersRef.current,
-                    busCallerName, inputsLocked: inputsLockedRef.current, usedLetters: usedLettersRef.current
-                }});
+                conn.send({ type: 'state_sync', state: connectionSnapshotRef.current });
             });
         }
 
@@ -368,6 +384,39 @@ export default function BusCompleteGame({ setView }) {
         if (!msg || !msg.type) return;
 
         switch (msg.type) {
+            case 'state_sync': {
+                if (isHostRef.current || !msg.state) break;
+                const savedState = msg.state;
+                const syncedScores = {
+                    me: Number(savedState.scores?.opp) || 0,
+                    opp: Number(savedState.scores?.me) || 0
+                };
+                const myAns = savedState.oppAnswers || EMPTY_ANSWERS();
+                const oppAns = savedState.myAnswers || null;
+                const syncedRound = Number(savedState.round) || 1;
+                setGameState(savedState.gameState || 'waiting-letter');
+                setLetter(savedState.letter || '');
+                currentLetterRef.current = savedState.letter || '';
+                setMode(savedState.mode || 'ar');
+                modeRef.current = savedState.mode || 'ar';
+                setRound(syncedRound);
+                roundRef.current = syncedRound;
+                setScores(syncedScores);
+                scoresRef.current = syncedScores;
+                setMyAnswers(myAns);
+                myAnswersRef.current = myAns;
+                setOppAnswers(oppAns);
+                oppAnswersRef.current = oppAns;
+                setBusCallerName(savedState.busCallerName || '');
+                setInputsLocked(Boolean(savedState.inputsLocked));
+                inputsLockedRef.current = Boolean(savedState.inputsLocked);
+                usedLettersRef.current = Array.isArray(savedState.usedLetters) ? savedState.usedLetters : [];
+                setMyRoundScore(Number(savedState.oppRoundScore) || 0);
+                setOppRoundScore(Number(savedState.myRoundScore) || 0);
+                setBreakdown(savedState.breakdown || {});
+                setManualOverrides(savedState.manualOverrides || {});
+                break;
+            }
             case 'start_round':
                 currentLetterRef.current = msg.letter;
                 setLetter(msg.letter);
@@ -472,6 +521,7 @@ export default function BusCompleteGame({ setView }) {
 
     // ── Setup (Host) ──────────────────────────────────────────────────────
     const handleSetupComplete = (selectedMode) => {
+        recordedResultRoundRef.current = '';
         setMode(selectedMode);
         modeRef.current = selectedMode;
         pickAndSendLetter('', 1, selectedMode);
@@ -531,6 +581,23 @@ export default function BusCompleteGame({ setView }) {
         }
     }, [gameState, oppAnswers, round, manualOverrides, myAnswers]);
 
+    useEffect(() => {
+        if (gameState !== 'scoreboard' || !currentLetterRef.current) return;
+        const resultKey = `${round}_${currentLetterRef.current}`;
+        if (recordedResultRoundRef.current === resultKey) return;
+        recordedResultRoundRef.current = resultKey;
+        const outcome = myRoundScore === oppRoundScore ? 'draw' : myRoundScore > oppRoundScore ? 'win' : 'loss';
+        awardMatchResult(outcome, {
+            gameId: 'bus-complete',
+            gameTitle: `باص كامل — الجولة ${round}`,
+            oppName: oppProfile?.nickname || 'الخصم',
+            oppAvatar: oppProfile?.avatar || 'cool',
+            isAI: Boolean(oppProfile?.isAI),
+            myScore: myRoundScore,
+            oppScore: oppRoundScore
+        });
+    }, [gameState, round, myRoundScore, oppRoundScore, awardMatchResult, oppProfile]);
+
     // ── Manual toggle for disputed answers ────────────────────────────────
     const handleToggleValidity = (target, catKey) => {
         playSound('click');
@@ -577,6 +644,7 @@ export default function BusCompleteGame({ setView }) {
     };
 
     const doRestart = (isInitiator) => {
+        recordedResultRoundRef.current = '';
         resetRound();
         setRound(1);
         roundRef.current = 1;
@@ -977,11 +1045,10 @@ export default function BusCompleteGame({ setView }) {
 
             <ConnectionPauseOverlay
                 conn={connRef.current}
+                opponentName={oppProfile?.nickname}
                 onLeave={() => { connRef.current?.close(); setView('hub'); }}
             />
-            {(gameState === 'playing' || gameState === 'review') && (
-                <EmotesOverlay conn={connRef.current} oppProfile={oppProfile} showStandaloneButton={false} />
-            )}
+            {connRef.current && <EmotesOverlay conn={connRef.current} oppProfile={oppProfile} showStandaloneButton={false} />}
         </>
     );
 }

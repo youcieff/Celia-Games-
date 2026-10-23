@@ -160,7 +160,7 @@ export default function BrickBreakerGame({ setView }) {
     const isHostRef = useRef(false);
     const isAIRef = useRef(false);
     const hasStartedRef = useRef(false);
-    const [myProfile, , awardMatchResult] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'brick-breaker', gameTitle: 'كاسر الطوب' });
     const [oppProfile, setOppProfile] = useState(null);
 
     // React State
@@ -216,6 +216,8 @@ export default function BrickBreakerGame({ setView }) {
     
     const gameLoopRef = useRef(null);
     const syncLoopRef = useRef(null);
+    const connectionPausedAtRef = useRef(null);
+    const lastConnectionSaveAtRef = useRef(0);
     const containerRef = useRef(null);
     const lastRenderAtRef = useRef(0);
     const lastPaddleSyncAtRef = useRef(0);
@@ -696,6 +698,7 @@ export default function BrickBreakerGame({ setView }) {
     // Broadcast state from host to guest
     const syncState = () => {
         if (gameStateRef.current !== 'playing') return;
+        const now = Date.now();
         connRef.current?.send({
             type: 'state_sync',
             ball: stateRef.current.ball,
@@ -717,6 +720,18 @@ export default function BrickBreakerGame({ setView }) {
             p1Combo: stateRef.current.p1Combo,
             p2Combo: stateRef.current.p2Combo
         });
+        if (now - lastConnectionSaveAtRef.current >= 1000) {
+            lastConnectionSaveAtRef.current = now;
+            connRef.current?.saveState?.({
+                connectionGame: 'brick-breaker',
+                gameState: gameStateRef.current,
+                hostScore: stateRef.current.myScore,
+                guestScore: stateRef.current.oppScore,
+                matchDeadline: matchDeadlineRef.current,
+                state: { ...stateRef.current },
+                savedAt: now
+            });
+        }
     };
 
     // --- Input Handling ---
@@ -839,7 +854,45 @@ export default function BrickBreakerGame({ setView }) {
 
     // --- Network Handling ---
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const restoreConnectionState = (savedState) => {
+        if (!savedState || savedState.connectionGame !== 'brick-breaker' || !savedState.state) return false;
+        const pausedFor = Math.max(0, Date.now() - Number(savedState.savedAt || Date.now()));
+        const restored = { ...savedState.state };
+        if (savedState.matchDeadline) matchDeadlineRef.current = Number(savedState.matchDeadline) + pausedFor;
+        ['p1WideUntil', 'p2WideUntil', 'p1LaserUntil', 'p2LaserUntil', 'p1StickyUntil', 'p2StickyUntil', 'p1LaserReadyAt', 'p2LaserReadyAt'].forEach((key) => {
+            if (restored[key] > 0) restored[key] += pausedFor;
+        });
+        restored.laserBeams = (restored.laserBeams || []).map((beam) => ({ ...beam, expiresAt: beam.expiresAt + pausedFor }));
+        stateRef.current = restored;
+        setBall(restored.ball);
+        setOpponentBall(restored.p2Ball);
+        setP1X(restored.p1X);
+        setP2X(restored.p2X);
+        guestPaddleXRef.current = restored.p2X;
+        setBricks(restored.bricks || []);
+        setExtraBalls(restored.extraBalls || []);
+        setPowerDrops(restored.powerDrops || []);
+        setLaserBeams(restored.laserBeams || []);
+        setPowerEffects({
+            p1: { paddle: Date.now() < restored.p1WideUntil, laser: Date.now() < restored.p1LaserUntil, sticky: Date.now() < restored.p1StickyUntil },
+            p2: { paddle: Date.now() < restored.p2WideUntil, laser: Date.now() < restored.p2LaserUntil, sticky: Date.now() < restored.p2StickyUntil }
+        });
+        setWave(Number(restored.wave) || 1);
+        setTimeLeft(Number(restored.timeLeft) || MATCH_SECONDS);
+        setMyScore(Number(savedState.hostScore) || 0);
+        setOppScore(Number(savedState.guestScore) || 0);
+        setMyCombo(Number(restored.p1Combo) || 0);
+        setOppCombo(Number(restored.p2Combo) || 0);
+        setGameStateSafe(savedState.gameState || 'playing');
+        if (isHostRef.current && savedState.gameState === 'playing') {
+            gameLoopRef.current = setInterval(hostTick, TICK_RATE);
+            syncLoopRef.current = setInterval(syncState, 1000 / 30);
+        }
+        hasStartedRef.current = true;
+        return true;
+    };
+
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         hasStartedRef.current = false;
@@ -848,7 +901,8 @@ export default function BrickBreakerGame({ setView }) {
             isAIRef.current = !!oppProf.isAI;
         }
         conn.on('data', onData);
-        setGameStateSafe('starting');
+        if (hostMode) conn.on('peer-reconnect', syncState);
+        if (!hostMode || !restoreConnectionState(savedState)) setGameStateSafe('starting');
     };
 
     const onData = (data) => {
@@ -870,6 +924,7 @@ export default function BrickBreakerGame({ setView }) {
         }
         if (data.type === 'state_sync' && !isHostRef.current) {
             // Guest receives state
+            setGameStateSafe('playing');
             setBall(data.ball);
             setOpponentBall(data.p2Ball || data.ball);
             if (Number.isFinite(data.timeLeft)) setTimeLeft(data.timeLeft);
@@ -1052,7 +1107,33 @@ export default function BrickBreakerGame({ setView }) {
 
     return (
         <div className="game-fullscreen-shell fixed inset-0 h-[100dvh] overflow-hidden overscroll-none bg-[#060913] flex flex-col font-arabic select-none">
-            <ConnectionPauseOverlay />
+            <ConnectionPauseOverlay
+                conn={connRef.current}
+                opponentName={oppProfile?.nickname}
+                onConnectionPause={() => {
+                    if (connectionPausedAtRef.current === null) connectionPausedAtRef.current = Date.now();
+                    if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+                    if (syncLoopRef.current) clearInterval(syncLoopRef.current);
+                    gameLoopRef.current = null;
+                    syncLoopRef.current = null;
+                }}
+                onConnectionResume={() => {
+                    if (connectionPausedAtRef.current !== null && isHostRef.current) {
+                        const pausedFor = Date.now() - connectionPausedAtRef.current;
+                        if (matchDeadlineRef.current) matchDeadlineRef.current += pausedFor;
+                        ['p1WideUntil', 'p2WideUntil', 'p1LaserUntil', 'p2LaserUntil', 'p1StickyUntil', 'p2StickyUntil', 'p1LaserReadyAt', 'p2LaserReadyAt'].forEach((key) => {
+                            if (stateRef.current[key] > 0) stateRef.current[key] += pausedFor;
+                        });
+                        stateRef.current.laserBeams = stateRef.current.laserBeams.map((beam) => ({ ...beam, expiresAt: beam.expiresAt + pausedFor }));
+                    }
+                    connectionPausedAtRef.current = null;
+                    if (isHostRef.current && gameStateRef.current === 'playing') {
+                        if (!gameLoopRef.current) gameLoopRef.current = setInterval(hostTick, TICK_RATE);
+                        if (!syncLoopRef.current) syncLoopRef.current = setInterval(syncState, 1000 / 30);
+                    }
+                }}
+                onLeave={() => { connRef.current?.close(); setView('hub'); }}
+            />
             <EmotesOverlay conn={connRef.current} />
 
             <PlayerGameHeader

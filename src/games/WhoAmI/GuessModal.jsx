@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Target from 'lucide-react/dist/esm/icons/target';
 import CardPortrait from './CardPortrait';
 
 export default function GuessModal({ pack, closedCards, onGuess, onClose }) {
@@ -12,7 +13,7 @@ export default function GuessModal({ pack, closedCards, onGuess, onClose }) {
             <div className="glass-card border rounded-3xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
                  style={{ background: 'var(--bg-mid)', borderColor: 'var(--glass-border)' }}>
                 <div className="p-4 flex items-center justify-between border-b" style={{ borderColor: 'var(--glass-border)' }}>
-                    <h3 className="text-xl font-black text-white">خمن الكارت! 🎯</h3>
+                    <h3 className="flex items-center gap-2 text-xl font-black text-white"><Target size={21} className="text-[var(--accent)]" /> خمن الكارت</h3>
                     <button 
                         onClick={onClose}
                         className="w-10 h-10 rounded-full flex items-center justify-center text-white hover:bg-white/10 transition-colors"

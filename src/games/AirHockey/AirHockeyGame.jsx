@@ -106,13 +106,17 @@ const MAX_SPEED = 14;          // Exciting yet controllable speed
 export default function AirHockeyGame({ setView }) {
     const connRef = useRef(null);
     const isHostRef = useRef(false);
-    const [myProfile, , awardMatchResult] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'air-hockey', gameTitle: 'هوكي الهواء' });
     const [oppProfile, setOppProfile] = useState(null);
 
     const [gameState, setGameState] = useState('lobby');
+    const gameStateRef = useRef(gameState);
+    gameStateRef.current = gameState;
     const [myScore, setMyScore] = useState(0);
     const [oppScore, setOppScore] = useState(0);
     const [winner, setWinner] = useState(null);
+    const winnerRef = useRef(null);
+    winnerRef.current = winner;
     const [goalBanner, setGoalBanner] = useState(null);
 
     // Custom Themes, AI Difficulty, and Paddle Colors
@@ -160,6 +164,7 @@ export default function AirHockeyGame({ setView }) {
     const serveTimerRef = useRef(null);
     const gameActiveRef = useRef(false);
     const isFreezeRef = useRef(false);
+    const connectionPausedRef = useRef(false);
     const fixedStepAccumulatorRef = useRef(0);
     const lastFrameTimeRef = useRef(0);
 
@@ -211,16 +216,35 @@ export default function AirHockeyGame({ setView }) {
         connRef.current?.send({ type: 'set_theme', theme: nextTheme });
     };
 
+    const getConnectionSnapshot = () => ({
+        connectionGame: 'air-hockey',
+        gameState: gameStateRef.current,
+        hostScore: myScoreRef.current,
+        guestScore: oppScoreRef.current,
+        puck: { ...puckRef.current },
+        hostPaddle: { ...myPaddleRef.current },
+        guestPaddle: { ...oppPaddleRef.current },
+        isFrozen: isFreezeRef.current,
+        winner: winnerRef.current,
+        savedAt: Date.now()
+    });
+
     const saveGameState = () => {
-        if (!isHostRef.current || !connRef.current) return;
-        connRef.current.saveState({
-            gameState, hostScore: myScoreRef.current, oppScore: oppScoreRef.current
-        });
+        if (!isHostRef.current || !connRef.current) return null;
+        const snapshot = getConnectionSnapshot();
+        connRef.current.saveState(snapshot);
+        return snapshot;
     };
 
     useEffect(() => {
         saveGameState();
     }, [gameState, myScore, oppScore]);
+
+    useEffect(() => {
+        if (gameState !== 'playing' || !isHostRef.current || !connRef.current) return undefined;
+        const interval = setInterval(saveGameState, 1000);
+        return () => clearInterval(interval);
+    }, [gameState]);
 
     useEffect(() => () => {
         if (serveTimerRef.current) clearTimeout(serveTimerRef.current);
@@ -240,10 +264,22 @@ export default function AirHockeyGame({ setView }) {
             setOppScore(hostMode ? savedState.oppScore : savedState.hostScore);
             myScoreRef.current = hostMode ? savedState.hostScore : savedState.oppScore;
             oppScoreRef.current = hostMode ? savedState.oppScore : savedState.hostScore;
+            setWinner(hostMode ? savedState.winner : (savedState.winner === 'me' ? 'opp' : savedState.winner === 'opp' ? 'me' : null));
+
+            if (savedState.connectionGame === 'air-hockey' && savedState.puck) {
+                const localPuck = hostMode ? savedState.puck : { x: TABLE_W - savedState.puck.x, y: TABLE_H - savedState.puck.y, vx: -savedState.puck.vx, vy: -savedState.puck.vy };
+                puckRef.current = { ...localPuck };
+                puckTargetRef.current = { ...localPuck };
+                const localPaddle = hostMode ? savedState.hostPaddle : savedState.guestPaddle;
+                const remotePaddle = hostMode ? savedState.guestPaddle : savedState.hostPaddle;
+                myPaddleRef.current = hostMode ? { ...localPaddle } : { x: TABLE_W - remotePaddle.x, y: TABLE_H - remotePaddle.y };
+                oppPaddleRef.current = hostMode ? { ...remotePaddle } : { x: TABLE_W - localPaddle.x, y: TABLE_H - localPaddle.y };
+                if (savedState.isFrozen) resetToServe(null);
+            }
 
             if (hostMode) {
                 conn.on('peer-reconnect', () => {
-                    conn.send({ type: 'state_sync', state: savedState });
+                    conn.send({ type: 'state_sync', state: getConnectionSnapshot() });
                 });
             }
             return;
@@ -251,9 +287,7 @@ export default function AirHockeyGame({ setView }) {
 
         if (hostMode) {
             conn.on('peer-reconnect', () => {
-                conn.send({ type: 'state_sync', state: {
-                    gameState, hostScore: myScoreRef.current, oppScore: oppScoreRef.current
-                }});
+                conn.send({ type: 'state_sync', state: getConnectionSnapshot() });
             });
         }
 
@@ -356,6 +390,26 @@ export default function AirHockeyGame({ setView }) {
         if (!msg || !msg.type) return;
 
         switch (msg.type) {
+            case 'state_sync': {
+                const state = msg.state;
+                if (!isHostRef.current && state?.connectionGame === 'air-hockey') {
+                    const localPuck = { x: TABLE_W - state.puck.x, y: TABLE_H - state.puck.y, vx: -state.puck.vx, vy: -state.puck.vy };
+                    puckRef.current = localPuck;
+                    puckTargetRef.current = { ...localPuck };
+                    myPaddleRef.current = { x: TABLE_W - state.guestPaddle.x, y: TABLE_H - state.guestPaddle.y };
+                    oppPaddleRef.current = { x: TABLE_W - state.hostPaddle.x, y: TABLE_H - state.hostPaddle.y };
+                    setMyScore(state.guestScore);
+                    setOppScore(state.hostScore);
+                    myScoreRef.current = Number(state.guestScore) || 0;
+                    oppScoreRef.current = Number(state.hostScore) || 0;
+                    setWinner(state.winner === 'me' ? 'opp' : state.winner === 'opp' ? 'me' : null);
+                    setGameState(state.gameState || 'playing');
+                    isFreezeRef.current = false;
+                    lastFrameTimeRef.current = 0;
+                }
+                break;
+            }
+
             case 'paddle_move': {
                 // Store as target — game loop interpolates towards it for buttery smoothness
                 oppPaddleTargetRef.current = {
@@ -527,7 +581,7 @@ export default function AirHockeyGame({ setView }) {
 
     // Sub-stepped physics for rock-solid collision detection without tunneling
     const updatePhysicsStep = () => {
-        if (isFreezeRef.current) return;
+        if (connectionPausedRef.current || isFreezeRef.current) return;
 
         const p = puckRef.current;
         const myPad = myPaddleRef.current;
@@ -1520,7 +1574,13 @@ export default function AirHockeyGame({ setView }) {
                 </div>
             )}
 
-            <ConnectionPauseOverlay conn={connRef.current} />
+            <ConnectionPauseOverlay
+                conn={connRef.current}
+                opponentName={oppProfile?.nickname}
+                onConnectionPause={() => { connectionPausedRef.current = true; }}
+                onConnectionResume={() => { connectionPausedRef.current = false; lastFrameTimeRef.current = 0; }}
+                onLeave={() => { gameActiveRef.current = false; connRef.current?.close?.(); setView('hub'); }}
+            />
             <EmotesOverlay conn={connRef.current} />
         </div>
     );

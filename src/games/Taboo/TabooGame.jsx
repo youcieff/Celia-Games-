@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import P2PConnectionManager from '../../components/P2PConnectionManager';
+import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
 import PlayerGameHeader from '../../components/PlayerGameHeader';
 import EmotesOverlay from '../../components/EmotesOverlay';
 import Logo from '../../components/Logo';
@@ -21,7 +22,10 @@ const initialScores = () => ({ p1: 0, p2: 0 });
 export default function TabooGame({ setView, mode = 'online' }) {
     const isOnline = mode !== 'local';
     const withChat = mode === 'online';
-    const [myProfile] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({
+        gameId: mode === 'together' ? 'celia-taboo-together' : 'celia-taboo',
+        gameTitle: mode === 'together' ? 'الكلمة الممنوعة سوا' : 'الكلمة الممنوعة'
+    });
     const [oppProfile, setOppProfile] = useState(null);
     const [isHost, setIsHost] = useState(false);
     const connRef = useRef(null);
@@ -39,9 +43,12 @@ export default function TabooGame({ setView, mode = 'online' }) {
     const [scores, setScores] = useState(initialScores);
     const scoresRef = useRef(initialScores());
     const [secondsLeft, setSecondsLeft] = useState(ROUND_SECONDS);
+    const [connectionPaused, setConnectionPaused] = useState(false);
     const deadlineRef = useRef(null);
+    const pausedRoundRemainingRef = useRef(null);
     const lastTimerSentRef = useRef(ROUND_SECONDS);
     const roundEndedRef = useRef(false);
+    const matchRecordedRef = useRef(false);
 
     const [currentCard, setCurrentCard] = useState(null);
     const currentCardRef = useRef(null);
@@ -124,6 +131,7 @@ export default function TabooGame({ setView, mode = 'online' }) {
 
     const startMatch = () => {
         if (!selectedCategories.length) return;
+        matchRecordedRef.current = false;
         const ids = [...selectedCategories];
         categoriesRef.current = ids;
         setCategories(ids);
@@ -135,12 +143,89 @@ export default function TabooGame({ setView, mode = 'online' }) {
         transition('round_intro');
     };
 
-    const handleGameStart = useCallback((conn, hostMode, opponent) => {
+    const getSharedConnectionSnapshot = () => ({
+        connectionGame: 'taboo',
+        gameState: gameStateRef.current,
+        selectedCategories: categoriesRef.current,
+        roundNumber: roundNumberRef.current,
+        describerId: describerRef.current,
+        scores: scoresRef.current,
+        secondsLeft,
+        currentClue: currentClueRef.current,
+        verbalClueReady,
+        attempts: attemptsRef.current,
+        guessHistory,
+        skipCount: skipCountRef.current,
+        notice,
+        summary,
+        winner,
+        currentSequence: currentSequenceRef.current,
+        roundWords: roundWordsRef.current,
+        usedWordIds: [...matchUsedIdsRef.current],
+        roundEnded: roundEndedRef.current
+    });
+
+    const restoreConnectionSnapshot = (snapshot, seat = (isHost ? 'host' : 'peer')) => {
+        if (!snapshot || snapshot.connectionGame !== 'taboo') return false;
+        const shared = snapshot.sharedState || snapshot;
+        const privateState = snapshot.playerSnapshot || snapshot.connectionPlayers?.[seat]?.playerSnapshot;
+        setCategories(shared.selectedCategories || ALL_CATEGORY_IDS);
+        roundNumberRef.current = Number(shared.roundNumber) || 1;
+        setRoundNumber(roundNumberRef.current);
+        describerRef.current = shared.describerId || 'p1';
+        setDescriberId(describerRef.current);
+        scoresRef.current = shared.scores || initialScores();
+        setScores(scoresRef.current);
+        const restoredSeconds = Math.max(0, Math.min(ROUND_SECONDS, Number(shared.secondsLeft) || 0));
+        setSecondsLeft(restoredSeconds);
+        deadlineRef.current = shared.gameState === 'playing' ? Date.now() + restoredSeconds * 1000 : null;
+        currentSequenceRef.current = Number(shared.currentSequence) || 0;
+        roundWordsRef.current = Array.isArray(shared.roundWords) ? shared.roundWords : [];
+        matchUsedIdsRef.current = new Set(shared.usedWordIds || []);
+        currentClueRef.current = shared.currentClue || '';
+        setCurrentClue(currentClueRef.current);
+        setVerbalClueReady(Boolean(shared.verbalClueReady));
+        attemptsRef.current = Number(shared.attempts) || 0;
+        setAttempts(attemptsRef.current);
+        setGuessHistory(shared.guessHistory || []);
+        skipCountRef.current = Number(shared.skipCount) || 0;
+        setSkipCount(skipCountRef.current);
+        setNotice(shared.notice || '');
+        setSummary(shared.summary || null);
+        setWinner(shared.winner || null);
+        roundEndedRef.current = Boolean(shared.roundEnded);
+        setCard(privateState?.currentCard || null);
+        setGuessPending(false);
+        setGuessFeedback('');
+        setConnectionPaused(false);
+        transition(shared.gameState || 'category_select');
+        return true;
+    };
+
+    const handleGameStart = useCallback((conn, hostMode, opponent, savedState) => {
         connRef.current = conn;
         setIsHost(Boolean(hostMode));
         setOppProfile(opponent || null);
         conn.on('data', (message) => dataHandlerRef.current?.(message));
-        transition('category_select');
+        if (restoreConnectionSnapshot(savedState, hostMode ? 'host' : 'peer')) {
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.getState?.().then((latest) => {
+                        if (latest?.connectionGame !== 'taboo') return;
+                        conn.send({
+                            type: 'state_sync',
+                            state: {
+                                connectionGame: 'taboo',
+                                sharedState: latest.sharedState,
+                                playerSnapshot: latest.connectionPlayers?.peer?.playerSnapshot
+                            }
+                        });
+                    });
+                });
+            }
+        } else {
+            transition('category_select');
+        }
     }, []);
 
     const dealNextWord = (resolvedStatus = null, nextScores = scoresRef.current) => {
@@ -316,6 +401,9 @@ export default function TabooGame({ setView, mode = 'online' }) {
     const onData = (message) => {
         if (!message || typeof message.type !== 'string') return;
         switch (message.type) {
+            case 'state_sync':
+                restoreConnectionSnapshot(message.state, 'peer');
+                break;
             case 'categories_selected': {
                 if (isHost) break;
                 setCategories(message.categoryIds);
@@ -413,6 +501,7 @@ export default function TabooGame({ setView, mode = 'online' }) {
                 decideWinner(message.finalScores || scoresRef.current);
                 break;
             case 'restart':
+                matchRecordedRef.current = false;
                 scoresRef.current = initialScores();
                 setScores(initialScores());
                 matchUsedIdsRef.current = new Set();
@@ -424,6 +513,15 @@ export default function TabooGame({ setView, mode = 'online' }) {
         }
     };
     dataHandlerRef.current = onData;
+
+    useEffect(() => {
+        if (!isOnline || !connRef.current || gameState === 'lobby') return;
+        const seat = isHost ? 'host' : 'peer';
+        const sharedState = getSharedConnectionSnapshot();
+        const playerSnapshot = { currentCard: playerId === describerRef.current ? currentCardRef.current : null };
+        connRef.current.savePlayerState?.({ playerSnapshot }, seat);
+        if (isHost) connRef.current.saveState?.({ connectionGame: 'taboo', sharedState });
+    }, [isOnline, isHost, playerId, gameState, selectedCategories, roundNumber, describerId, scores, secondsLeft, currentCard, currentClue, verbalClueReady, attempts, guessHistory, skipCount, notice, summary, winner]);
 
     const startFromCategorySelect = () => {
         if (isOnline && !isHost) return;
@@ -450,6 +548,18 @@ export default function TabooGame({ setView, mode = 'online' }) {
     const decideWinner = (finalScores) => {
         const result = finalScores.p1 === finalScores.p2 ? 'draw' : finalScores.p1 > finalScores.p2 ? 'p1' : 'p2';
         setWinner(result);
+        if (isOnline && !matchRecordedRef.current) {
+            matchRecordedRef.current = true;
+            awardMatchResult(result === 'draw' ? 'draw' : result === playerId ? 'win' : 'loss', {
+                gameId: mode === 'together' ? 'celia-taboo-together' : 'celia-taboo',
+                gameTitle: mode === 'together' ? 'الكلمة الممنوعة سوا' : 'الكلمة الممنوعة',
+                oppName: oppProfile?.nickname || 'الخصم',
+                oppAvatar: oppProfile?.avatar || 'cool',
+                isAI: Boolean(oppProfile?.isAI),
+                myScore: playerId === 'p1' ? finalScores.p1 : finalScores.p2,
+                oppScore: playerId === 'p1' ? finalScores.p2 : finalScores.p1
+            });
+        }
         if (result === 'draw') triggerDrawEffects();
         else if (!isOnline || result === playerId) triggerVictoryEffects();
         else triggerDefeatEffects();
@@ -458,6 +568,7 @@ export default function TabooGame({ setView, mode = 'online' }) {
 
     const restartMatch = () => {
         if (isOnline && !isHost) return;
+        matchRecordedRef.current = false;
         scoresRef.current = initialScores();
         setScores(initialScores());
         matchUsedIdsRef.current = new Set();
@@ -467,7 +578,7 @@ export default function TabooGame({ setView, mode = 'online' }) {
     };
 
     useEffect(() => {
-        if (gameState !== 'playing') return undefined;
+        if (gameState !== 'playing' || connectionPaused) return undefined;
         if (isOnline && playerId !== describerRef.current) return undefined;
 
         const timer = window.setInterval(() => {
@@ -480,7 +591,7 @@ export default function TabooGame({ setView, mode = 'online' }) {
             if (remaining <= 0) finishRoundRef.current?.();
         }, 150);
         return () => window.clearInterval(timer);
-    }, [gameState, isOnline, playerId, describerId]);
+    }, [gameState, isOnline, playerId, describerId, connectionPaused]);
 
     useEffect(() => () => {
         connRef.current?.close?.();
@@ -490,6 +601,21 @@ export default function TabooGame({ setView, mode = 'online' }) {
         connRef.current?.close?.();
         connRef.current = null;
         setView('hub');
+    };
+
+    const pauseForConnection = () => {
+        if (gameStateRef.current === 'playing' && deadlineRef.current !== null && pausedRoundRemainingRef.current === null) {
+            pausedRoundRemainingRef.current = Math.max(0, deadlineRef.current - Date.now());
+        }
+        setConnectionPaused(true);
+    };
+
+    const resumeAfterConnection = () => {
+        if (pausedRoundRemainingRef.current !== null) {
+            deadlineRef.current = Date.now() + pausedRoundRemainingRef.current;
+            pausedRoundRemainingRef.current = null;
+        }
+        setConnectionPaused(false);
     };
 
     const names = {
@@ -641,6 +767,9 @@ export default function TabooGame({ setView, mode = 'online' }) {
                         </div>
                     </section>
                 </main>
+            )}
+            {isOnline && gameState !== 'lobby' && (
+                <ConnectionPauseOverlay conn={connRef.current} opponentName={oppProfile?.nickname} onConnectionPause={pauseForConnection} onConnectionResume={resumeAfterConnection} onLeave={leaveGame} />
             )}
         </div>
     );

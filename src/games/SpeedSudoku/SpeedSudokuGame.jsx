@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import Logo from '../../components/Logo';
 import P2PConnectionManager from '../../components/P2PConnectionManager';
 import ConnectionPauseOverlay from '../../components/ConnectionPauseOverlay';
-import EmotesOverlay from '../../components/EmotesOverlay';
+import EmotesOverlay, { ChatTriggerButton, GameNotifications } from '../../components/EmotesOverlay';
 import { playSound } from '../../lib/audioEngine';
 import useProfile from '../../hooks/useProfile';
 import { triggerVictoryEffects, triggerDefeatEffects } from '../../lib/effectsEngine';
@@ -231,11 +231,12 @@ export default function SpeedSudokuGame({ setView }) {
     const isHostRef = useRef(false);
     const isAIRef = useRef(false);
     const hasStartedRef = useRef(false); // prevent double-start
-    const [myProfile, , awardMatchResult] = useProfile();
+    const [myProfile, , awardMatchResult] = useProfile({ gameId: 'speed-sudoku', gameTitle: 'سودوكو السرعة' });
     const [oppProfile, setOppProfile] = useState(null);
 
     // State
     const [gameState, setGameState] = useState('lobby'); // lobby, playing, game_over
+    const [connectionPaused, setConnectionPaused] = useState(false);
     const [grid, setGrid] = useState(null);
     const [myScore, setMyScore] = useState(0);
     const [oppScore, setOppScore] = useState(0);
@@ -256,6 +257,7 @@ export default function SpeedSudokuGame({ setView }) {
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [canUndo, setCanUndo] = useState(false);
     const roundStartedAtRef = useRef(0);
+    const pausedElapsedSecondsRef = useRef(null);
 
     // Host Refs
     const stateRef = useRef({
@@ -274,6 +276,45 @@ export default function SpeedSudokuGame({ setView }) {
     const aiIntervalRef = useRef(null);
     const feedbackTimerRef = useRef(null);
     const aiStartedRef = useRef(false);
+
+    const getPlayerSnapshot = () => ({
+        grid, myScore, oppScore, myProgress, oppProgress, myMistakes, oppMistakes,
+        myHintsUsed, canUndo, elapsedSeconds, gameState, winner
+    });
+
+    const restoreConnectionState = (savedState, seat = (isHostRef.current ? 'host' : 'peer')) => {
+        if (!savedState || savedState.connectionGame !== 'speed-sudoku') return false;
+        const snapshot = savedState.connectionPlayers?.[seat]?.playerSnapshot || savedState.playerSnapshot;
+        if (savedState.sharedState) stateRef.current = savedState.sharedState;
+        if (!snapshot) return false;
+        setGrid(snapshot.grid ? cloneGrid(snapshot.grid) : null);
+        setMyScore(Number(snapshot.myScore) || 0);
+        setOppScore(Number(snapshot.oppScore) || 0);
+        setMyProgress(Number(snapshot.myProgress) || 0);
+        setOppProgress(Number(snapshot.oppProgress) || 0);
+        setMyMistakes(Number(snapshot.myMistakes) || 0);
+        setOppMistakes(Number(snapshot.oppMistakes) || 0);
+        setMyHintsUsed(Boolean(snapshot.myHintsUsed));
+        setCanUndo(Boolean(snapshot.canUndo));
+        setElapsedSeconds(Number(snapshot.elapsedSeconds) || 0);
+        setWinner(snapshot.winner || null);
+        setGameState(snapshot.gameState || savedState.gameState || 'playing');
+        roundStartedAtRef.current = Date.now() - (Number(snapshot.elapsedSeconds) || 0) * 1000;
+        return true;
+    };
+
+    useEffect(() => {
+        if (!connRef.current || gameState === 'lobby') return;
+        const seat = isHostRef.current ? 'host' : 'peer';
+        connRef.current.savePlayerState?.({ playerSnapshot: getPlayerSnapshot() }, seat);
+        if (isHostRef.current) {
+            connRef.current.saveState?.({
+                connectionGame: 'speed-sudoku',
+                gameState,
+                sharedState: { ...stateRef.current, gameState, elapsedSeconds }
+            });
+        }
+    }, [grid, myScore, oppScore, myProgress, oppProgress, myMistakes, oppMistakes, myHintsUsed, canUndo, elapsedSeconds, gameState, winner]);
 
     // --- Host Logic ---
 
@@ -629,7 +670,7 @@ export default function SpeedSudokuGame({ setView }) {
         setTimeout(() => setErrorCell(null), 500);
     };
 
-    const handleGameStart = (conn, hostMode, oppProf) => {
+    const handleGameStart = (conn, hostMode, oppProf, savedState) => {
         isHostRef.current = hostMode;
         connRef.current = conn;
         hasStartedRef.current = false;
@@ -638,7 +679,26 @@ export default function SpeedSudokuGame({ setView }) {
             isAIRef.current = !!oppProf.isAI;
         }
         conn.on('data', onData);
-        setGameState('starting');
+        if (restoreConnectionState(savedState)) {
+            if (hostMode) {
+                conn.on('peer-reconnect', () => {
+                    conn.getState?.().then((latest) => {
+                        if (latest?.connectionGame !== 'speed-sudoku') return;
+                        conn.send({
+                            type: 'state_sync',
+                            state: {
+                                connectionGame: 'speed-sudoku',
+                                gameState: latest.gameState,
+                                sharedState: latest.sharedState,
+                                playerSnapshot: latest.connectionPlayers?.peer?.playerSnapshot
+                            }
+                        });
+                    });
+                });
+            }
+        } else {
+            setGameState('starting');
+        }
     };
 
     const requestRematch = () => {
@@ -652,6 +712,10 @@ export default function SpeedSudokuGame({ setView }) {
     };
 
     const onData = (data) => {
+        if (data.type === 'state_sync' && !isHostRef.current && data.state?.connectionGame === 'speed-sudoku') {
+            restoreConnectionState(data.state, 'peer');
+            return;
+        }
         if (data.type === 'start_match' && !isHostRef.current) {
             setGrid(data.grid);
             setOppScore(data.p1Score ?? 0);
@@ -777,12 +841,27 @@ export default function SpeedSudokuGame({ setView }) {
     }, []);
 
     useEffect(() => {
-        if (gameState !== 'playing') return undefined;
+        if (gameState !== 'playing' || connectionPaused) return undefined;
         const updateClock = () => setElapsedSeconds(Math.floor((Date.now() - roundStartedAtRef.current) / 1000));
         updateClock();
         const timer = setInterval(updateClock, 1000);
         return () => clearInterval(timer);
-    }, [gameState]);
+    }, [gameState, connectionPaused]);
+
+    const pauseForConnection = () => {
+        if (gameState === 'playing' && pausedElapsedSecondsRef.current === null) {
+            pausedElapsedSecondsRef.current = elapsedSeconds;
+        }
+        setConnectionPaused(true);
+    };
+
+    const resumeAfterConnection = () => {
+        if (pausedElapsedSecondsRef.current !== null) {
+            roundStartedAtRef.current = Date.now() - pausedElapsedSecondsRef.current * 1000;
+            pausedElapsedSecondsRef.current = null;
+        }
+        setConnectionPaused(false);
+    };
 
     const shareGame = async () => {
         const shareData = { title: 'سودوكو السرعة', text: 'تعال نافسني في حل السودوكو', url: window.location.href };
@@ -848,13 +927,15 @@ export default function SpeedSudokuGame({ setView }) {
 
     return (
         <div className="sudoku-app fixed inset-0 z-20 flex flex-col font-arabic select-none">
-            <ConnectionPauseOverlay />
+            <ConnectionPauseOverlay conn={connRef.current} opponentName={oppProfile?.nickname} onConnectionPause={pauseForConnection} onConnectionResume={resumeAfterConnection} onLeave={() => { connRef.current?.close(); setView('hub'); }} />
             <EmotesOverlay conn={connRef.current} />
             <header className="sudoku-topbar">
                 <button className="sudoku-icon-button" aria-label="العودة للقائمة" onClick={() => { connRef.current?.close?.(); setView('hub'); }}><ArrowLeft size={21} /></button>
                 <div className="sudoku-title"><span className="sudoku-title-icon"><GameIcon gameId="speed-sudoku" size={20} /></span><div><strong>سودوكو السرعة</strong><span>سباق حلّ اللغز</span></div></div>
+                {gameState === 'playing' && <ChatTriggerButton onClick={() => window.dispatchEvent(new CustomEvent('toggle-game-chat'))} />}
                 <button className="sudoku-icon-button" aria-label="مشاركة اللعبة" onClick={shareGame}><Share2 size={19} /></button>
             </header>
+            {gameState === 'playing' && <GameNotifications className="mx-auto max-w-2xl px-4" />}
             {gameState === 'starting' ? (
                 <main className="sudoku-wait"><div className="sudoku-wait-card"><div className="sudoku-spinner" /><strong>بنجهّز لوحة السودوكو</strong><span>هنبدأ أول ما خصمك يبقى جاهز</span></div></main>
             ) : (gameState === 'playing' || gameState === 'game_over') && grid ? (

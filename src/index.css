@@ -2004,3 +2004,42 @@
   .hub-online-pip,
   .hub-stat-dot { animation: none !important; }
 }
+
+/* Make release and exclusive badges read like polished announcements. */
+.hub-page .hub-card-label--new {
+  color: #fff0c2 !important;
+  border-color: rgba(255, 211, 126, .48) !important;
+  background: linear-gradient(120deg, rgba(245, 158, 11, .2), rgba(251, 191, 36, .08)) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .12), 0 0 13px rgba(251, 191, 36, .12);
+}
+
+.hub-page .hub-card-label--mode {
+  color: #f4eaff !important;
+  border-color: rgba(196, 160, 255, .52) !important;
+  background: linear-gradient(115deg, rgba(139, 92, 246, .3), rgba(56, 189, 248, .13)) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .15), 0 0 16px rgba(167, 139, 250, .2);
+}
+
+.hub-page .hub-card-label--new svg,
+.hub-page .hub-card-label--mode svg,
+.hub-page .exclusive-chip svg {
+  animation: hub-badge-glint 2.2s ease-in-out infinite;
+}
+
+.hub-page .exclusive-chip {
+  color: #fff0b8 !important;
+  border-color: rgba(252, 211, 77, .62) !important;
+  background: linear-gradient(120deg, rgba(251, 191, 36, .24), rgba(168, 85, 247, .12)) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .16), 0 0 15px rgba(251, 191, 36, .14);
+}
+
+@keyframes hub-badge-glint {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.35); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub-page .hub-card-label--new svg,
+  .hub-page .hub-card-label--mode svg,
+  .hub-page .exclusive-chip svg { animation: none; }
+}
