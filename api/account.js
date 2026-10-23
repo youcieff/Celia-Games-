@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
 import {
     getAdminAuth,
     getAdminDatabase,
@@ -54,6 +54,27 @@ function toPublicProfile(profile) {
         createdAt: safe.createdAt,
         lastSeenAt: safe.lastSeenAt
     };
+}
+
+async function logMissingAccountProfile(database, uid, username, action) {
+    let usernameIndexFound = false;
+    let usernameIndexMatchesUid = null;
+    if (typeof username === 'string' && username.trim()) {
+        try {
+            const usernameKey = usernameDatabaseKey(normalizeUsername(username));
+            const indexedUid = (await database.ref(`usernameIndex/${usernameKey}`).get()).val();
+            usernameIndexFound = typeof indexedUid === 'string';
+            usernameIndexMatchesUid = indexedUid === uid;
+        } catch {
+            // Best effort only; never log a username or other user supplied value.
+        }
+    }
+    console.warn('[account-api] authenticated profile is missing', {
+        action,
+        uidHash: createHash('sha256').update(uid).digest('hex').slice(0, 12),
+        usernameIndexFound,
+        usernameIndexMatchesUid
+    });
 }
 
 async function checkLoginRateLimit(database, usernameKey) {
@@ -204,6 +225,7 @@ async function syncAccount(req, body) {
     }, undefined, false);
     const profile = transaction.snapshot.val();
     if (!transaction.committed || !profile) {
+        await logMissingAccountProfile(database, identity.uid, incoming.username, 'sync');
         const error = new Error('الحساب غير موجود');
         error.status = 404;
         throw error;
