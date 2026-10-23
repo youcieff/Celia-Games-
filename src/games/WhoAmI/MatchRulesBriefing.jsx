@@ -11,6 +11,7 @@ export default function MatchRulesBriefing({
     opponentReady,
     opponentSecretCount = 1,
     mySecretCount = 1,
+    verbalMode = false,
     onSelectCondition,
     onReady
 }) {
@@ -31,15 +32,26 @@ export default function MatchRulesBriefing({
                     </h1>
                     <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-white/65">
                         {freeMode
-                            ? `كل لاعب يختار كارتًا واحدًا أو كارتين. اختيارك ${mySecretCount === 1 ? 'كارت واحد' : 'كارتين'}، والمطلوب تكتشف ${opponentSecretCount === 1 ? 'كارت الخصم' : 'كارتَي الخصم'}. المود الحر بدون شروط إضافية.`
+                            ? `كل لاعب يختار كارتًا واحدًا أو كارتين. اختيارك ${mySecretCount === 1 ? 'كارت واحد' : 'كارتين'}، والمطلوب تكتشف ${opponentSecretCount === 1 ? 'كارت الخصم' : 'كارتَي الخصم'}. ${verbalMode ? 'في مود سوا اتفقوا شفهيًا، وبعد الاستبعاد أو التخمين سلّموا الدور.' : 'المود الحر بدون شروط إضافية.'}`
                             : 'المباراة لها شرط إضافي واحد فقط. المضيف يختار شرطًا واحدًا، وهو وحده اللي يتطبق طول الجولة؛ باقي الشروط لا تعمل.'}
                     </p>
                 </div>
 
+                {verbalMode && (
+                    <div className="mt-4 rounded-2xl border border-sky-300/20 bg-sky-400/[0.06] p-3 text-center">
+                        <p className="text-sm font-black text-sky-100">مود سوا: التواصل بالكلام أو من أيقونة الدردشة</p>
+                        <p className="mt-1 text-xs leading-5 text-white/55">
+                            {freeMode
+                                ? 'اللعبة لا تعرض سؤالًا أو أزرار نعم/لا. تواصلوا مباشرة، وبعد الاستبعاد أو التخمين اضغطوا «سلّم الدور».'
+                                : 'اللعبة لا تعرض سؤالًا أو أزرار نعم/لا. اتبعوا الشرط المختار بينكم، وبعد الاستبعاد أو التخمين اضغطوا «سلّم الدور».'}
+                        </p>
+                    </div>
+                )}
+
                 {freeMode ? (
                     <div className="mt-5 rounded-2xl border border-sky-300/20 bg-sky-400/[0.07] p-4 text-center">
                         <p className="text-sm font-black text-sky-100">حجر ورقة مقص يحدد مين يبدأ</p>
-                        <p className="mt-1 text-xs leading-5 text-white/55">بعد اختيار شخصية الخصم، كل إجابة لأ تنقل الدور. التخمين الخطأ يقفل البطاقة وينقل الدور.</p>
+                        <p className="mt-1 text-xs leading-5 text-white/55">{verbalMode ? 'بعد اختيار الشخصية، تواصلوا شفهيًا؛ استبعد أو خمّن، ثم سلّم الدور من الزر.' : 'بعد اختيار شخصية الخصم، كل إجابة لأ تنقل الدور. التخمين الخطأ يقفل البطاقة وينقل الدور.'}</p>
                     </div>
                 ) : (
                     <div className="mt-5">
@@ -77,7 +89,7 @@ export default function MatchRulesBriefing({
                         )}
                         <div className="mt-3 rounded-2xl border border-sky-300/20 bg-sky-400/[0.06] p-3 text-center">
                             <p className="text-sm font-black text-sky-100">حجر ورقة مقص ثابت في كل المودات</p>
-                            <p className="mt-1 text-xs text-white/55">الفائز يبدأ بالسؤال. لو حصل تعادل، تلعبوا مرة ثانية.</p>
+                            <p className="mt-1 text-xs text-white/55">{verbalMode ? 'الفائز يبدأ. لو حصل تعادل، تلعبوا مرة ثانية.' : 'الفائز يبدأ بالسؤال. لو حصل تعادل، تلعبوا مرة ثانية.'}</p>
                         </div>
                     </div>
                 )}

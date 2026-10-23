@@ -1,7 +1,8 @@
 import React from 'react';
+import Eye from 'lucide-react/dist/esm/icons/eye';
 import CardPortrait from './CardPortrait';
 
-export default function CardBoard({ pack, closedCards, onToggleCard, myTurn }) {
+export default function CardBoard({ pack, closedCards, onToggleCard, onPreviewCard, myTurn, viewOnly = false }) {
     const isPeoplePack = pack?.scope === 'people';
 
     return (
@@ -30,7 +31,7 @@ export default function CardBoard({ pack, closedCards, onToggleCard, myTurn }) {
             >
             <div className="grid grid-cols-3 gap-2 min-[480px]:grid-cols-4 sm:gap-2.5 md:grid-cols-5 lg:grid-cols-6 lg:gap-3">
                 {pack.cards.map(card => {
-                    const isClosed = closedCards.has(card.id);
+                    const isClosed = !viewOnly && closedCards.has(card.id);
                     const isGirl = card.attrs?.gender === 'female';
                     const cardAspect = isPeoplePack ? 'aspect-[4/5]' : 'aspect-square';
                     const tileColor = isPeoplePack
@@ -38,54 +39,71 @@ export default function CardBoard({ pack, closedCards, onToggleCard, myTurn }) {
                         : pack.scope === 'animals' ? '#86efac' : '#fbbf24';
 
                     return (
-                        <button
+                        <div
                             key={card.id}
-                            onClick={() => onToggleCard(card.id)}
-                            disabled={!myTurn}
-                            aria-pressed={isClosed}
-                            aria-label={`${card.name}${isClosed ? '، مستبعدة' : ''}`}
-                            title={isClosed ? `إظهار ${card.name} مرة أخرى` : `استبعاد ${card.name}`}
                             className={`relative isolate ${cardAspect} w-full overflow-hidden rounded-[1rem] transition-[box-shadow,transform] duration-300 [perspective:900px]
-                                ${myTurn ? 'cursor-pointer hover:-translate-y-0.5 active:scale-[0.98]' : 'cursor-default'}
                                 ${isClosed ? 'shadow-inner' : 'shadow-lg hover:shadow-xl'}`}
+                        >
+                            <button
+                                type="button"
+                                onClick={() => viewOnly ? onPreviewCard?.(card) : onToggleCard(card.id)}
+                                disabled={!viewOnly && !myTurn}
+                                aria-pressed={!viewOnly ? isClosed : undefined}
+                                aria-label={viewOnly ? `عرض تفاصيل ${card.name}` : `${card.name}${isClosed ? '، مستبعدة' : ''}`}
+                                title={viewOnly ? `عرض تفاصيل ${card.name}` : isClosed ? `إظهار ${card.name} مرة أخرى` : `استبعاد ${card.name}`}
+                                className={`absolute inset-0 w-full overflow-hidden rounded-[1rem] transition-[box-shadow,transform] duration-300
+                                    ${!viewOnly && myTurn ? 'cursor-pointer hover:-translate-y-0.5 active:scale-[0.98]' : viewOnly ? 'cursor-pointer' : 'cursor-default'}`}
                             style={{
                                 background: `${tileColor}20`,
                                 border: `1px solid ${tileColor}70`,
                                 boxShadow: isClosed ? `inset 0 0 18px ${tileColor}22` : `0 8px 20px ${tileColor}15`
                             }}
-                        >
-                            <div
-                                className="absolute inset-1 flex flex-col overflow-hidden rounded-[0.75rem]"
-                                style={{
-                                    background: `linear-gradient(160deg, ${tileColor}25, rgba(14,5,24,0.95) 52%, ${tileColor}20)`,
-                                    opacity: isClosed ? 1 : 0,
-                                    transition: 'opacity 180ms ease 260ms'
-                                }}
                             >
-                                <div className="flex flex-1 items-center justify-center text-3xl font-black" style={{ color: tileColor }}>×</div>
-                                <span className="pb-3 text-center text-[9px] font-black" style={{ color: `${tileColor}cc` }}>مستبعدة</span>
-                            </div>
-
-                            <div
-                                className="absolute inset-1 flex flex-col overflow-hidden rounded-[0.75rem] border-2 bg-slate-950/80"
-                                style={{
-                                    borderColor: tileColor,
-                                    transform: isClosed ? 'rotateX(76deg)' : 'rotateX(0deg)',
-                                    transformOrigin: 'top center',
-                                    backfaceVisibility: 'hidden',
-                                    opacity: isClosed ? 0.55 : 1,
-                                    transition: 'transform 520ms cubic-bezier(0.2, 0.75, 0.25, 1), opacity 300ms ease'
-                                }}
-                            >
-                                <CardPortrait pack={pack} card={card} fit={isPeoplePack ? 'cover' : 'contain'} className="relative min-h-0 w-full flex-1" />
                                 <div
-                                    className="flex min-h-8 w-full shrink-0 items-center justify-center px-1 py-1 text-center text-[11px] font-black leading-tight sm:text-xs"
-                                    style={{ background: `linear-gradient(90deg, ${tileColor}35, rgba(8,4,15,0.98))`, color: '#fff' }}
+                                    className="absolute inset-1 flex flex-col overflow-hidden rounded-[0.75rem]"
+                                    style={{
+                                        background: `linear-gradient(160deg, ${tileColor}25, rgba(14,5,24,0.95) 52%, ${tileColor}20)`,
+                                        opacity: isClosed ? 1 : 0,
+                                        transition: 'opacity 180ms ease 260ms'
+                                    }}
                                 >
-                                    {card.name}
+                                    <div className="flex flex-1 items-center justify-center text-3xl font-black" style={{ color: tileColor }}>×</div>
+                                    <span className="pb-3 text-center text-[9px] font-black" style={{ color: `${tileColor}cc` }}>مستبعدة</span>
                                 </div>
-                            </div>
-                        </button>
+
+                                <div
+                                    className="absolute inset-1 flex flex-col overflow-hidden rounded-[0.75rem] border-2 bg-slate-950/80"
+                                    style={{
+                                        borderColor: tileColor,
+                                        transform: isClosed ? 'rotateX(76deg)' : 'rotateX(0deg)',
+                                        transformOrigin: 'top center',
+                                        backfaceVisibility: 'hidden',
+                                        opacity: isClosed ? 0.55 : 1,
+                                        transition: 'transform 520ms cubic-bezier(0.2, 0.75, 0.25, 1), opacity 300ms ease'
+                                    }}
+                                >
+                                    <CardPortrait pack={pack} card={card} fit={isPeoplePack ? 'cover' : 'contain'} className="relative min-h-0 w-full flex-1" />
+                                    <div
+                                        className="flex min-h-8 w-full shrink-0 items-center justify-center px-1 py-1 text-center text-[11px] font-black leading-tight sm:text-xs"
+                                        style={{ background: `linear-gradient(90deg, ${tileColor}35, rgba(8,4,15,0.98))`, color: '#fff' }}
+                                    >
+                                        {card.name}
+                                    </div>
+                                </div>
+
+                            </button>
+                            {onPreviewCard && (
+                                <button
+                                    type="button"
+                                    onClick={() => onPreviewCard(card)}
+                                    aria-label={`عرض خصائص ${card.name}`}
+                                    title={`عرض خصائص ${card.name}`}
+                                    className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-lg border border-white/20 bg-black/65 text-white shadow-lg transition hover:scale-105 hover:bg-black/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
+                                >
+                                    <Eye size={15} />
+                                </button>
+                            )}
+                        </div>
                     );
                 })}
             </div>

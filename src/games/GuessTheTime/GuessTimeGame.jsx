@@ -234,7 +234,7 @@ export default function GuessTimeGame({ setView }) {
                 clockRunning: turnClockRunningRef.current,
                 clockOwner: turnClockOwnerRef.current,
                 awaitingNext: turnAwaitingNextRef.current,
-                lastStop: Boolean(turnLastStop),
+                lastStop: ['host', 'peer'].includes(turnLastStop) ? turnLastStop : null,
                 notice: turnNotice,
                 roundResult: turnRoundResult,
                 scores: { ...turnScoresRef.current },
@@ -336,7 +336,7 @@ export default function GuessTimeGame({ setView }) {
         setTurnElapsed(turnElapsedBaseRef.current);
         setTurnClockRunning(false);
         setTurnAwaitingNext(Boolean(turn.awaitingNext));
-        setTurnLastStop(Boolean(turn.lastStop));
+        setTurnLastStop(['host', 'peer'].includes(turn.lastStop) ? turn.lastStop : null);
         setTurnNotice(turn.clockRunning ? 'الاتصال انقطع؛ الوقت محفوظ. ابدأوا من نفس النقطة.' : (turn.notice || ''));
         setTurnRoundResult(turn.roundResult || null);
         pausedByDisconnectRef.current = false;
@@ -461,7 +461,7 @@ export default function GuessTimeGame({ setView }) {
                 if (msg.seat !== (isHostRef.current ? 'host' : 'peer')) playSound('stopwatch_stop');
                 turnElapsedBaseRef.current = Math.max(0, Number(msg.elapsed) || 0);
                 turnClockElapsedRef.current = turnElapsedBaseRef.current;
-                setTurnLastStop(true);
+                setTurnLastStop(['host', 'peer'].includes(msg.seat) ? msg.seat : null);
                 turnAwaitingNextRef.current = true;
                 setTurnAwaitingNext(true);
                 setTurnNotice(msg.notice || 'الدور التالي بعد لحظات');
@@ -757,7 +757,7 @@ export default function GuessTimeGame({ setView }) {
         turnAwaitingNextRef.current = !overLimit;
         setTurnAwaitingNext(!overLimit);
         setTurnElapsed(finalElapsed);
-        if (!overLimit) setTurnLastStop(true);
+        if (!overLimit) setTurnLastStop(seat);
         setTurnNotice(overLimit ? 'عدّيتوا الوقت المحدد؛ بنعلن النتيجة...' : 'وقفت قبل الحد؛ الدور التالي بعد لحظات');
         playSound('stopwatch_stop');
         playHaptic([30, 20, 50]);
@@ -840,7 +840,7 @@ export default function GuessTimeGame({ setView }) {
         const nextSeat = msg.seat === 'host' ? 'peer' : 'host';
         if (msg.seat !== 'host') playSound('stopwatch_stop');
         const notice = 'تم إيقاف المؤقت؛ الدور التالي سيكمل من نفس الوقت';
-        setTurnLastStop(true);
+        setTurnLastStop(msg.seat);
         turnAwaitingNextRef.current = true;
         setTurnAwaitingNext(true);
         setTurnNotice(notice);
@@ -1058,6 +1058,9 @@ export default function GuessTimeGame({ setView }) {
 
 
     const localSeat = isHostRef.current ? 'host' : 'peer';
+    const safePlayerName = turnLastStop
+        ? (turnLastStop === localSeat ? 'أنت' : (oppProfile?.nickname || 'الخصم'))
+        : '';
     const isMyTurn = gameState === 'playing-turns' || gameState === 'playing-target' || gameState === 'playing-roles'
         ? (gameState !== 'playing-turns' || turnActiveSeat === localSeat)
         : gameState === 'turn-countdown' && turnActiveSeat === localSeat;
@@ -1251,6 +1254,7 @@ export default function GuessTimeGame({ setView }) {
                         {turnLastStop && (
                             <div className="rounded-2xl border border-emerald-400/60 bg-emerald-400/10 px-6 py-3 text-center shadow-[0_0_32px_rgba(16,185,129,0.3)]">
                                 <p className="text-2xl font-black tracking-widest text-emerald-300">SAFE</p>
+                                <p className="mt-1 text-sm font-bold text-emerald-100">اللاعب الذي حقق SAFE: {safePlayerName}</p>
                             </div>
                         )}
                         <div className="text-[100px] font-black leading-none text-amber-400 animate-pop-in">{turnCountdown ?? 3}</div>
@@ -1273,6 +1277,7 @@ export default function GuessTimeGame({ setView }) {
                             {turnLastStop && !turnClockRunning ? (
                                 <div className="my-5 rounded-2xl border border-emerald-400/60 bg-emerald-400/10 py-4 shadow-[0_0_32px_rgba(16,185,129,0.3)] animate-fade-in">
                                     <p className="text-5xl font-black tracking-[0.18em] text-emerald-300 drop-shadow-[0_0_18px_rgba(52,211,153,0.75)]">SAFE</p>
+                                    <p className="mt-2 text-sm font-bold text-emerald-100">اللاعب الذي حقق SAFE: {safePlayerName}</p>
                                 </div>
                             ) : (
                                 <div className={'my-5 mx-auto w-24 h-24 rounded-full flex items-center justify-center border bg-white/[0.03] ' + (turnClockRunning ? 'border-amber-300/50 text-amber-300 animate-pulse shadow-[0_0_28px_rgba(252,211,77,0.18)]' : 'border-sky-300/20 text-sky-300/70')}>

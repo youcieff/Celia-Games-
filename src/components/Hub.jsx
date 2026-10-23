@@ -287,7 +287,7 @@ function WhoAmIGameSelector({ onSelect, onClose }) {
                     </button>
                     <button onClick={() => onSelect('whoami-together')} className="glass-card group flex items-center gap-3 rounded-2xl border border-white/10 px-3 py-3 text-right transition hover:border-[var(--accent)] active:scale-[0.99]">
                         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)] transition group-hover:scale-110"><IconWifi size={20} /></span>
-                        <span><span className="block text-sm font-black">سوا · بدون دردشة</span><span className="mt-0.5 block text-[10px] font-medium text-white/45">اتصال بين جهازين بدون دردشة داخل اللعبة</span></span>
+                        <span><span className="block text-sm font-black">سوا · دردشة من الأيقونة</span><span className="mt-0.5 block text-[10px] font-medium text-white/45">اتصال بين جهازين؛ افتحوا الدردشة من الأيقونة عند الحاجة</span></span>
                     </button>
                 </div>
             </div>

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import Eye from 'lucide-react/dist/esm/icons/eye';
 import CardPortrait from './CardPortrait';
 
-export default function GuessModal({ pack, closedCards, onGuess, onClose }) {
+export default function GuessModal({ pack, closedCards, onGuess, onClose, onPreviewCard }) {
     const [selectedId, setSelectedId] = useState(null);
     
     // Only show cards that are NOT closed
@@ -25,10 +26,9 @@ export default function GuessModal({ pack, closedCards, onGuess, onClose }) {
                 <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                     <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3 max-w-6xl mx-auto w-full">
                         {availableCards.map(card => (
-                            <button
+                            <div
                                 key={card.id}
-                                onClick={() => setSelectedId(card.id)}
-                                className={`rounded-2xl transition-all flex flex-col items-stretch justify-start relative overflow-hidden group bg-black/85
+                                className={`relative rounded-2xl transition-all flex flex-col items-stretch justify-start overflow-hidden group bg-black/85
                                     ${selectedId === card.id 
                                         ? 'scale-105 shadow-[0_0_15px_var(--accent-glow)]' 
                                         : 'hover:scale-105'}`}
@@ -36,12 +36,29 @@ export default function GuessModal({ pack, closedCards, onGuess, onClose }) {
                                     border: `1px solid ${selectedId === card.id ? 'var(--accent)' : 'var(--glass-border)'}`
                                 }}
                             >
-                                <CardPortrait pack={pack} card={card} className="relative w-full aspect-[3/2] shrink-0 transition-transform duration-300 group-hover:scale-[1.03]" />
-                                <div className={`relative z-[1] flex min-h-8 w-full shrink-0 items-center justify-center px-1.5 py-1 text-center text-[10px] sm:text-[11px] font-black leading-tight transition-colors duration-300 bg-black/85
-                                    ${selectedId === card.id ? 'text-[var(--accent)]' : 'text-white'}`}>
-                                    {card.name}
-                                </div>
-                            </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedId(card.id)}
+                                    aria-pressed={selectedId === card.id}
+                                    aria-label={`اختيار ${card.name} للتخمين`}
+                                    className="flex w-full flex-col items-stretch justify-start text-right"
+                                >
+                                    <CardPortrait pack={pack} card={card} className="relative w-full aspect-[3/2] shrink-0 transition-transform duration-300 group-hover:scale-[1.03]" />
+                                    <div className={`relative z-[1] flex min-h-8 w-full shrink-0 items-center justify-center px-1.5 py-1 text-center text-[10px] sm:text-[11px] font-black leading-tight transition-colors duration-300 bg-black/85
+                                        ${selectedId === card.id ? 'text-[var(--accent)]' : 'text-white'}`}>
+                                        {card.name}
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => onPreviewCard?.(card)}
+                                    aria-label={`عرض خصائص ${card.name}`}
+                                    title={`عرض خصائص ${card.name}`}
+                                    className="absolute right-1.5 top-1.5 z-10 grid h-7 w-7 place-items-center rounded-lg border border-white/20 bg-black/70 text-white shadow-lg transition hover:scale-105 hover:bg-black/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
+                                >
+                                    <Eye size={14} />
+                                </button>
+                            </div>
                         ))}
                     </div>
                     {availableCards.length === 0 && (

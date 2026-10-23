@@ -132,7 +132,8 @@ export default function WhoAmIGame({ setView, mode }) {
     const [previewCard, setPreviewCard] = useState(null);
     const [isGuessPending, setIsGuessPending] = useState(false);
     const useGameChat = mode === 'online';
-    const showChat = useGameChat;
+    const isTogetherMode = mode === 'together';
+    const showChat = true;
     
     const lastGuessRef = useRef(null);
     const guessAttemptIdRef = useRef(null);
@@ -553,8 +554,8 @@ export default function WhoAmIGame({ setView, mode }) {
                         rpsFirstPlayerRef.current = data.firstPlayer;
                         setRpsFirstPlayer(data.firstPlayer);
                         setRpsMessage(data.firstPlayer === myPlayerIdRef.current
-                            ? 'كسبت حجر ورقة مقص — أنت هتبدأ بالسؤال.'
-                            : 'الخصم كسب حجر ورقة مقص — هو هيبدأ بالسؤال.');
+                            ? (isTogetherMode ? 'كسبت حجر ورقة مقص — أنت هتبدأ.' : 'كسبت حجر ورقة مقص — أنت هتبدأ بالسؤال.')
+                            : (isTogetherMode ? 'الخصم كسب حجر ورقة مقص — هو هيبدأ.' : 'الخصم كسب حجر ورقة مقص — هو هيبدأ بالسؤال.'));
                         updateGameState('rps_result');
                         playWhoAmISound('ready');
                     }
@@ -734,7 +735,7 @@ export default function WhoAmIGame({ setView, mode }) {
         rpsResolvedRef.current = false;
         setRpsChoice(null);
         setOpponentRpsChoice(null);
-        setRpsMessage('اختاروا حجر أو ورقة أو مقص عشان نحدد مين يسأل الأول.');
+        setRpsMessage(isTogetherMode ? 'اختاروا حجر ورقة مقص عشان نحدد مين يبدأ.' : 'اختاروا حجر أو ورقة أو مقص عشان نحدد مين يسأل الأول.');
         updateGameState('rps_setup');
     }, []);
 
@@ -767,8 +768,8 @@ export default function WhoAmIGame({ setView, mode }) {
             rpsFirstPlayerRef.current = data.firstPlayer;
             setRpsFirstPlayer(data.firstPlayer);
             setRpsMessage(data.firstPlayer === myPlayerIdRef.current
-                ? 'كسبت حجر ورقة مقص — أنت هتبدأ بالسؤال.'
-                : 'الخصم كسب حجر ورقة مقص — هو هيبدأ بالسؤال.');
+                ? (isTogetherMode ? 'كسبت حجر ورقة مقص — أنت هتبدأ.' : 'كسبت حجر ورقة مقص — أنت هتبدأ بالسؤال.')
+                : (isTogetherMode ? 'الخصم كسب حجر ورقة مقص — هو هيبدأ.' : 'الخصم كسب حجر ورقة مقص — هو هيبدأ بالسؤال.'));
         }
         updateGameState(data.stage);
     };
@@ -842,8 +843,8 @@ export default function WhoAmIGame({ setView, mode }) {
         rpsFirstPlayerRef.current = firstPlayer;
         setRpsFirstPlayer(firstPlayer);
         setRpsMessage(firstPlayer === myPlayerIdRef.current
-            ? 'كسبت حجر ورقة مقص — أنت هتبدأ بالسؤال.'
-            : 'الخصم كسب حجر ورقة مقص — هو هيبدأ بالسؤال.');
+            ? (isTogetherMode ? 'كسبت حجر ورقة مقص — أنت هتبدأ.' : 'كسبت حجر ورقة مقص — أنت هتبدأ بالسؤال.')
+            : (isTogetherMode ? 'الخصم كسب حجر ورقة مقص — هو هيبدأ.' : 'الخصم كسب حجر ورقة مقص — هو هيبدأ بالسؤال.'));
         sendWhoAmIMessage({ type: 'rps_result', firstPlayer });
         updateGameState('rps_result');
         playWhoAmISound('ready');
@@ -912,6 +913,7 @@ export default function WhoAmIGame({ setView, mode }) {
     }, [isHost, gameState, rpsFirstPlayer, startGameAfterRps]);
 
     const applyQuestionAnswer = (data) => {
+        if (isTogetherMode) return;
         const activeQuestion = pendingQuestionRef.current;
         if (gameStateRef.current !== 'playing' || turnPhaseRef.current !== 'answer' || activeQuestion?.from !== data?.asker) return;
         if (activeQuestion?.id && data?.questionId !== activeQuestion.id) return;
@@ -988,6 +990,7 @@ export default function WhoAmIGame({ setView, mode }) {
     questionAnswerHandlerRef.current = applyQuestionAnswer;
 
     const receiveQuestion = (data) => {
+        if (isTogetherMode) return;
         if (gameStateRef.current !== 'playing' || !['p1', 'p2'].includes(data?.from) || data.from === myPlayerIdRef.current) return;
         if (turnRef.current !== data.from || turnPhaseRef.current !== 'ask') return;
         if (Number.isSafeInteger(data.turnRevision) && data.turnRevision !== turnRevisionRef.current) return;
@@ -1036,6 +1039,7 @@ export default function WhoAmIGame({ setView, mode }) {
     questionReceiveRef.current = receiveQuestion;
 
     const askQuestion = () => {
+        if (isTogetherMode) return;
         const text = useGameChat ? questionText.trim() : '';
         if (!canAskNow() || (useGameChat && !text)) return;
         if (selectedConditionRef.current === 'three_questions' && myQuestionsAskedRef.current >= QUESTION_LIMIT) {
@@ -1075,6 +1079,7 @@ export default function WhoAmIGame({ setView, mode }) {
     };
 
     const answerQuestion = (answer) => {
+        if (isTogetherMode) return;
         const activeQuestion = pendingQuestionRef.current;
         if (!['yes', 'no'].includes(answer) || turnPhaseRef.current !== 'answer' || !activeQuestion || activeQuestion.from === myPlayerIdRef.current) return;
         if (selectedConditionRef.current === 'turn_timer' && isTurnDeadlineExpired()) {
@@ -1277,12 +1282,12 @@ export default function WhoAmIGame({ setView, mode }) {
         return () => clearInterval(interval);
     }, [gameState, selectedConditionId, turnDeadline, turnPhase, pendingQuestion, isMyTurn]);
 
-    const canEliminate = canEliminateNow() && !isGuessPending;
+    const canEliminate = (isTogetherMode ? canActOnCurrentTurn() : canEliminateNow()) && !isGuessPending;
     const canGuess = canActOnCurrentTurn() && !isGuessPending;
-    const canAskQuestion = canAskNow();
+    const canAskQuestion = !isTogetherMode && canAskNow();
 
     const toggleCard = (cardId) => {
-        if (!canEliminateNow() || guessedOpponentSecretIdsRef.current.includes(cardId)) return;
+        if (!canEliminate || guessedOpponentSecretIdsRef.current.includes(cardId)) return;
         const currentClosedCards = myClosedCardsRef.current;
         if (!currentClosedCards.has(cardId) && currentClosedCards.size >= (currentPack?.cards.length || 0) - 1) {
             setGuessFeedback('سيب بطاقة واحدة مفتوحة على الأقل عشان تقدر تخمّن.');
@@ -1474,7 +1479,7 @@ export default function WhoAmIGame({ setView, mode }) {
             updateTurnPhase('ask');
             updateTurnDeadline(null);
             timeoutHandledRef.current = false;
-            setRpsMessage('اختاروا حجر أو ورقة أو مقص عشان نحدد مين يسأل الأول.');
+            setRpsMessage(isTogetherMode ? 'اختاروا حجر ورقة مقص عشان نحدد مين يبدأ.' : 'اختاروا حجر أو ورقة أو مقص عشان نحدد مين يسأل الأول.');
             rpsChoiceRef.current = null;
             opponentRpsChoiceRef.current = null;
             rpsResolvedRef.current = false;
@@ -1549,7 +1554,7 @@ export default function WhoAmIGame({ setView, mode }) {
                 <EmotesOverlay
                     conn={conn}
                     oppProfile={oppProfile}
-                    simulateAIReplies={!isAI}
+                    simulateAIReplies={isAI}
                     initialTab="messages"
                     keepChatOpenOnSend
                 />
@@ -1567,7 +1572,7 @@ export default function WhoAmIGame({ setView, mode }) {
                     isMyTurn={turnPhase === 'answer' ? pendingQuestion?.from !== myPlayerId : isMyTurn}
                     onLeave={() => backStepRef.current?.()}
                     backTitle="رجوع خطوة"
-                    showChatButton={useGameChat}
+                    showChatButton={showChat}
                 />
             ) : (
                     <div className="mx-auto mb-3 grid w-full max-w-sm shrink-0 grid-cols-3 items-center px-4 py-3 z-10">
@@ -1590,8 +1595,8 @@ export default function WhoAmIGame({ setView, mode }) {
                 <div className="flex-1 flex flex-col pb-16 safe-area-pb">
                     <div className="mx-auto mb-2 w-full max-w-md px-4">
                         <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-center">
-                            <p className="text-xs font-black text-white">{useGameChat ? 'عن بُعد · بالدردشة' : 'سوا · بدون دردشة'}</p>
-                            <p className="mt-1 text-[10px] font-medium text-white/45">{useGameChat ? 'اتصال بين جهازين مع دردشة داخل اللعبة' : 'اتصال بين جهازين بدون دردشة داخل اللعبة'}</p>
+                            <p className="text-xs font-black text-white">{useGameChat ? 'عن بُعد · بالدردشة' : isTogetherMode ? 'سوا · بالدردشة الاختيارية' : 'اللعب مع الذكاء الاصطناعي'}</p>
+                            <p className="mt-1 text-[10px] font-medium text-white/45">{useGameChat ? 'اتصال بين جهازين مع أيقونة دردشة صغيرة' : isTogetherMode ? 'اتصال بين جهازين؛ الدردشة متاحة من الأيقونة فقط' : 'الدردشة متاحة من الأيقونة الصغيرة'}</p>
                         </div>
                     </div>
                     <div className="min-h-0 flex-1">
@@ -1644,6 +1649,7 @@ export default function WhoAmIGame({ setView, mode }) {
                     opponentReady={opponentRulesAcknowledged}
                     mySecretCount={mySecretIds.length}
                     opponentSecretCount={opponentSecretCount}
+                    verbalMode={isTogetherMode}
                     onSelectCondition={selectMatchCondition}
                     onReady={acknowledgeRules}
                 />
@@ -1654,7 +1660,7 @@ export default function WhoAmIGame({ setView, mode }) {
                     <div>
                         <div className="mb-2 text-5xl">✊ ✋ ✌️</div>
                         <h2 className="text-2xl font-black">حجر ورقة مقص</h2>
-                        <p className="mt-2 text-sm text-white/60">الفائز يبدأ بالسؤال. لو تعادلتوا، العبوا مرة ثانية.</p>
+                        <p className="mt-2 text-sm text-white/60">{isTogetherMode ? 'الفائز يبدأ الدور. لو تعادلتوا، العبوا مرة ثانية.' : 'الفائز يبدأ بالسؤال. لو تعادلتوا، العبوا مرة ثانية.'}</p>
                     </div>
                     <div className="grid w-full max-w-md grid-cols-3 gap-3">
                         {RPS_OPTIONS.map(option => (
@@ -1681,7 +1687,7 @@ export default function WhoAmIGame({ setView, mode }) {
                         <p className="text-xs font-black text-white/55">نتيجة حجر ورقة مقص</p>
                         <h2 className="mt-2 text-3xl font-black text-[var(--accent)]">{rpsWinnerName} فاز!</h2>
                         <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-400/[0.08] px-4 py-3">
-                            <p className="text-base font-black text-emerald-100">{rpsWinnerName} هيبدأ بالسؤال</p>
+                            <p className="text-base font-black text-emerald-100">{rpsWinnerName} {isTogetherMode ? 'هيبدأ الدور' : 'هيبدأ بالسؤال'}</p>
                             <p className="mt-1 text-xs text-white/60">دي نتيجة الجولة، وبعدها ندخل لوحة اللعب.</p>
                         </div>
                         <p className="mt-4 text-xs font-bold text-white/50">هنبدأ اللعب بعد لحظات...</p>
@@ -1727,7 +1733,9 @@ export default function WhoAmIGame({ setView, mode }) {
                     {/* ─── Turn Indicator ─── */}
                     <div aria-live="polite" className={`mx-2 mt-1 shrink-0 rounded-lg border px-2 py-1.5 text-center text-xs font-black ${isMyTurn ? 'text-[var(--bg-base)]' : 'text-white/70'}`}
                     style={{ background: isMyTurn ? 'var(--accent)' : 'var(--glass-bg)', borderColor: isMyTurn ? 'transparent' : 'var(--glass-border)' }}>
-                        {pendingQuestion && pendingQuestion.from === myPlayerId
+                        {isTogetherMode
+                            ? (isMyTurn ? 'دورك — استبعد أو خمّن، وبعدها سلّم الدور' : 'دور الخصم')
+                            : pendingQuestion && pendingQuestion.from === myPlayerId
                             ? '💬 في انتظار إجابة الخصم...'
                             : pendingQuestion && pendingQuestion.from !== myPlayerId
                                 ? '💬 أجب عن سؤال الخصم'
@@ -1746,7 +1754,7 @@ export default function WhoAmIGame({ setView, mode }) {
                                         : isMyTurn ? 'دورك — اسأل أو خمّن' : 'دور الخصم'}
                     </div>
 
-                    {pendingQuestion && turnPhase === 'answer' && (
+                    {!isTogetherMode && pendingQuestion && turnPhase === 'answer' && (
                         <div className="mx-2 mt-1 flex shrink-0 items-center gap-2 rounded-xl border border-sky-300/25 bg-sky-400/10 px-2.5 py-2" role="group" aria-label="الرد على سؤال الخصم">
                             <div className="min-w-0 flex-1 text-right">
                                 <p className="text-[9px] font-black text-sky-200">{useGameChat ? 'سؤال الخصم' : 'الخصم بيسألك'}</p>
@@ -1773,7 +1781,7 @@ export default function WhoAmIGame({ setView, mode }) {
                         </div>
                     )}
 
-                    {turnPhase !== 'answer' && isMyTurn && (
+                    {!isTogetherMode && turnPhase !== 'answer' && isMyTurn && (
                         <div className="mx-2 mt-1 shrink-0 rounded-xl border border-white/10 bg-black/15 p-1.5">
                             {canAskQuestion ? (
                                 useGameChat ? (
@@ -1825,6 +1833,7 @@ export default function WhoAmIGame({ setView, mode }) {
                         pack={currentPack} 
                         closedCards={myClosedCards} 
                         onToggleCard={toggleCard} 
+                        onPreviewCard={setPreviewCard}
                         myTurn={canEliminate}
                     />
 
@@ -1837,7 +1846,7 @@ export default function WhoAmIGame({ setView, mode }) {
                             className="flex-1 rounded-xl border py-2.5 text-xs font-black transition active:scale-95"
                             style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)', color: 'var(--text-color)' }}
                         >
-                            🗂️ رؤية اللوحة
+                            🗂️ عرض اللوحة
                         </button>
                         <button
                             onClick={() => setShowGuessModal(true)}
@@ -1873,7 +1882,7 @@ export default function WhoAmIGame({ setView, mode }) {
                 </div>
             )}
 
-            {showBoardModal && gameState === 'playing' && (
+            {showBoardModal && ['playing', 'game_over'].includes(gameState) && (
                 <div
                     className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-2 backdrop-blur-md sm:p-5"
                     onClick={() => setShowBoardModal(false)}
@@ -1888,8 +1897,8 @@ export default function WhoAmIGame({ setView, mode }) {
                     >
                         <header className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3" style={{ borderColor: 'var(--glass-border)' }}>
                             <div>
-                                <h2 id="whoami-board-title" className="text-base font-black">لوحة البطاقات</h2>
-                                <p className="mt-0.5 text-xs opacity-55">اضغط على البطاقة لاستبعادها أو إعادتها</p>
+                                <h2 id="whoami-board-title" className="text-base font-black">{gameState === 'game_over' ? 'اللوحة كاملة' : 'عرض اللوحة'}</h2>
+                                <p className="mt-0.5 text-xs opacity-55">اضغط على أيقونة العين لعرض خصائص البطاقة — العرض فقط</p>
                             </div>
                             <button
                                 type="button"
@@ -1904,8 +1913,9 @@ export default function WhoAmIGame({ setView, mode }) {
                         <CardBoard
                             pack={currentPack}
                             closedCards={myClosedCards}
-                            onToggleCard={toggleCard}
-                            myTurn={canEliminate}
+                            onPreviewCard={setPreviewCard}
+                            myTurn={false}
+                            viewOnly
                         />
                     </section>
                 </div>
@@ -2025,6 +2035,15 @@ export default function WhoAmIGame({ setView, mode }) {
                                 </div>
                             </div>
 
+                            <button
+                                type="button"
+                                onClick={() => { playWhoAmISound('click'); setShowBoardModal(true); }}
+                                className="mb-3 w-full rounded-2xl border py-3 text-sm font-black transition active:scale-95"
+                                style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)', color: 'var(--text-color)' }}
+                            >
+                                🗂️ عرض اللوحة كاملة بدون استبعاد
+                            </button>
+
                             {/* Actions */}
                             <div className="flex gap-2">
                                 <button
@@ -2054,6 +2073,7 @@ export default function WhoAmIGame({ setView, mode }) {
                     closedCards={myClosedCards}
                     onGuess={handleGuess}
                     onClose={() => setShowGuessModal(false)}
+                    onPreviewCard={setPreviewCard}
                 />
             )}
         </div>
