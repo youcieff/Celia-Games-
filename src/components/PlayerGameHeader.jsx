@@ -7,6 +7,7 @@ import X from 'lucide-react/dist/esm/icons/x';
 import useProfile from '../hooks/useProfile';
 import { toggleMute, getMuted, playSound } from '../lib/audioEngine';
 import { AvatarDisplay } from './icons/AvatarIcons';
+import { EmoteDisplay } from './icons/EmoteIcons';
 import { GameIcon, IconTarget, IconHourglass } from './icons/GameIcons';
 
 const GAME_TITLES = {
@@ -60,26 +61,37 @@ export default function PlayerGameHeader({
     const [muted, setMutedState] = useState(() => getMuted());
     const [hasUnread, setHasUnread] = useState(false);
     const [chatNotice, setChatNotice] = useState(null);
+    const [emoteNotice, setEmoteNotice] = useState(null);
 
     useEffect(() => {
         const handleUnread = () => setHasUnread(true);
         const handleOpened = () => setHasUnread(false);
         let noticeTimer;
+        let emoteTimer;
         const handleChatNotice = (event) => {
             if (!event.detail?.text) return;
             setChatNotice(event.detail);
             window.clearTimeout(noticeTimer);
             noticeTimer = window.setTimeout(() => setChatNotice(null), 5000);
         };
+        const handleEmoteNotice = (event) => {
+            if (!event.detail?.emoteKey) return;
+            setEmoteNotice(event.detail);
+            window.clearTimeout(emoteTimer);
+            emoteTimer = window.setTimeout(() => setEmoteNotice(null), 2800);
+        };
         window.addEventListener('game-chat-unread', handleUnread);
         window.addEventListener('game-chat-opened', handleOpened);
         window.addEventListener('game-chat-notice', handleChatNotice);
+        window.addEventListener('game-emote-notice', handleEmoteNotice);
 
         return () => {
             window.removeEventListener('game-chat-unread', handleUnread);
             window.removeEventListener('game-chat-opened', handleOpened);
             window.removeEventListener('game-chat-notice', handleChatNotice);
+            window.removeEventListener('game-emote-notice', handleEmoteNotice);
             window.clearTimeout(noticeTimer);
+            window.clearTimeout(emoteTimer);
         };
     }, []);
 
@@ -217,6 +229,26 @@ export default function PlayerGameHeader({
                     )}
                 </div>
             </div>
+
+            {showChatButton && emoteNotice && (
+                <div
+                    role="status"
+                    className={`flex items-center gap-2.5 rounded-2xl border px-3 py-2 shadow-lg animate-pop-in ${
+                        emoteNotice.isMine
+                            ? 'border-[var(--accent)]/25 bg-[var(--accent-soft)]'
+                            : 'themed-opponent-bubble'
+                    }`}
+                >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/25">
+                        <EmoteDisplay emoteId={emoteNotice.emoteKey} size={30} />
+                    </div>
+                    <div className="min-w-0 flex-1 text-right">
+                        <p className="text-[10px] font-black text-white">{emoteNotice.sender}</p>
+                        <p className="text-[10px] font-bold text-white/55">بعت تفاعل</p>
+                    </div>
+                    <div className="h-2 w-2 shrink-0 rounded-full bg-[var(--accent)] animate-pulse" />
+                </div>
+            )}
 
             {showChatButton && chatNotice && (
                 <div

@@ -124,6 +124,7 @@ export default function WhoAmIGame({ setView, mode }) {
     const [guessedOpponentSecretIds, setGuessedOpponentSecretIds] = useState([]);
     const [guessedMySecretIds, setGuessedMySecretIds] = useState([]);
     const [guessFeedback, setGuessFeedback] = useState('');
+    const [opponentWrongGuess, setOpponentWrongGuess] = useState(null);
     const [myScore, setMyScore] = useState(0);
     const [oppScore, setOppScore] = useState(0);
 
@@ -339,6 +340,7 @@ export default function WhoAmIGame({ setView, mode }) {
     const resetRoundUi = () => {
         hasEndedRef.current = false;
         gameOverRevealSentRef.current = false;
+        setOpponentWrongGuess(null);
         setShowGuessModal(false);
         setShowBoardModal(false);
         setPreviewCard(null);
@@ -1356,6 +1358,12 @@ export default function WhoAmIGame({ setView, mode }) {
         } else {
             sendWhoAmIMessage({ type: 'guess_result', correct: false, guessId: data?.guessId, from: myPlayerIdRef.current, turnRevision: turnRevisionRef.current });
             playWhoAmISound('error');
+            const wrongCard = currentPack.cards.find(card => card.id === guessedCardId);
+            setOpponentWrongGuess({
+                guessId: data?.guessId || `${Date.now()}`,
+                card: wrongCard,
+                sender: oppProfile?.nickname || 'الخصم'
+            });
             setGuessFeedback('الخصم خمن غلط — دورك الآن!');
             if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
             feedbackTimerRef.current = setTimeout(() => setGuessFeedback(''), 2600);
@@ -1549,6 +1557,15 @@ export default function WhoAmIGame({ setView, mode }) {
         if (rpsResultTimerRef.current) clearTimeout(rpsResultTimerRef.current);
     }, []);
 
+    useEffect(() => {
+        if (!opponentWrongGuess) return undefined;
+        const guessId = opponentWrongGuess.guessId;
+        const timer = setTimeout(() => {
+            setOpponentWrongGuess(current => current?.guessId === guessId ? null : current);
+        }, 5200);
+        return () => clearTimeout(timer);
+    }, [opponentWrongGuess]);
+
     return (
         <div className="fixed inset-0 flex h-[100dvh] flex-col overflow-hidden font-arabic select-none" style={{ background: 'var(--bg-base)' }}>
             <ConnectionPauseOverlay />
@@ -1559,6 +1576,7 @@ export default function WhoAmIGame({ setView, mode }) {
                     simulateAIReplies={isAI}
                     initialTab="messages"
                     keepChatOpenOnSend
+                    displayEmoteInHeader
                 />
             )}
 
@@ -1719,9 +1737,15 @@ export default function WhoAmIGame({ setView, mode }) {
                                 <p className="truncate text-[10px] font-bold opacity-55">بطاقتك السرية عند خصمك</p>
                                 <p className="truncate text-xs font-black" style={{ color: 'var(--accent)' }}>{mySecretCardObjs.map(card => card.name).join('، ') || '—'}</p>
                             </div>
-                            <div className="shrink-0 text-left">
-                                <p className="text-[9px] font-bold opacity-55">أغلق خصمك</p>
-                                <p className="text-xs font-black" style={{ color: 'var(--accent)' }}>{oppClosedCount}/{totalCards}</p>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                                <div className="min-w-[42px] rounded-lg border border-[var(--accent)]/15 bg-[var(--accent-soft)] px-1.5 py-1 text-center">
+                                    <p className="text-[8px] font-bold opacity-60">استبعدت</p>
+                                    <p className="text-[10px] font-black" style={{ color: 'var(--accent)' }}>{myClosedCards.size}/{totalCards}</p>
+                                </div>
+                                <div className="min-w-[42px] rounded-lg border border-sky-300/15 bg-sky-400/[0.08] px-1.5 py-1 text-center">
+                                    <p className="text-[8px] font-bold opacity-60">خصمك</p>
+                                    <p className="text-[10px] font-black text-sky-200">{oppClosedCount}/{totalCards}</p>
+                                </div>
                             </div>
                         </div>
                         <div className="mt-1 flex min-h-6 flex-wrap items-center justify-center gap-1.5 text-[10px] font-black">
@@ -1780,6 +1804,22 @@ export default function WhoAmIGame({ setView, mode }) {
                             style={{ background: 'rgba(251,54,64,0.12)', borderColor: 'rgba(251,54,64,0.35)', color: '#ff8b91' }}
                         >
                             {guessFeedback}
+                        </div>
+                    )}
+
+                    {opponentWrongGuess?.card && (
+                        <div
+                            role="status"
+                            className="mx-2 mt-1 flex shrink-0 items-center gap-2 rounded-xl border border-rose-300/30 bg-gradient-to-l from-rose-500/15 via-black/25 to-black/10 px-2 py-1.5 shadow-lg animate-pop-in"
+                        >
+                            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-rose-200/30 bg-black/30">
+                                <CardPortrait pack={currentPack} card={opponentWrongGuess.card} className="relative h-full w-full" />
+                            </div>
+                            <div className="min-w-0 flex-1 text-right">
+                                <p className="text-[9px] font-black text-rose-200">تخمين الخصم الخاطئ</p>
+                                <p className="truncate text-xs font-black text-white">{opponentWrongGuess.sender} اختار «{opponentWrongGuess.card.name}»</p>
+                            </div>
+                            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-rose-200/20 bg-rose-400/10 text-sm font-black text-rose-200">×</span>
                         </div>
                     )}
 

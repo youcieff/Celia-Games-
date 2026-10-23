@@ -59,6 +59,7 @@ export default function EmotesOverlay({
     simulateAIReplies = true,
     initialTab = 'emotes',
     keepChatOpenOnSend = false,
+    displayEmoteInHeader = false,
     pendingGameQuestion = null,
     canAnswerGameQuestion = false,
     onAnswerGameQuestion = null
@@ -145,14 +146,22 @@ export default function EmotesOverlay({
             ? myProfile.avatar
             : (senderAvatar || oppProfile?.avatar || 'alien');
 
-        setFloatingItems(prev => [...prev, {
+        const item = {
             id,
             type: 'emote',
             emoteKey,
             isMine,
             sender: resolvedSender,
             avatar: resolvedAvatar
-        }]);
+        };
+
+        if (displayEmoteInHeader) {
+            window.dispatchEvent(new CustomEvent('game-emote-notice', {
+                detail: { emoteKey, isMine, sender: resolvedSender, avatar: resolvedAvatar }
+            }));
+        } else {
+            setFloatingItems(prev => [...prev, item]);
+        }
 
         playSound('pop');
         if (!isMine) {
@@ -163,9 +172,11 @@ export default function EmotesOverlay({
             }
         }
 
-        setTimeout(() => {
-            setFloatingItems(prev => prev.filter(e => e.id !== id));
-        }, 3200);
+        if (!displayEmoteInHeader) {
+            setTimeout(() => {
+                setFloatingItems(prev => prev.filter(e => e.id !== id));
+            }, 3200);
+        }
     };
 
     const triggerChat = (text, isMine, senderName, senderAvatar, metadata = {}) => {
