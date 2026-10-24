@@ -9,6 +9,7 @@ import {
     subscribeToAccount
 } from '../lib/accountClient';
 import FriendsPanel from './FriendsPanel';
+import { getReadableNetworkError, isNetworkError } from '../lib/networkErrors';
 
 export default function AccountAccessPanel({ profile }) {
     const [user, setUser] = useState(null);
@@ -20,6 +21,19 @@ export default function AccountAccessPanel({ profile }) {
     const [busy, setBusy] = useState(false);
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
+    const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine);
+    const [syncIssue, setSyncIssue] = useState(false);
+
+    useEffect(() => {
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
 
     useEffect(() => subscribeToAccount(nextUser => {
         setUser(nextUser);
@@ -28,9 +42,36 @@ export default function AccountAccessPanel({ profile }) {
             return;
         }
         refreshAccountSnapshot()
-            .then(remoteProfile => setSavedAccount({ username: remoteProfile?.username || nextUser.displayName }))
-            .catch(syncError => setError(syncError.message));
+            .then(remoteProfile => {
+                setSavedAccount({ username: remoteProfile?.username || nextUser.displayName });
+                setSyncIssue(false);
+            })
+            .catch(syncError => {
+                if (isNetworkError(syncError)) {
+                    setSyncIssue(true);
+                    return;
+                }
+                setError(syncError.message);
+            });
     }), []);
+
+    useEffect(() => {
+        if (!user) return undefined;
+        const refreshWhenOnline = async () => {
+            try {
+                const remoteProfile = await refreshAccountSnapshot();
+                if (remoteProfile) setSavedAccount({ username: remoteProfile.username || user.displayName });
+                setSyncIssue(false);
+                setError('');
+                setMessage('رجع الاتصال وتم تحديث بيانات حسابك.');
+            } catch (syncError) {
+                if (isNetworkError(syncError)) setSyncIssue(true);
+                else setError(syncError.message);
+            }
+        };
+        window.addEventListener('online', refreshWhenOnline);
+        return () => window.removeEventListener('online', refreshWhenOnline);
+    }, [user]);
 
     const handleSubmit = async event => {
         event.preventDefault();
@@ -51,7 +92,7 @@ export default function AccountAccessPanel({ profile }) {
             setPinConfirm('');
             setMessage(mode === 'register' ? 'اتحفظ حسابك وبياناتك على أي جهاز تسجّل منه.' : 'تم تسجيل الدخول ومزامنة بياناتك.');
         } catch (requestError) {
-            setError(requestError.message || 'حصلت مشكلة، حاول تاني');
+            setError(getReadableNetworkError(requestError, 'حصلت مشكلة، حاول تاني'));
         } finally {
             setBusy(false);
         }
@@ -86,7 +127,7 @@ export default function AccountAccessPanel({ profile }) {
             {user ? (
                 <>
                     <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.07] p-3">
-                        <p className="text-xs font-bold text-white/60">الحساب المتصل · مزامنة تلقائية</p>
+                        <p className="text-xs font-bold text-white/60">{isOnline && !syncIssue ? 'الحساب المتصل · مزامنة تلقائية' : 'المزامنة متوقفة مؤقتًا · بياناتك محفوظة على الجهاز'}</p>
                         <p className="mt-1 truncate text-sm font-black text-emerald-300">{savedAccount?.username || user.displayName || 'حسابك'}</p>
                         <div className="mt-3 flex">
                             <button type="button" disabled={busy} onClick={handleLogout} className="flex h-9 items-center justify-center gap-2 rounded-xl border border-rose-400/20 bg-rose-400/10 px-3 text-xs font-black text-rose-200 disabled:opacity-50">

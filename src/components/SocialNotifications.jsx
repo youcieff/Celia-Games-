@@ -24,7 +24,6 @@ function claimNotification(uid, type, id) {
 
 function showBrowserNotification(title, body, tag) {
     if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') return;
-    if (document.visibilityState === 'visible') return;
     try {
         const notification = new Notification(title, { body, icon: '/logo.png', tag, renotify: true, requireInteraction: true });
         notification.onclick = () => {
@@ -48,9 +47,13 @@ export default function SocialNotifications() {
     const inviteIds = useRef(null);
 
     const notify = useCallback((userUid, type, id, title, body) => {
-        if (!claimNotification(userUid, type, id)) return;
-        playSound('notification', { dedupeKey: `social:${userUid}:${type}:${id}`, dedupeMs: 24 * 60 * 60 * 1000 });
-        showBrowserNotification(title, body, `celia-${type}-${id}`);
+        if (claimNotification(userUid, type, id)) {
+            playSound('notification', { dedupeKey: `social:${userUid}:${type}:${id}`, dedupeMs: 24 * 60 * 60 * 1000 });
+        }
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted'
+            && claimNotification(userUid, `${type}-browser`, id)) {
+            showBrowserNotification(title, body, `celia-${type}-${id}`);
+        }
     }, []);
 
     useEffect(() => {
@@ -77,13 +80,10 @@ export default function SocialNotifications() {
             stopRequests = onValue(ref(db, `friendRequests/${user.uid}`), snapshot => {
                 const next = Object.entries(snapshot.val() || {}).map(([fromUid, value]) => ({ uid: fromUid, ...(value || {}) }));
                 const previousIds = requestIds.current;
-                if (previousIds) {
-                    next.forEach(request => {
-                        if (!previousIds.has(request.uid)) {
-                            notify(user.uid, 'friend-request', `${request.uid}:${request.createdAt || ''}`, 'طلب صداقة جديد', `${request.nickname || 'لاعب'} بعتلك طلب صداقة`);
-                        }
-                    });
-                }
+                next.forEach(request => {
+                    const isNew = previousIds ? !previousIds.has(request.uid) : Date.now() - Number(request.createdAt || 0) < 10 * 60 * 1000;
+                    if (isNew) notify(user.uid, 'friend-request', `${request.uid}:${request.createdAt || ''}`, 'طلب صداقة جديد', `${request.nickname || 'لاعب'} بعتلك طلب صداقة`);
+                });
                 requestIds.current = new Set(next.map(request => request.uid));
                 setRequests(next.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)));
             }, listenerError => {
@@ -94,13 +94,10 @@ export default function SocialNotifications() {
             stopInvites = onValue(ref(db, `gameInvites/${user.uid}`), snapshot => {
                 const next = Object.entries(snapshot.val() || {}).map(([id, value]) => ({ id, ...(value || {}) }));
                 const previousIds = inviteIds.current;
-                if (previousIds) {
-                    next.forEach(invite => {
-                        if (!previousIds.has(invite.id)) {
-                            notify(user.uid, 'game-invite', invite.id, 'دعوة لعب جديدة', `${invite.fromNickname || 'صديقك'} دعاك إلى ${invite.gameTitle || 'لعبة'}`);
-                        }
-                    });
-                }
+                next.forEach(invite => {
+                    const isNew = previousIds ? !previousIds.has(invite.id) : Date.now() - Number(invite.createdAt || 0) < 10 * 60 * 1000;
+                    if (isNew) notify(user.uid, 'game-invite', invite.id, 'دعوة لعب جديدة', `${invite.fromNickname || 'صديقك'} دعاك إلى ${invite.gameTitle || 'لعبة'}`);
+                });
                 inviteIds.current = new Set(next.map(invite => invite.id));
                 setInvites(next.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)));
             }, listenerError => {
@@ -143,6 +140,19 @@ export default function SocialNotifications() {
             const nextPermission = await Notification.requestPermission();
             setPermission(nextPermission);
             playSound('notification');
+            if (nextPermission === 'granted' && uid) {
+                requests.forEach(request => {
+                    const id = `${request.uid}:${request.createdAt || ''}`;
+                    if (Date.now() - Number(request.createdAt || 0) < 10 * 60 * 1000) {
+                        notify(uid, 'friend-request', id, 'طلب صداقة جديد', `${request.nickname || 'لاعب'} بعتلك طلب صداقة`);
+                    }
+                });
+                invites.forEach(invite => {
+                    if (Date.now() - Number(invite.createdAt || 0) < 10 * 60 * 1000) {
+                        notify(uid, 'game-invite', invite.id, 'دعوة لعب جديدة', `${invite.fromNickname || 'صديقك'} دعاك إلى ${invite.gameTitle || 'لعبة'}`);
+                    }
+                });
+            }
         } catch {
             setPermission(Notification.permission);
         }
@@ -181,12 +191,13 @@ export default function SocialNotifications() {
 
                     {(canRequestPermission || permission === 'granted') && (
                         <div className="flex items-center justify-between gap-2 border-b border-white/[0.06] px-4 py-2">
-                            <p className="text-[10px] font-bold text-white/45">{permission === 'granted' ? 'تنبيه المتصفح مفعّل عند وجودك بالخلفية' : 'استقبل تنبيهًا من المتصفح لو الصفحة بالخلفية'}</p>
+                            <p className="text-[10px] font-bold text-white/45">{permission === 'granted' ? 'تنبيهات المتصفح مفعّلة' : 'فعّل تنبيهات المتصفح للدعوات الجديدة'}</p>
                             {canRequestPermission ? (
                                 <button type="button" onClick={() => void requestBrowserPermission()} className="shrink-0 rounded-lg border border-sky-300/20 bg-sky-300/[0.08] px-2.5 py-1.5 text-[10px] font-black text-sky-100 transition hover:bg-sky-300/[0.15]">تفعيل</button>
                             ) : <ShieldCheck size={15} className="shrink-0 text-emerald-300" />}
                         </div>
                     )}
+                    {permission === 'denied' && <p className="border-b border-white/[0.06] px-4 py-2 text-[10px] font-bold text-amber-200/80">إشعارات المتصفح مقفولة. افتح إعدادات الموقع في المتصفح واسمح بالإشعارات.</p>}
 
                     <div className="max-h-[min(55vh,440px)] space-y-2 overflow-y-auto p-3">
                         {error && <p role="alert" className="rounded-xl border border-rose-300/15 bg-rose-400/[0.08] px-3 py-2 text-[11px] font-bold text-rose-200">{error}</p>}

@@ -19,6 +19,8 @@ export default function FriendsPanel() {
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
     const [onlineByUid, setOnlineByUid] = useState({});
+    const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine);
+    const [showingCachedData, setShowingCachedData] = useState(false);
 
     const refresh = useCallback(async (showLoader = true) => {
         if (showLoader) setBusy(true);
@@ -27,6 +29,7 @@ export default function FriendsPanel() {
             setFriends(data.friends);
             setRequests(data.requests);
             setInvites(data.invites);
+            setShowingCachedData(Boolean(data.fromCache));
             setError('');
         } catch (loadError) {
             setError(loadError.message);
@@ -38,7 +41,18 @@ export default function FriendsPanel() {
     useEffect(() => {
         void refresh();
         const timer = setInterval(() => void refresh(false), 25_000);
-        return () => clearInterval(timer);
+        const handleOnline = () => {
+            setIsOnline(true);
+            void refresh(false);
+        };
+        const handleOffline = () => setIsOnline(false);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+            clearInterval(timer);
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
     }, [refresh]);
 
     const friendUidKey = friends.map(friend => friend.uid).sort().join('|');
@@ -52,6 +66,10 @@ export default function FriendsPanel() {
     }, [friendUidKey]);
 
     const runAction = async (action, successMessage) => {
+        if (!isOnline) {
+            setError('الأصدقاء والدعوات يحتاجوا إنترنت. بياناتك وسكورك محفوظين على الجهاز.');
+            return false;
+        }
         setBusy(true);
         setError('');
         setMessage('');
@@ -93,11 +111,14 @@ export default function FriendsPanel() {
             </div>
 
             <form onSubmit={handleSendRequest} className="flex gap-2">
-                <input value={username} onChange={event => setUsername(event.target.value)} maxLength={20} className="h-10 min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-3 text-xs font-bold outline-none focus:border-[var(--accent)]" placeholder="ابحث باسم المستخدم" />
-                <button disabled={busy || !username.trim()} className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3 text-xs font-black text-white disabled:opacity-40">
+                <input value={username} onChange={event => setUsername(event.target.value)} disabled={!isOnline} maxLength={20} className="h-10 min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-3 text-xs font-bold outline-none focus:border-[var(--accent)] disabled:opacity-50" placeholder="ابحث باسم المستخدم" />
+                <button disabled={busy || !isOnline || !username.trim()} className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3 text-xs font-black text-white disabled:opacity-40">
                     <UserPlus size={14} /> أضف
                 </button>
             </form>
+
+            {showingCachedData && <p role="status" className="mt-2 rounded-lg bg-amber-300/10 px-3 py-2 text-[11px] font-bold text-amber-200">دي آخر بيانات الأصدقاء المحفوظة على الجهاز، وهتتحدّث لما الاتصال يرجع.</p>}
+            {!isOnline && !showingCachedData && <p role="status" className="mt-2 rounded-lg bg-amber-300/10 px-3 py-2 text-[11px] font-bold text-amber-200">أنت بدون إنترنت. بياناتك وسكورك محفوظين على الجهاز؛ الأصدقاء والدعوات هتظهر عند الاتصال.</p>}
 
             {error && <p role="alert" className="mt-2 rounded-lg bg-rose-400/10 px-3 py-2 text-[11px] font-bold text-rose-300">{error}</p>}
             {message && <p role="status" className="mt-2 rounded-lg bg-emerald-400/10 px-3 py-2 text-[11px] font-bold text-emerald-300">{message}</p>}

@@ -75,8 +75,8 @@ async function establishSession(result) {
             console.warn('Could not preserve the guest profile before account sign-in', error);
         }
     }
-    await signInWithCustomToken(auth, result.token);
     applyAccountSnapshot(result);
+    await signInWithCustomToken(auth, result.token);
 }
 
 export async function createAccount(username, pin, profile) {
@@ -133,11 +133,15 @@ function schedulePendingProfileRetry(delay = pendingProfileRetryDelayMs) {
 
 export function syncAccountSnapshot(profile) {
     const user = auth.currentUser;
-    if (!user) return Promise.resolve();
-    const pendingSnapshot = { uid: user.uid, profile };
+    const uid = user?.uid || profile?.uid || getSavedAccount()?.uid;
+    if (!uid) return Promise.resolve();
+    const pendingSnapshot = { uid, profile };
     try {
         localStorage.setItem(PENDING_PROFILE_KEY, JSON.stringify(pendingSnapshot));
     } catch { }
+    // Keep the latest edit on this device even if Firebase hasn't restored the
+    // saved session yet. The auth listener will upload it once the session returns.
+    if (!user) return Promise.resolve();
     queuedSyncSnapshot = pendingSnapshot;
     if (!queuedSyncPromise) {
         queuedSyncPromise = new Promise((resolve, reject) => {
