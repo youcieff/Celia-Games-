@@ -137,6 +137,7 @@ export default function LeaderboardWidget() {
                         {cloudError && (
                             <div role="alert" className="rounded-xl border border-rose-400/20 bg-rose-500/10 p-3 text-center">
                                 <p className="text-[11px] font-bold text-rose-200">تعذر تحميل ترتيب الحساب من الإنترنت. القائمة المحلية لن تُعرض بدلًا منها.</p>
+                                <p dir="auto" className="mt-1 break-words text-[10px] font-semibold text-rose-200/75">تفاصيل الخطأ: {cloudError}</p>
                                 <button type="button" onClick={() => setRefreshKey(value => value + 1)} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-[10px] font-black text-white/80 hover:bg-white/5">
                                     <RefreshCw size={12} /> حاول مرة أخرى
                                 </button>

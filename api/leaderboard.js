@@ -212,7 +212,8 @@ export default async function handler(req, res) {
             method: req.method,
             status,
             code: String(error.code || '').slice(0, 80),
-            name: String(error.name || 'Error').slice(0, 80)
+            name: String(error.name || 'Error').slice(0, 80),
+            message: String(error.message || '').replace(/bearer\s+[^\s]+/ig, 'Bearer [redacted]').slice(0, 180)
         });
         return sendJson(res, status, { error: status >= 500 ? 'تعذر تحميل المتصدرين الآن' : error.message });
     }
