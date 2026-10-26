@@ -121,11 +121,28 @@ async function importLegacyOpponents(uid, body) {
     return { imported: players.length };
 }
 
+async function readProfilesByUid(database, path, uids) {
+    const profiles = new Map();
+    const uniqueUids = [...new Set(uids)];
+    for (let index = 0; index < uniqueUids.length; index += 10) {
+        const batch = uniqueUids.slice(index, index + 10);
+        const results = await Promise.all(batch.map(async profileUid => {
+            try {
+                return [profileUid, (await database.ref(`${path}/${profileUid}`).get()).val() || null];
+            } catch {
+                return [profileUid, null];
+            }
+        }));
+        for (const [profileUid, profile] of results) profiles.set(profileUid, profile);
+    }
+    return profiles;
+}
+
 async function loadLeaderboard(uid) {
     const database = getAdminDatabase();
     const [profile, opponentsSnapshot] = await Promise.all([
         ensureAccountProfile(uid, database),
-        database.ref(`playedAgainst/${uid}`).orderByChild('lastPlayed').limitToLast(100).get()
+        database.ref(`playedAgainst/${uid}`).get()
     ]);
     if (!profile) {
         const error = new Error('الحساب غير موجود');
@@ -135,20 +152,22 @@ async function loadLeaderboard(uid) {
     const opponentEntries = Object.entries(opponentsSnapshot.val() || {})
         .sort((left, right) => (Number(right[1]?.lastPlayed) || 0) - (Number(left[1]?.lastPlayed) || 0))
         .slice(0, 100);
+    const registeredUids = opponentEntries
+        .map(([, saved]) => typeof saved?.opponentUid === 'string' && ID_PATTERN.test(saved.opponentUid) ? saved.opponentUid : null)
+        .filter(opponentUid => opponentUid && opponentUid !== uid);
+    const [publicProfilesSnapshot, privateProfiles] = await Promise.all([
+        registeredUids.length ? database.ref('publicProfiles').get().catch(() => null) : null,
+        readProfilesByUid(database, 'users', registeredUids)
+    ]);
+    const publicProfiles = publicProfilesSnapshot?.val() || {};
     const namesToHide = new Set([profile.nickname, ...(profile.nicknameAliases || [])].map(normalizeName).filter(Boolean));
-    const loadedOpponents = await Promise.all(opponentEntries.map(async ([key, raw]) => {
+    const loadedOpponents = opponentEntries.map(([key, raw]) => {
         const saved = raw && typeof raw === 'object' ? raw : {};
         const opponentUid = typeof saved.opponentUid === 'string' && ID_PATTERN.test(saved.opponentUid)
             ? saved.opponentUid
             : null;
-        const [latestProfileSnapshot, privateProfileSnapshot] = opponentUid
-            ? await Promise.all([
-                database.ref(`publicProfiles/${opponentUid}`).get(),
-                database.ref(`users/${opponentUid}`).get()
-            ])
-            : [null, null];
-        const latestProfile = latestProfileSnapshot?.val() || null;
-        const privateProfile = privateProfileSnapshot?.val() || null;
+        const latestProfile = opponentUid ? publicProfiles[opponentUid] || null : null;
+        const privateProfile = opponentUid ? privateProfiles.get(opponentUid) : null;
         const nickname = String(latestProfile?.nickname || saved.nickname || '').trim().slice(0, 24);
         const aliases = [...new Set([
             ...(Array.isArray(saved.aliases) ? saved.aliases : []),
@@ -167,7 +186,7 @@ async function loadLeaderboard(uid) {
             gamesPlayed: safeCount(latestProfile?.gamesPlayed ?? saved.matches),
             isMe: false
         };
-    }));
+    });
     const registeredAliasOwners = new Map();
     for (const opponent of loadedOpponents.filter(Boolean).filter(row => row.opponentUid)) {
         for (const alias of [opponent.nickname, ...opponent.aliases]) {

@@ -307,14 +307,31 @@ export async function fetchAccountLeaderboard() {
     let importedSignature = '';
     try { importedSignature = localStorage.getItem(marker) || ''; } catch { }
     if (importedSignature !== importSignature) {
-        const importResponse = await fetch('/api/leaderboard', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ action: 'import_legacy', players })
-        });
-        const importResult = await importResponse.json().catch(() => ({}));
-        if (!importResponse.ok) throw new Error(importResult.error || 'تعذر نقل قائمة اللاعبين القديمة');
-        try { localStorage.setItem(marker, importSignature); } catch { }
+        const retryKey = `${marker}:retryAfter`;
+        let retryAfter = 0;
+        try { retryAfter = Number(localStorage.getItem(retryKey)) || 0; } catch { }
+        if (!players.length) {
+            try { localStorage.setItem(marker, importSignature); } catch { }
+        } else if (Date.now() >= retryAfter) {
+            try {
+                const importResponse = await fetch('/api/leaderboard', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ action: 'import_legacy', players })
+                });
+                const importResult = await importResponse.json().catch(() => ({}));
+                if (!importResponse.ok) throw new Error(importResult.error || 'تعذر نقل قائمة اللاعبين القديمة');
+                try {
+                    localStorage.setItem(marker, importSignature);
+                    localStorage.removeItem(retryKey);
+                } catch { }
+            } catch (error) {
+                // Migration should never prevent the account leaderboard from loading.
+                // Keep it retryable, but avoid repeating a failed migration every refresh.
+                try { localStorage.setItem(retryKey, String(Date.now() + 5 * 60 * 1000)); } catch { }
+                console.warn('[leaderboard] legacy player import will retry later', error?.message || 'request failed');
+            }
+        }
     }
     const response = await fetch('/api/leaderboard', { headers: { Authorization: `Bearer ${token}` } });
     const result = await response.json().catch(() => ({}));
