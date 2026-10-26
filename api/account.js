@@ -30,6 +30,7 @@ function toAccountProfile(profile) {
         playerId: profile.uid,
         username: profile.username,
         nickname: profile.nickname,
+        nicknameAliases: Array.isArray(profile.nicknameAliases) ? profile.nicknameAliases.slice(-20) : [],
         avatar: profile.avatar,
         xp: profile.xp || 0,
         wins: profile.wins || 0,
@@ -118,8 +119,16 @@ async function readRestorableAccountProfile(database, uid, incoming) {
     const publicProfile = publicSnapshot.val() || {};
     const history = Array.isArray(historySnapshot.val()) ? historySnapshot.val() : [];
     const streak = streakSnapshot.val() || {};
+    const restoredProfile = sanitizeProfile({
+        ...publicProfile,
+        nicknameAliases: [
+            ...(Array.isArray(publicProfile.nicknameAliases) ? publicProfile.nicknameAliases : []),
+            ...(Array.isArray(incoming.nicknameAliases) ? incoming.nicknameAliases : []),
+            publicProfile.nickname
+        ]
+    }, username, uid);
     const profile = {
-        ...sanitizeProfile(publicProfile, username, uid),
+        ...restoredProfile,
         createdAt: Math.max(0, Number(publicProfile.createdAt) || Date.now()),
         lastSeenAt: Math.max(0, Number(publicProfile.lastSeenAt) || 0),
         usernameKey,
@@ -266,14 +275,38 @@ async function syncAccount(req, body) {
     const database = getAdminDatabase();
     const userRef = database.ref(`users/${identity.uid}`);
     const incoming = body.profile && typeof body.profile === 'object' ? body.profile : {};
-    const recovery = await readRestorableAccountProfile(database, identity.uid, incoming);
+    let registrationNickname = '';
+    try {
+        registrationNickname = String((await getAdminAuth().getUser(identity.uid)).displayName || '').trim();
+    } catch {
+        // The profile update remains available if the Auth display name cannot be read.
+    }
+    const incomingProfile = {
+        ...incoming,
+        nicknameAliases: [
+            ...(Array.isArray(incoming.nicknameAliases) ? incoming.nicknameAliases : []),
+            registrationNickname
+        ]
+    };
+    const recovery = await readRestorableAccountProfile(database, identity.uid, incomingProfile);
     const updateProfile = current => {
         const source = current || recovery.profile;
         if (!source) return;
-        const safeIncoming = sanitizeProfile(incoming, source.username, identity.uid);
+        const safeIncoming = sanitizeProfile(incomingProfile, source.username, identity.uid);
+        const nextNickname = normalizeNickname(incomingProfile.nickname, source.username);
+        const previousNickname = normalizeNickname(source.nickname, source.username);
+        const nicknameAliases = sanitizeProfile({
+            nickname: nextNickname,
+            nicknameAliases: [
+                ...(Array.isArray(source.nicknameAliases) ? source.nicknameAliases : []),
+                ...(safeIncoming.nicknameAliases || []),
+                previousNickname
+            ]
+        }, source.username, identity.uid).nicknameAliases;
         return {
             ...source,
-            nickname: normalizeNickname(incoming.nickname, source.username),
+            nickname: nextNickname,
+            nicknameAliases,
             avatar: safeIncoming.avatar,
             lastSeenAt: Math.max(Date.now(), (Number(source.lastSeenAt) || 0) + 1)
         };

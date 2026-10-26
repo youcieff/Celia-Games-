@@ -15,51 +15,70 @@ function isAIProfile(profile, nickname) {
   return profile?.isAI || nickname === 'الذكاء الاصطناعي' || nickname === 'AI';
 }
 
-function findExistingPlayerKey(dict, profile, nickname) {
+function findExistingPlayerKeys(dict, profile, nickname) {
   const playerId = getPlayerId(profile);
   const entries = Object.entries(dict);
-  if (playerId) {
-    const identityMatch = entries.find(([, player]) => getPlayerId(player) === playerId);
-    if (identityMatch) return identityMatch[0];
+  const knownAliases = new Set((profile.nicknameAliases || []).map(cleanName));
+  const identityMatches = entries.filter(([, player]) => playerId && getPlayerId(player) === playerId);
+  const linkedMatches = entries.filter(([, player]) => {
+    const id = getPlayerId(player);
+    const sameName = cleanName(player.nickname) === cleanName(nickname);
+    const aliasMatch = knownAliases.has(cleanName(player.nickname))
+      || (player.aliases || []).some(alias => knownAliases.has(cleanName(alias)));
+    return (sameName && (!id || id === playerId)) || aliasMatch;
+  });
+
+  if (identityMatches.length) {
+    const matches = new Set(identityMatches.map(([key]) => key));
+    const legacyMatches = linkedMatches.filter(([, player]) => !getPlayerId(player));
+    if (legacyMatches.length === 1) matches.add(legacyMatches[0][0]);
+    // A previous device may have recorded the same account under its guest ID.
+    // Migrate that record only when the saved name history points to exactly
+    // one other identity, so shared nicknames cannot collapse different users.
+    const otherIdentities = linkedMatches.filter(([, player]) => {
+      const id = getPlayerId(player);
+      return id && id !== playerId;
+    });
+    if (otherIdentities.length === 1) matches.add(otherIdentities[0][0]);
+    return [...matches];
   }
 
-  const exactNameMatch = entries.find(([, player]) => cleanName(player.nickname) === cleanName(nickname)
-    && (!getPlayerId(player) || getPlayerId(player) === playerId));
-  if (exactNameMatch) return exactNameMatch[0];
-
-  const knownAliases = new Set((profile.nicknameAliases || []).map(cleanName));
-  const previousNameMatch = entries.find(([, player]) =>
-    knownAliases.has(cleanName(player.nickname))
-    || (player.aliases || []).some(alias => knownAliases.has(cleanName(alias)))
-  );
-  if (previousNameMatch) return previousNameMatch[0];
+  // Without a stable identity match, only adopt an unambiguous name-history
+  // record. A popular old nickname must never merge several real players.
+  if (linkedMatches.length === 1) return [linkedMatches[0][0]];
+  const legacyMatches = linkedMatches.filter(([, player]) => !getPlayerId(player));
+  if (legacyMatches.length === 1) return [legacyMatches[0][0]];
 
   // Older entries were keyed only by nickname. If exactly one legacy player
   // uses this avatar, attach the new stable ID to that existing record.
-  if (playerId && profile.avatar) {
+  if (linkedMatches.length === 0 && playerId && profile.avatar) {
     const sameAvatarLegacy = entries.filter(([, player]) => !getPlayerId(player) && player.avatar === profile.avatar);
-    if (sameAvatarLegacy.length === 1) return sameAvatarLegacy[0][0];
+    if (sameAvatarLegacy.length === 1) return [sameAvatarLegacy[0][0]];
   }
-  return null;
+  return [];
 }
 
-function saveIdentifiedPlayer(dict, oldKey, profile, nickname) {
+function saveIdentifiedPlayer(dict, oldKeys, profile, nickname) {
   const key = getIdentityKey(profile, nickname);
-  const existing = oldKey ? dict[oldKey] : null;
-  const aliases = new Set(existing?.aliases || []);
-  if (existing?.nickname && cleanName(existing.nickname) !== cleanName(nickname)) aliases.add(existing.nickname);
+  const existingPlayers = oldKeys.map(oldKey => dict[oldKey]).filter(Boolean);
+  const aliases = new Set(existingPlayers.flatMap(player => [player.nickname, ...(player.aliases || [])]).filter(Boolean));
   (profile.nicknameAliases || []).forEach(alias => aliases.add(alias));
+  const wins = existingPlayers.reduce((sum, player) => sum + (Number(player.wins) || 0), 0);
+  const xp = existingPlayers.reduce((sum, player) => sum + (Number(player.xp) || 0), 0);
+  const lastPlayed = Math.max(0, ...existingPlayers.map(player => Number(player.lastPlayed) || 0));
   const player = {
-    ...existing,
     id: key,
-    playerId: getPlayerId(profile) || existing?.playerId || null,
+    playerId: getPlayerId(profile) || existingPlayers.find(existing => existing.playerId)?.playerId || null,
     nickname,
-    avatar: profile.avatar || existing?.avatar || 'cool',
-    aliases: [...aliases].filter(alias => cleanName(alias) !== cleanName(nickname)).slice(-8),
-    wins: Number(existing?.wins) || 0,
-    xp: Number(existing?.xp) || 0
+    avatar: profile.avatar || existingPlayers[0]?.avatar || 'cool',
+    aliases: [...aliases].filter(alias => cleanName(alias) !== cleanName(nickname)).slice(-20),
+    wins,
+    xp,
+    ...(lastPlayed ? { lastPlayed } : {})
   };
-  if (oldKey && oldKey !== key) delete dict[oldKey];
+  oldKeys.forEach(oldKey => {
+    if (oldKey !== key) delete dict[oldKey];
+  });
   dict[key] = player;
   return player;
 }
@@ -79,9 +98,9 @@ export function identifyRealPlayer(profile) {
 
   try {
     const dict = readKnownPlayers();
-    const oldKey = findExistingPlayerKey(dict, profile, nickname);
-    if (!oldKey) return;
-    saveIdentifiedPlayer(dict, oldKey, profile, nickname);
+    const oldKeys = findExistingPlayerKeys(dict, profile, nickname);
+    if (!oldKeys.length) return;
+    saveIdentifiedPlayer(dict, oldKeys, profile, nickname);
     localStorage.setItem(KNOWN_PLAYERS_KEY, JSON.stringify(dict));
   } catch (e) {
     console.error('Failed to identify real player profile', e);
@@ -95,9 +114,9 @@ export function recordRealPlayer(oppProfile, oppScore = 0, myScore = 0) {
 
   try {
     const dict = readKnownPlayers();
-    const oldKey = findExistingPlayerKey(dict, oppProfile, nick);
+    const oldKeys = findExistingPlayerKeys(dict, oppProfile, nick);
     const isOpponentWin = oppScore > myScore;
-    const existing = saveIdentifiedPlayer(dict, oldKey, oppProfile, nick);
+    const existing = saveIdentifiedPlayer(dict, oldKeys, oppProfile, nick);
     if (isOpponentWin) existing.wins += 1;
     existing.xp += isOpponentWin ? 30 : 10;
     existing.lastPlayed = Date.now();

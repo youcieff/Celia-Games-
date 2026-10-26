@@ -70,12 +70,23 @@ export function sanitizeProfile(input = {}, username, uid) {
     const asCount = value => Math.max(0, Math.min(1_000_000, Math.floor(Number(value) || 0)));
     const allowedAvatars = new Set(['cool', 'lion', 'queen', 'panda', 'cherry', 'rose', 'robot', 'alien', 'rocket', 'star', 'tiger', 'fire']);
     const avatar = String(input.avatar || 'cool');
+    const nickname = normalizeNickname(input.nickname, username);
+    const nicknameAliases = [];
+    const seenAliases = new Set([nickname.normalize('NFKC').toLocaleLowerCase('ar')]);
+    for (const value of Array.isArray(input.nicknameAliases) ? input.nicknameAliases.slice(-20) : []) {
+        const alias = String(value || '').trim().slice(0, 24);
+        const key = alias.normalize('NFKC').toLocaleLowerCase('ar');
+        if (!alias || seenAliases.has(key)) continue;
+        seenAliases.add(key);
+        nicknameAliases.push(alias);
+    }
 
     return {
         uid,
         playerId: uid,
         username,
-        nickname: normalizeNickname(input.nickname, username),
+        nickname,
+        nicknameAliases,
         avatar: allowedAvatars.has(avatar) ? avatar : 'cool',
         xp: asCount(input.xp),
         wins: asCount(input.wins),

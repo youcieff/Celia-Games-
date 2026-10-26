@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { recordMatch } from '../lib/statsEngine';
 import { ensureProfileIdentity } from '../lib/profileIdentity';
 import { recordAccountMatch, syncAccountSnapshot } from '../lib/accountClient';
+import { identifyRealPlayer } from '../lib/leaderboardEngine';
 
 const STORAGE_KEY = 'celia_games_profile';
 
@@ -37,6 +38,7 @@ export default function useProfile(defaultMatchDetails = {}) {
 
     const saveProfile = (nextProfile, { sync = true } = {}) => {
         const normalized = ensureProfileIdentity(nextProfile);
+        identifyRealPlayer(normalized);
         profileRef.current = normalized;
         setProfile(normalized);
         window.dispatchEvent(new CustomEvent('celia-local-profile-updated', { detail: normalized }));
@@ -55,10 +57,12 @@ export default function useProfile(defaultMatchDetails = {}) {
             if (stored) {
                 const savedProfile = { ...DEFAULT_PROFILE, ...JSON.parse(stored) };
                 const normalized = ensureProfileIdentity(savedProfile);
+                identifyRealPlayer(normalized);
                 profileRef.current = normalized;
                 setProfile(normalized);
             } else {
                 const normalized = ensureProfileIdentity(DEFAULT_PROFILE);
+                identifyRealPlayer(normalized);
                 profileRef.current = normalized;
                 setProfile(normalized);
             }
@@ -67,6 +71,7 @@ export default function useProfile(defaultMatchDetails = {}) {
         }
         const handleLocalProfile = event => {
             if (!event.detail) return;
+            identifyRealPlayer(event.detail);
             profileRef.current = event.detail;
             setProfile(event.detail);
         };
@@ -77,6 +82,7 @@ export default function useProfile(defaultMatchDetails = {}) {
             }
             if (!nextProfile) return;
             const normalized = ensureProfileIdentity({ ...DEFAULT_PROFILE, ...nextProfile });
+            identifyRealPlayer(normalized);
             profileRef.current = normalized;
             setProfile(normalized);
         };
@@ -95,7 +101,7 @@ export default function useProfile(defaultMatchDetails = {}) {
             nextProfile.nicknameAliases = [...new Set([
                 ...(previous.nicknameAliases || []),
                 previous.nickname?.trim()
-            ].filter(Boolean))].slice(-8);
+            ].filter(Boolean))].slice(-20);
         }
         saveProfile(nextProfile);
     };
