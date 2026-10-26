@@ -57,6 +57,14 @@ function toPublicProfile(profile) {
     };
 }
 
+async function getRegistrationNickname(uid) {
+    try {
+        return String((await getAdminAuth().getUser(uid)).displayName || '').trim().slice(0, 24);
+    } catch {
+        return '';
+    }
+}
+
 async function logMissingAccountProfile(database, uid, username, action, diagnostics = {}) {
     let usernameIndexFound = false;
     let usernameIndexMatchesUid = null;
@@ -275,12 +283,7 @@ async function syncAccount(req, body) {
     const database = getAdminDatabase();
     const userRef = database.ref(`users/${identity.uid}`);
     const incoming = body.profile && typeof body.profile === 'object' ? body.profile : {};
-    let registrationNickname = '';
-    try {
-        registrationNickname = String((await getAdminAuth().getUser(identity.uid)).displayName || '').trim();
-    } catch {
-        // The profile update remains available if the Auth display name cannot be read.
-    }
+    const registrationNickname = await getRegistrationNickname(identity.uid);
     const incomingProfile = {
         ...incoming,
         nicknameAliases: [
@@ -411,12 +414,25 @@ export default async function handler(req, res) {
                 database.ref(`winStreaks/${identity.uid}`).get()
             ]);
             if (!profile.exists()) return sendJson(res, 404, { error: 'الحساب غير موجود' });
-            const lastSeenAt = Math.max(Date.now(), (Number(profile.val().lastSeenAt) || 0) + 1);
-            await database.ref().update({
+            const storedProfile = profile.val();
+            const registrationNickname = await getRegistrationNickname(identity.uid);
+            const nicknameAliases = sanitizeProfile({
+                ...storedProfile,
+                nicknameAliases: [
+                    ...(Array.isArray(storedProfile.nicknameAliases) ? storedProfile.nicknameAliases : []),
+                    registrationNickname
+                ]
+            }, storedProfile.username, identity.uid).nicknameAliases;
+            const lastSeenAt = Math.max(Date.now(), (Number(storedProfile.lastSeenAt) || 0) + 1);
+            const updates = {
                 [`users/${identity.uid}/lastSeenAt`]: lastSeenAt,
                 [`publicProfiles/${identity.uid}/lastSeenAt`]: lastSeenAt
-            });
-            const currentProfile = { ...profile.val(), lastSeenAt };
+            };
+            if (JSON.stringify(nicknameAliases) !== JSON.stringify(storedProfile.nicknameAliases || [])) {
+                updates[`users/${identity.uid}/nicknameAliases`] = nicknameAliases.length ? nicknameAliases : null;
+            }
+            await database.ref().update(updates);
+            const currentProfile = { ...storedProfile, nicknameAliases, lastSeenAt };
             return sendJson(res, 200, {
                 profile: toAccountProfile(currentProfile),
                 history: history.val() || [],
