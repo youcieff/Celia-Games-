@@ -1,6 +1,10 @@
+import { createHash } from 'node:crypto';
 import {
     getAdminDatabase,
+    normalizeUsername,
+    sanitizeProfile,
     sendJson,
+    usernameDatabaseKey,
     verifyBearerToken
 } from '../server/firebaseAdmin.js';
 
@@ -8,6 +12,52 @@ const ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 const safeCount = value => Math.max(0, Math.min(1_000_000, Math.floor(Number(value) || 0)));
 const normalizeName = value => String(value || '').trim().normalize('NFKC').toLocaleLowerCase('ar');
 const storageKey = id => `p_${Buffer.from(id, 'utf8').toString('base64url')}`;
+
+async function ensureAccountProfile(uid, database) {
+    const userRef = database.ref(`users/${uid}`);
+    const currentSnapshot = await userRef.get();
+    if (currentSnapshot.exists()) return currentSnapshot.val();
+
+    const [publicSnapshot, secretSnapshot, historySnapshot, streakSnapshot] = await Promise.all([
+        database.ref(`publicProfiles/${uid}`).get(),
+        database.ref(`accountSecrets/${uid}`).get(),
+        database.ref(`matchHistory/${uid}`).get(),
+        database.ref(`winStreaks/${uid}`).get()
+    ]);
+    const publicProfile = publicSnapshot.val();
+    if (!publicProfile?.username || !secretSnapshot.exists()) return null;
+
+    let username;
+    try {
+        username = normalizeUsername(publicProfile.username);
+    } catch {
+        return null;
+    }
+
+    const usernameKey = usernameDatabaseKey(username);
+    const usernameIndex = await database.ref(`usernameIndex/${usernameKey}`).get();
+    if (usernameIndex.val() !== uid) return null;
+
+    const history = Array.isArray(historySnapshot.val()) ? historySnapshot.val() : [];
+    const streak = streakSnapshot.val() || {};
+    const restoredProfile = {
+        ...sanitizeProfile(publicProfile, username, uid),
+        createdAt: Math.max(0, Number(publicProfile.createdAt) || Date.now()),
+        lastSeenAt: Math.max(0, Number(publicProfile.lastSeenAt) || 0),
+        usernameKey,
+        recentMatchIds: history.map(match => match?.id).filter(id => typeof id === 'string').slice(-500),
+        currentStreak: Math.max(0, Number(streak.currentStreak) || 0),
+        maxStreak: Math.max(0, Number(streak.maxStreak) || 0)
+    };
+
+    const transaction = await userRef.transaction(current => current || restoredProfile, undefined, false);
+    const profile = transaction.snapshot.val();
+    if (!profile) return null;
+    console.warn('[leaderboard-api] restored missing account profile', {
+        uidHash: createHash('sha256').update(uid).digest('hex').slice(0, 12)
+    });
+    return profile;
+}
 
 function cleanOpponent(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -31,7 +81,7 @@ function cleanOpponent(value) {
 
 async function importLegacyOpponents(uid, body) {
     const database = getAdminDatabase();
-    const ownProfile = (await database.ref(`users/${uid}`).get()).val();
+    const ownProfile = await ensureAccountProfile(uid, database);
     if (!ownProfile) {
         const error = new Error('الحساب غير موجود');
         error.status = 404;
@@ -73,16 +123,15 @@ async function importLegacyOpponents(uid, body) {
 
 async function loadLeaderboard(uid) {
     const database = getAdminDatabase();
-    const [profileSnapshot, opponentsSnapshot] = await Promise.all([
-        database.ref(`users/${uid}`).get(),
+    const [profile, opponentsSnapshot] = await Promise.all([
+        ensureAccountProfile(uid, database),
         database.ref(`playedAgainst/${uid}`).orderByChild('lastPlayed').limitToLast(100).get()
     ]);
-    if (!profileSnapshot.exists()) {
+    if (!profile) {
         const error = new Error('الحساب غير موجود');
         error.status = 404;
         throw error;
     }
-    const profile = profileSnapshot.val();
     const opponentEntries = Object.entries(opponentsSnapshot.val() || {})
         .sort((left, right) => (Number(right[1]?.lastPlayed) || 0) - (Number(left[1]?.lastPlayed) || 0))
         .slice(0, 100);
@@ -159,6 +208,12 @@ export default async function handler(req, res) {
         return sendJson(res, 400, { error: 'طلب غير صالح' });
     } catch (error) {
         const status = Number(error.status) || (error.message?.includes('FIREBASE_SERVICE_ACCOUNT_JSON') ? 503 : 500);
+        console.error('[leaderboard-api] request failed', {
+            method: req.method,
+            status,
+            code: String(error.code || '').slice(0, 80),
+            name: String(error.name || 'Error').slice(0, 80)
+        });
         return sendJson(res, status, { error: status >= 500 ? 'تعذر تحميل المتصدرين الآن' : error.message });
     }
 }
