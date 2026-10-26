@@ -386,6 +386,34 @@ async function recordAccountMatch(req, body) {
         throw error;
     }
 
+    // Store each real opponent beneath this account so its leaderboard follows
+    // the player between devices. Keep a match ID on the relationship itself:
+    // if a request is retried after the account transaction committed, the
+    // encounter can still be safely completed without counting it twice.
+    if (!match.isAI && match.oppId && /^[A-Za-z0-9_-]{1,128}$/.test(match.oppId) && match.oppId !== identity.uid) {
+        const opponentKey = `p_${Buffer.from(match.oppId, 'utf8').toString('base64url')}`;
+        const opponentRef = database.ref(`playedAgainst/${identity.uid}/${opponentKey}`);
+        await opponentRef.transaction(current => {
+            const saved = current && typeof current === 'object' ? current : {};
+            const recentIds = Array.isArray(saved.recentMatchIds) ? saved.recentMatchIds : [];
+            if (recentIds.includes(match.id)) return saved;
+            return {
+                ...saved,
+                opponentId: match.oppId,
+                ...(match.oppUid && match.oppUid !== identity.uid ? { opponentUid: match.oppUid } : {}),
+                nickname: match.oppName.slice(0, 24),
+                avatar: match.oppAvatar.slice(0, 40),
+                aliases: [...new Set([...(Array.isArray(saved.aliases) ? saved.aliases : []), ...(match.oppAliases || [])])]
+                    .filter(name => name.toLocaleLowerCase('ar') !== match.oppName.toLocaleLowerCase('ar')).slice(-20),
+                matches: Math.min(1_000_000, (Number(saved.matches) || 0) + 1),
+                wins: Math.min(1_000_000, (Number(saved.wins) || 0) + (outcome === 'loss' ? 1 : 0)),
+                xp: Math.min(1_000_000, (Number(saved.xp) || 0) + (outcome === 'loss' ? 30 : 10)),
+                lastPlayed: match.timestamp,
+                recentMatchIds: [...recentIds, match.id].slice(-500)
+            };
+        }, undefined, false);
+    }
+
     const historyRef = database.ref(`matchHistory/${identity.uid}`);
     let history = [];
     await historyRef.transaction(current => {

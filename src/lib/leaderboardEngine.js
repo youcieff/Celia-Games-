@@ -91,6 +91,76 @@ function readKnownPlayers() {
   }
 }
 
+// Used once per signed-in account to migrate the opponents already known on
+// this device into that account's cloud leaderboard.
+export function getKnownPlayersForAccountImport() {
+  const players = new Map();
+  const keyFor = player => getPlayerId(player)
+    ? `profile:${getPlayerId(player)}`
+    : `name:${cleanName(player.nickname)}`;
+  const merge = (incoming, fromHistory = false) => {
+    const nickname = String(incoming.nickname || '').trim().slice(0, 24);
+    if (!nickname) return;
+    let key = keyFor({ ...incoming, nickname });
+    if (fromHistory && !getPlayerId(incoming)) {
+      const matches = [...players.entries()].filter(([, player]) =>
+        [player.nickname, ...(player.aliases || [])].some(alias => cleanName(alias) === cleanName(nickname)));
+      if (matches.length === 1) key = matches[0][0];
+    }
+    const previous = players.get(key) || {};
+    const aliases = new Set([...(previous.aliases || []), ...(incoming.aliases || [])]);
+    if (previous.nickname && cleanName(previous.nickname) !== cleanName(nickname)) aliases.add(previous.nickname);
+    if (cleanName(previous.nickname) !== cleanName(nickname)) aliases.delete(nickname);
+    players.set(key, {
+      playerId: getPlayerId(incoming) || previous.playerId || null,
+      nickname: Number(incoming.lastPlayed) >= Number(previous.lastPlayed) ? nickname : (previous.nickname || nickname),
+      aliases: [...aliases].filter(Boolean).slice(-20),
+      avatar: incoming.avatar || previous.avatar || 'cool',
+      wins: Math.max(Number(previous.wins) || 0, Number(incoming.wins) || 0),
+      xp: Math.max(Number(previous.xp) || 0, Number(incoming.xp) || 0),
+      matches: Math.max(Number(previous.matches) || 0, Number(incoming.matches) || 0),
+      lastPlayed: Math.max(Number(previous.lastPlayed) || 0, Number(incoming.lastPlayed) || 0)
+    });
+  };
+
+  Object.values(readKnownPlayers()).forEach(player => merge(player));
+  try {
+    const history = JSON.parse(localStorage.getItem('celia_match_history') || '[]');
+    const recent = new Map();
+    for (const match of Array.isArray(history) ? history : []) {
+      const nickname = String(match?.oppName || '').trim();
+      if (match?.isAI || !nickname || /^(خصم|خصم مجهول|لاعب)$/u.test(nickname)) continue;
+      const player = {
+        playerId: typeof match.oppId === 'string' ? match.oppId : null,
+        nickname,
+        avatar: match.oppAvatar || 'cool',
+        wins: match.outcome === 'loss' ? 1 : 0,
+        xp: match.outcome === 'loss' ? 30 : 10,
+        matches: 1,
+        lastPlayed: Number(match.timestamp) || 0
+      };
+      const key = keyFor(player);
+      const totals = recent.get(key) || { ...player, wins: 0, xp: 0, matches: 0 };
+      totals.wins += player.wins;
+      totals.xp += player.xp;
+      totals.matches += 1;
+      totals.lastPlayed = Math.max(totals.lastPlayed, player.lastPlayed);
+      recent.set(key, totals);
+    }
+    recent.forEach(player => merge(player, true));
+  } catch { }
+
+  return [...players.values()].sort((a, b) => b.lastPlayed - a.lastPlayed).slice(0, 100).map(player => ({
+    ...player,
+    nickname: player.nickname.slice(0, 24),
+    avatar: String(player.avatar || 'cool').slice(0, 40),
+    wins: Math.max(0, Math.floor(Number(player.wins) || 0)),
+    xp: Math.max(0, Math.floor(Number(player.xp) || 0)),
+    matches: Math.max(0, Math.floor(Number(player.matches) || 0)),
+    lastPlayed: Math.max(0, Math.floor(Number(player.lastPlayed) || 0))
+  }));
+}
+
 export function identifyRealPlayer(profile) {
   if (!profile?.nickname) return;
   const nickname = profile.nickname.trim();

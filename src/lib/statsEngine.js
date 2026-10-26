@@ -60,7 +60,7 @@ export function getWinStreakStats() {
   }
 }
 
-export function recordMatch({ gameId, gameTitle, oppName = 'خصم', oppAvatar = 'cool', isWin, outcome, myScore = 0, oppScore = 0, isAI = false, xpEarned = 0 }) {
+export function recordMatch({ gameId, gameTitle, oppName = 'خصم', oppAvatar = 'cool', oppId = null, oppUid = null, oppAliases = [], isWin, outcome, myScore = 0, oppScore = 0, isAI = false, xpEarned = 0 }) {
   try {
     // 1. Update streak
     const streakStats = getWinStreakStats();
@@ -76,6 +76,9 @@ export function recordMatch({ gameId, gameTitle, oppName = 'خصم', oppAvatar =
       gameTitle,
       oppName: oppName || (isAI ? 'الذكاء الاصطناعي 🤖' : 'خصم مجهول'),
       oppAvatar,
+      ...(typeof oppId === 'string' && oppId ? { oppId: oppId.slice(0, 128) } : {}),
+      ...(typeof oppUid === 'string' && oppUid ? { oppUid: oppUid.slice(0, 128) } : {}),
+      ...(Array.isArray(oppAliases) ? { oppAliases: [...new Set(oppAliases.map(alias => String(alias || '').trim().slice(0, 24)).filter(Boolean))].slice(-20) } : {}),
       isWin,
       outcome: ['win', 'loss', 'draw'].includes(outcome) ? outcome : (isWin ? 'win' : 'loss'),
       myScore,

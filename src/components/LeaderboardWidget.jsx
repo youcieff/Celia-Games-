@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import useProfile from '../hooks/useProfile';
 import { getGlobalLeaderboard } from '../lib/leaderboardEngine';
+import { fetchAccountLeaderboard, subscribeToAccount } from '../lib/accountClient';
+import { auth } from '../lib/firebase';
 import { AvatarDisplay } from './icons/AvatarIcons';
 import { playSound, playHaptic } from '../lib/audioEngine';
 import Trophy from 'lucide-react/dist/esm/icons/trophy';
@@ -8,14 +10,61 @@ import X from 'lucide-react/dist/esm/icons/x';
 import Crown from 'lucide-react/dist/esm/icons/crown';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import Users from 'lucide-react/dist/esm/icons/users';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 
 export default function LeaderboardWidget() {
     const [profile] = useProfile();
     const [isOpen, setIsOpen] = useState(false);
+    const [cloudLeaderboard, setCloudLeaderboard] = useState(null);
+    const [cloudLoading, setCloudLoading] = useState(false);
+    const [cloudError, setCloudError] = useState('');
 
-    const leaderboard = getGlobalLeaderboard(profile);
+    const leaderboard = cloudLeaderboard ?? getGlobalLeaderboard(profile);
     const myEntry = leaderboard.find(p => p.isMe);
     const playerCount = leaderboard.length;
+
+    useEffect(() => {
+        let active = true;
+        let request = null;
+        let requestUid = null;
+        const refresh = user => {
+            if (!user) {
+                setCloudLeaderboard(null);
+                setCloudError('');
+                return;
+            }
+            if (request) {
+                if (requestUid !== user.uid) requestUid = user.uid;
+                return;
+            }
+            requestUid = user.uid;
+            setCloudLoading(true);
+            setCloudError('');
+            request = fetchAccountLeaderboard()
+                .then(rows => { if (active && auth.currentUser?.uid === user.uid) setCloudLeaderboard(rows); })
+                .catch(error => { if (active && auth.currentUser?.uid === user.uid) setCloudError(error?.message || 'تعذر تحديث المتصدرين'); })
+                .finally(() => {
+                    request = null;
+                    const nextUser = auth.currentUser;
+                    if (active && nextUser && nextUser.uid !== user.uid) refresh(nextUser);
+                    else if (active) setCloudLoading(false);
+                });
+        };
+        const unsubscribe = subscribeToAccount(refresh);
+        function refreshCurrent() { refresh(auth.currentUser); }
+        let interval;
+        if (isOpen) {
+            refreshCurrent();
+            interval = window.setInterval(refreshCurrent, 30_000);
+            window.addEventListener('focus', refreshCurrent);
+        }
+        return () => {
+            active = false;
+            unsubscribe();
+            if (interval) window.clearInterval(interval);
+            window.removeEventListener('focus', refreshCurrent);
+        };
+    }, [isOpen]);
 
     const handleOpen = () => {
         setIsOpen(true);
@@ -54,13 +103,18 @@ export default function LeaderboardWidget() {
                                     <p className="text-[10px] text-white/50 font-bold">ترتيب اللاعبين الحقيقيين فقط</p>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => setIsOpen(false)}
-                                className="w-8 h-8 rounded-full glass-card flex items-center justify-center text-white/70 hover:text-white"
-                            >
-                                <X size={16} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {cloudLoading && <RefreshCw size={14} className="animate-spin text-white/50" aria-label="جار التحديث" />}
+                                <button
+                                    onClick={() => setIsOpen(false)}
+                                    className="w-8 h-8 rounded-full glass-card flex items-center justify-center text-white/70 hover:text-white"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
                         </div>
+
+                        {cloudError && <p className="text-[10px] font-bold text-rose-300 text-center">تعذر الاتصال بالمتصدرين؛ المعروض من هذا الجهاز مؤقتًا.</p>}
 
                         {/* Leaderboard Cards */}
                         <div className="flex flex-col gap-2.5 my-1">

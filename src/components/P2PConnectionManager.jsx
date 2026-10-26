@@ -7,6 +7,7 @@ import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 import Check from 'lucide-react/dist/esm/icons/check';
 import createAIConn from '../ai/createAIConn';
 import { ensureProfileIdentity } from '../lib/profileIdentity';
+import { setActiveMatchOpponent } from '../lib/activeMatchOpponent';
 import { dismissGameInvite, loadSocialData, sendGameInvite } from '../lib/socialClient';
 import { subscribeFriendPresence } from '../lib/socialPresence';
 import { CircleCheck, Send, UserPlus, UsersRound, X } from 'lucide-react';
@@ -466,6 +467,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
             const persistedState = await conn.getState();
             stateToRestore = savedStateRef.current || persistedState;
         }
+        setActiveMatchOpponent(oppProfileRef.current);
         onGameStart(conn, isHostRef.current, oppProfileRef.current, stateToRestore);
         return true;
     };
@@ -584,6 +586,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                         void dismissGameInvite(pendingInvite.id).catch(error => console.warn('Could not dismiss the joined invite', error));
                     }
                 } catch { }
+                setActiveMatchOpponent(oppProfile);
                 onGameStart(connRef.current, isHostRef.current, oppProfile, stateToRestore);
             }, 600);
             return () => clearTimeout(timeout);
@@ -1045,7 +1048,9 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                         onClick={() => {
                             setIsConnecting(true);
                             setTimeout(() => {
-                                onGameStart(createAIConn(gameIdPrefix), true, { nickname: 'الذكاء الاصطناعي', avatar: 'robot', isAI: true });
+                                const aiProfile = { nickname: 'الذكاء الاصطناعي', avatar: 'robot', isAI: true };
+                                setActiveMatchOpponent(aiProfile);
+                                onGameStart(createAIConn(gameIdPrefix), true, aiProfile);
                             }, 600);
                         }}
                         disabled={isConnecting}

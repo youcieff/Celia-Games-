@@ -4,6 +4,7 @@ import { recordMatch } from '../lib/statsEngine';
 import { ensureProfileIdentity } from '../lib/profileIdentity';
 import { recordAccountMatch, syncAccountSnapshot } from '../lib/accountClient';
 import { identifyRealPlayer } from '../lib/leaderboardEngine';
+import { consumeActiveMatchOpponent } from '../lib/activeMatchOpponent';
 
 const STORAGE_KEY = 'celia_games_profile';
 
@@ -111,6 +112,15 @@ export default function useProfile(defaultMatchDetails = {}) {
         const isWin = outcome === 'win';
         const suppliedDetails = xpOrDetails && typeof xpOrDetails === 'object' ? xpOrDetails : {};
         const matchDetails = { ...defaultMatchDetails, ...suppliedDetails };
+        const activeOpponent = consumeActiveMatchOpponent();
+        if (activeOpponent) {
+            matchDetails.oppName = activeOpponent.nickname;
+            matchDetails.oppAvatar = activeOpponent.avatar || matchDetails.oppAvatar;
+            matchDetails.isAI = activeOpponent.isAI;
+            matchDetails.oppId = activeOpponent.uid || activeOpponent.playerId || activeOpponent.profileId || null;
+            matchDetails.oppUid = activeOpponent.uid || null;
+            matchDetails.oppAliases = activeOpponent.nicknameAliases || [];
+        }
         const detailXP = suppliedDetails.xpEarned ?? suppliedDetails.xp;
         const explicitXP = typeof xpOrDetails === 'number'
             ? xpOrDetails
