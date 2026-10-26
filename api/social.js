@@ -32,6 +32,7 @@ const GAME_TITLES = {
     'celia-taboo-together': 'الكلمة الممنوعة سوا'
 };
 const SOCIAL_RATE_WINDOW_MS = 60 * 60 * 1000;
+const PRESENCE_ACTIVITY_TTL_MS = 75_000;
 
 async function applyRateLimit(database, uid, action, maximum) {
     const now = Date.now();
@@ -154,14 +155,22 @@ async function sendGameInvite(database, uid, body) {
     if (!GAME_TITLES[roomPrefix]) throw fail(400, 'الغرفة غير صالحة');
     if (!/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4}$/.test(roomCode)) throw fail(400, 'كود الغرفة غير صالح');
 
-    const [friendRef, roomSnapshot, guestReadySnapshot, senderSnapshot] = await Promise.all([
+    const [friendRef, roomSnapshot, guestReadySnapshot, senderSnapshot, friendConnectionsSnapshot, friendActivitiesSnapshot] = await Promise.all([
         database.ref(`friends/${uid}/${friendUid}`).get(),
         database.ref(`rooms/${roomPrefix}-${roomCode}/status`).get(),
         database.ref(`rooms/${roomPrefix}-${roomCode}/guestReady`).get(),
-        database.ref(`publicProfiles/${uid}`).get()
+        database.ref(`publicProfiles/${uid}`).get(),
+        database.ref(`presence/${friendUid}/connections`).get(),
+        database.ref(`presence/${friendUid}/activities`).get()
     ]);
     if (!friendRef.val()) throw fail(403, 'تقدر تدعو أصدقاءك بس');
     if (roomSnapshot.val() !== 'waiting' || guestReadySnapshot.val() === true) throw fail(409, 'الغرفة مش متاحة دلوقتي');
+    const friendIsOnline = friendConnectionsSnapshot.exists();
+    const now = Date.now();
+    const friendIsPlaying = Object.values(friendActivitiesSnapshot.val() || {}).some(activity => (
+        activity?.status === 'playing' && now - Number(activity.updatedAt || 0) < PRESENCE_ACTIVITY_TTL_MS
+    ));
+    if (friendIsOnline && friendIsPlaying) throw fail(409, 'صديقك بيلعب دلوقتي، جرّب تعزمه بعد ما يخلص');
 
     const inviteRef = database.ref(`gameInvites/${friendUid}`).push();
     const invite = {
@@ -181,6 +190,34 @@ async function sendGameInvite(database, uid, body) {
     return { ok: true };
 }
 
+async function setPresenceActivity(database, uid, body) {
+    await applyRateLimit(database, uid, 'presenceActivity', 240);
+    const sessionId = String(body.sessionId || '');
+    const status = String(body.status || 'online');
+    if (!/^[A-Za-z0-9_-]{12,80}$/.test(sessionId)) throw fail(400, 'جلسة الحضور غير صالحة');
+    if (status !== 'playing' && status !== 'online') throw fail(400, 'حالة الحضور غير صالحة');
+
+    const activitiesRef = database.ref(`presence/${uid}/activities`);
+    const activitiesSnapshot = await activitiesRef.get();
+    const now = Date.now();
+    const updates = {};
+    for (const [previousSessionId, activity] of Object.entries(activitiesSnapshot.val() || {})) {
+        if ((status === 'online' && previousSessionId === sessionId)
+            || now - Number(activity?.updatedAt || 0) >= PRESENCE_ACTIVITY_TTL_MS) {
+            updates[`presence/${uid}/activities/${previousSessionId}`] = null;
+        }
+    }
+    if (status === 'online') {
+        if (Object.keys(updates).length) await database.ref().update(updates);
+        return { ok: true };
+    }
+
+    const gameId = String(body.gameId || '').slice(0, 48);
+    updates[`presence/${uid}/activities/${sessionId}`] = { status: 'playing', gameId, updatedAt: now };
+    await database.ref().update(updates);
+    return { ok: true };
+}
+
 export default async function handler(req, res) {
     try {
         const identity = await verifyBearerToken(req);
@@ -189,6 +226,7 @@ export default async function handler(req, res) {
         if (req.method !== 'POST') return sendJson(res, 405, { error: 'طريقة الطلب غير مدعومة' });
 
         const body = req.body && typeof req.body === 'object' ? req.body : {};
+        if (body.action === 'set_presence_activity') return sendJson(res, 200, await setPresenceActivity(database, identity.uid, body));
         if (body.action === 'send_friend_request') return sendJson(res, 201, await sendFriendRequest(database, identity.uid, body));
         if (body.action === 'accept_friend_request') return sendJson(res, 200, await acceptFriendRequest(database, identity.uid, String(body.fromUid || '')));
         if (body.action === 'reject_friend_request') {

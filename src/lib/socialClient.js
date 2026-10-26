@@ -77,6 +77,12 @@ export const acceptFriendRequest = fromUid => socialRequest({ action: 'accept_fr
 export const rejectFriendRequest = fromUid => socialRequest({ action: 'reject_friend_request', fromUid });
 export const removeFriend = friendUid => socialRequest({ action: 'remove_friend', friendUid });
 export const dismissGameInvite = inviteId => socialRequest({ action: 'dismiss_invite', inviteId });
+export const updatePresenceActivity = (status, gameId, sessionId) => socialRequest({
+    action: 'set_presence_activity',
+    status,
+    gameId,
+    sessionId
+});
 export const sendGameInvite = (friendUid, gameId, roomPrefix, roomCode) => socialRequest({
     action: 'send_game_invite',
     friendUid,

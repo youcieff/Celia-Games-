@@ -26,6 +26,11 @@ const genId = () => {
     return res;
 };
 
+function announceGameStarted(gameId) {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('celia-game-started', { detail: { gameId } }));
+}
+
 // Creates a virtual "connection" object that mimics PeerJS API using Firebase
 function createFirebaseConn(roomPath, isHost, roomCode, gameIdPrefix, clientId, ignoreHistory = false, inviteGameId = gameIdPrefix) {
     const listeners = { data: [], 'peer-disconnect': [], 'peer-reconnect': [], 'peer-online': [] };
@@ -420,8 +425,8 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
         const friendUids = inviteFriendUidKey ? inviteFriendUidKey.split('|') : [];
         setInvitePresence({});
         if (!friendUids.length) return undefined;
-        return subscribeFriendPresence(friendUids, (uid, online) => {
-            setInvitePresence(current => ({ ...current, [uid]: online }));
+        return subscribeFriendPresence(friendUids, (uid, activity) => {
+            setInvitePresence(current => ({ ...current, [uid]: activity }));
         });
     }, [inviteFriendUidKey]);
 
@@ -468,6 +473,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
             stateToRestore = savedStateRef.current || persistedState;
         }
         setActiveMatchOpponent(oppProfileRef.current);
+        announceGameStarted(gameIdPrefix);
         onGameStart(conn, isHostRef.current, oppProfileRef.current, stateToRestore);
         return true;
     };
@@ -587,6 +593,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                     }
                 } catch { }
                 setActiveMatchOpponent(oppProfile);
+                announceGameStarted(gameIdPrefix);
                 onGameStart(connRef.current, isHostRef.current, oppProfile, stateToRestore);
             }, 600);
             return () => clearTimeout(timeout);
@@ -740,8 +747,8 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
     // ── CONNECTED STATE ────────────────────────────────────────────────────────
     if (lobbyState === 'connected') {
         return (
-            <div className="flex flex-col items-center justify-center w-full max-w-sm mx-auto h-full px-4 mb-10">
-                <div className="lobby-connected-card">
+            <div className="p2p-lobby-scroll p2p-lobby-scroll--connected">
+                <div className="lobby-connected-card w-full max-w-sm mx-auto my-auto">
                     {/* Animated rings */}
                     <div className="lobby-rings">
                         <span /><span /><span />
@@ -810,20 +817,20 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
     }
 
     return (
-        <div className="flex flex-col items-center justify-start w-full max-w-md mx-auto gap-4 pt-2">
+        <div className="p2p-lobby-scroll flex flex-col items-center justify-start w-full max-w-md mx-auto gap-4 pt-2">
 
             {/* ── Rejoin previous room ── */}
             {rejoinCode && (
-                <div className="w-full glass-card rounded-2xl border border-amber-500/40 bg-amber-500/8 px-4 py-3 flex items-center gap-3 shadow-[0_0_20px_rgba(245,158,11,0.15)]">
-                    <span className="text-2xl shrink-0">⚡</span>
+                <div className="lobby-rejoin-notice w-full glass-card rounded-2xl px-4 py-3 flex items-center gap-3">
+                    <span className="text-2xl shrink-0 text-[var(--accent)]">⚡</span>
                     <div className="flex-1 min-w-0">
-                        <p className="text-xs font-black text-amber-300">لقيت غرفة قديمة!</p>
-                        <p className="text-[10px] opacity-60 font-bold">كود: <span className="font-mono text-amber-400">{rejoinCode}</span></p>
+                        <p className="text-xs font-black text-[var(--accent)]">لقيت غرفة قديمة!</p>
+                        <p className="text-[10px] opacity-60 font-bold">كود: <span className="font-mono text-[var(--accent)]">{rejoinCode}</span></p>
                     </div>
                     <button
                         onClick={() => handleJoinWithId(rejoinCode)}
                         disabled={isConnecting}
-                        className="shrink-0 px-3 py-2 rounded-xl bg-amber-500 text-slate-900 font-black text-xs hover:bg-amber-400 transition-all active:scale-95 disabled:opacity-50"
+                        className="lobby-rejoin-button shrink-0 px-3 py-2 rounded-xl font-black text-xs transition-all active:scale-95 disabled:opacity-50"
                     >
                         ارجع!
                     </button>
@@ -859,8 +866,8 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                             <p className="mt-0.5 truncate text-[10px] font-bold text-white/45">شارك الكود أو ابعت دعوة لصاحبك</p>
                         </div>
                     </div>
-                    <span className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[10px] font-black ${roomCreated ? 'border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-200' : 'border-amber-200/15 bg-amber-200/[0.06] text-amber-100/70'}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${roomCreated ? 'bg-emerald-300 shadow-[0_0_9px_rgba(110,231,183,.8)]' : 'animate-pulse bg-amber-200/60'}`} />
+                    <span className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[10px] font-black ${roomCreated ? 'lobby-status-ready' : 'lobby-status-pending'}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${roomCreated ? 'lobby-status-dot-ready' : 'lobby-status-dot-pending'}`} />
                         {roomCreated ? 'جاهزة' : 'بتتجهز'}
                     </span>
                 </div>
@@ -945,27 +952,31 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                                 {inviteFriends.map(friend => {
                                     const sent = inviteSentTo === friend.uid;
                                     const unavailable = Boolean(inviteSentTo) && !sent;
+                                    const presence = invitePresence[friend.uid];
+                                    const isPlaying = Boolean(presence?.playing);
+                                    const isOnline = Boolean(presence?.online);
+                                    const statusLabel = isPlaying ? 'بيلعب دلوقتي' : isOnline ? 'متصل الآن' : presence ? 'غير متصل' : 'جارٍ التحقق';
                                     return (
                                         <div key={friend.uid} className={`lobby-friend-row flex items-center gap-2.5 rounded-xl border px-2.5 py-2 transition ${sent ? 'lobby-friend-row--sent' : ''}`}>
                                             <span className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-sm font-black ${sent ? 'border-emerald-300/20 bg-emerald-300/10 text-emerald-200' : 'border-white/10 bg-white/[0.045] text-[var(--accent)]'}`}>
                                                 {(friend.nickname || friend.username || '؟').trim().slice(0, 1).toUpperCase()}
-                                                <span className={`absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#141018] ${invitePresence[friend.uid] ? 'bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,.7)]' : invitePresence[friend.uid] === false ? 'bg-white/25' : 'animate-pulse bg-amber-200/55'}`} />
+                                                <span className={`lobby-friend-status-dot absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 ${isPlaying ? 'lobby-friend-status-dot--playing' : isOnline ? 'lobby-friend-status-dot--online' : presence ? 'lobby-friend-status-dot--offline' : 'lobby-friend-status-dot--checking'}`} />
                                             </span>
                                             <span className="min-w-0 flex-1 text-right">
                                                 <span className="block truncate text-xs font-black text-white/90">{friend.nickname}</span>
                                                 <span className="mt-0.5 flex items-center gap-1 truncate text-[9px] font-bold text-white/40">
                                                     <span>{friend.username ? `@${friend.username}` : 'صديقك'}</span>
                                                     <span className="opacity-40">·</span>
-                                                    <span className={invitePresence[friend.uid] ? 'text-emerald-300' : 'text-white/35'}>{invitePresence[friend.uid] ? 'متصل الآن' : invitePresence[friend.uid] === false ? 'غير متصل' : 'جارٍ التحقق'}</span>
+                                                    <span className={isPlaying ? 'text-[var(--accent)]' : isOnline ? 'lobby-friend-online-label' : 'text-white/35'}>{statusLabel}</span>
                                                 </span>
                                             </span>
                                             <button
                                                 type="button"
                                                 onClick={() => void handleInviteFriend(friend)}
-                                                disabled={inviteLoading || unavailable || sent}
-                                                className={`flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 text-[10px] font-black transition disabled:cursor-default ${sent ? 'border border-emerald-300/20 bg-emerald-300/10 text-emerald-200' : unavailable ? 'border border-white/[0.06] bg-white/[0.025] text-white/30' : 'border border-[var(--accent)]/20 bg-[var(--accent)]/10 text-[var(--accent)] hover:border-[var(--accent)]/45 hover:bg-[var(--accent)]/20'}`}
+                                                disabled={inviteLoading || unavailable || sent || isPlaying}
+                                                className={`flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 text-[10px] font-black transition disabled:cursor-default ${sent ? 'border border-emerald-300/20 bg-emerald-300/10 text-emerald-200' : unavailable || isPlaying ? 'border border-white/[0.06] bg-white/[0.025] text-white/35' : 'border border-[var(--accent)]/20 bg-[var(--accent)]/10 text-[var(--accent)] hover:border-[var(--accent)]/45 hover:bg-[var(--accent)]/20'}`}
                                             >
-                                                {sent ? <><CircleCheck size={14} /> اتبعتت</> : unavailable ? 'مشغولة' : <><Send size={13} /> إرسال</>}
+                                                {sent ? <><CircleCheck size={14} /> اتبعتت</> : isPlaying ? 'بيلعب' : unavailable ? 'مشغولة' : <><Send size={13} /> إرسال</>}
                                             </button>
                                         </div>
                                     );
@@ -977,7 +988,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                                 <p className="mt-1 text-[10px] font-bold text-white/40">أضف أصحابك من ملفك الشخصي وهتقدر تعزمهم هنا</p>
                             </div>
                         )}
-                        {inviteMessage && <p role="status" className={`mt-3 rounded-xl px-3 py-2 text-center text-[10px] font-black ${inviteSentTo ? 'border border-emerald-300/15 bg-emerald-300/[0.07] text-emerald-200' : 'border border-amber-200/10 bg-amber-200/[0.05] text-amber-100'}`}>{inviteMessage}</p>}
+                        {inviteMessage && <p role="status" className={`mt-3 rounded-xl px-3 py-2 text-center text-[10px] font-black ${inviteSentTo ? 'border border-emerald-300/15 bg-emerald-300/[0.07] text-emerald-200' : 'lobby-invite-message-error'}`}>{inviteMessage}</p>}
                     </div>
                 )}
             </div>
@@ -1050,6 +1061,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                             setTimeout(() => {
                                 const aiProfile = { nickname: 'الذكاء الاصطناعي', avatar: 'robot', isAI: true };
                                 setActiveMatchOpponent(aiProfile);
+                                announceGameStarted(gameIdPrefix);
                                 onGameStart(createAIConn(gameIdPrefix), true, aiProfile);
                             }, 600);
                         }}

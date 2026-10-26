@@ -83,6 +83,23 @@ function App() {
     window.scrollTo(0, 0);
   }, [view]);
 
+  React.useEffect(() => {
+    if (view === 'hub' || view === 'admin') {
+      window.dispatchEvent(new Event('celia-game-ended'));
+    } else {
+      window.dispatchEvent(new CustomEvent('celia-game-started', { detail: { gameId: view } }));
+    }
+  }, [view]);
+
+  React.useEffect(() => {
+    const openAccount = () => {
+      setView('hub');
+      window.setTimeout(() => window.dispatchEvent(new Event('celia-open-profile')), 80);
+    };
+    window.addEventListener('celia-open-account', openAccount);
+    return () => window.removeEventListener('celia-open-account', openAccount);
+  }, []);
+
   return (
     <ThemeProvider>
       <div className="min-h-dvh w-full text-[var(--text-color)] font-arabic selection:bg-[var(--primary-color)]/40 relative">
@@ -115,7 +132,7 @@ function App() {
         {view === 'taboo-online' && <TabooGame setView={setView} mode="online" />}
         {view === 'taboo-together' && <TabooGame setView={setView} mode="together" />}
       </div>
-      <SocialNotifications />
+      <SocialNotifications isHub={view === 'hub'} />
     </ThemeProvider>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import useProfile, { getLevelInfo } from '../hooks/useProfile';
 import { playSound, playHaptic } from '../lib/audioEngine';
 import { AVATARS, AvatarDisplay } from './icons/AvatarIcons';
@@ -28,6 +28,12 @@ export default function ProfileWidget() {
         playSound('click');
         playHaptic(10);
     };
+
+    useEffect(() => {
+        const openFromNotification = () => handleOpen();
+        window.addEventListener('celia-open-profile', openFromNotification);
+        return () => window.removeEventListener('celia-open-profile', openFromNotification);
+    }, [profile.nickname]);
 
     const handleSave = () => {
         if (tempNick.trim()) {
