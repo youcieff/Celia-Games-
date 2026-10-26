@@ -60,6 +60,8 @@ export default function SocialNotifications() {
     const [open, setOpen] = useState(false);
     const [busy, setBusy] = useState({});
     const [error, setError] = useState('');
+    const [triggerHost, setTriggerHost] = useState(null);
+    const [panelPosition, setPanelPosition] = useState({ top: 12, left: 12 });
     const [permission, setPermission] = useState(() => (
         typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
     ));
@@ -68,6 +70,16 @@ export default function SocialNotifications() {
     const uidRef = useRef(null);
     const activityRef = useRef({ status: 'online', gameId: '' });
     const toastTimers = useRef(new Map());
+
+    useEffect(() => {
+        const updateTriggerHost = () => {
+            setTriggerHost(document.getElementById('social-notifications-anchor'));
+        };
+        updateTriggerHost();
+        const observer = new MutationObserver(updateTriggerHost);
+        observer.observe(document.body, { childList: true, subtree: true });
+        return () => observer.disconnect();
+    }, []);
 
     const removeToast = useCallback(id => {
         const timer = toastTimers.current.get(id);
@@ -198,7 +210,8 @@ export default function SocialNotifications() {
             if (event.key === 'Escape') setOpen(false);
         };
         const handleOutsideClick = event => {
-            if (!event.target.closest?.('.social-notifications-root')) setOpen(false);
+            if (!event.target.closest?.('.social-notifications-root')
+                && !event.target.closest?.('.social-notifications-toggle')) setOpen(false);
         };
         window.addEventListener('keydown', handleKeyDown);
         document.addEventListener('pointerdown', handleOutsideClick);
@@ -207,6 +220,28 @@ export default function SocialNotifications() {
             document.removeEventListener('pointerdown', handleOutsideClick);
         };
     }, [open]);
+
+    useEffect(() => {
+        if (!open) return undefined;
+        const updatePanelPosition = () => {
+            const trigger = document.querySelector('.social-notifications-toggle');
+            if (!trigger) {
+                setPanelPosition({ top: 12, left: 12 });
+                return;
+            }
+            const bounds = trigger.getBoundingClientRect();
+            const width = Math.min(380, window.innerWidth - 24);
+            const left = Math.max(12, Math.min(bounds.left, window.innerWidth - width - 12));
+            setPanelPosition({ top: bounds.bottom + 8, left });
+        };
+        updatePanelPosition();
+        window.addEventListener('resize', updatePanelPosition);
+        window.addEventListener('scroll', updatePanelPosition, true);
+        return () => {
+            window.removeEventListener('resize', updatePanelPosition);
+            window.removeEventListener('scroll', updatePanelPosition, true);
+        };
+    }, [open, triggerHost]);
 
     const runAction = async (key, action) => {
         setBusy(current => ({ ...current, [key]: true }));
@@ -297,29 +332,31 @@ export default function SocialNotifications() {
     };
 
     if (typeof document === 'undefined') return null;
-    return createPortal(
-        <div className="social-notifications-root" dir="rtl">
-            {toasts.length > 0 && (
-                <div className="social-notification-toasts" aria-live="polite" aria-relevant="additions">
-                    {toasts.map(toast => (
-                        <article className={`social-notification-toast social-notification-toast--${toast.type}`} key={toast.id}>
-                            <div className="social-notification-toast-icon">{toast.type === 'request' ? <UserRoundPlus size={18} /> : <Gamepad2 size={18} />}</div>
-                            <div className="social-notification-toast-content">
-                                <strong>{toast.title}</strong>
-                                <span>{toast.body}</span>
-                            </div>
-                            <button type="button" className="social-notification-toast-close" onClick={() => removeToast(toast.id)} aria-label="إخفاء الإشعار"><X size={15} /></button>
-                            <div className="social-notification-toast-actions">{renderActions(toast, true)}</div>
-                        </article>
-                    ))}
-                </div>
-            )}
-
-            <button type="button" onClick={toggleNotifications} aria-label={open ? 'إغلاق مركز التنبيهات' : `فتح مركز التنبيهات${total ? `، ${total} محفوظ` : ''}`} aria-expanded={open} className="social-notifications-toggle">
-                {open ? <X size={19} /> : total ? <BellRing size={19} /> : <Bell size={19} />}
-                {total > 0 && <span className="social-notifications-toggle-count">{total > 99 ? '99+' : total}</span>}
-            </button>
-
+    const triggerButton = triggerHost ? createPortal(
+        <button type="button" onClick={toggleNotifications} aria-label={open ? 'إغلاق مركز التنبيهات' : `فتح مركز التنبيهات${total ? `، ${total} محفوظ` : ''}`} aria-expanded={open} className="social-notifications-toggle">
+            {open ? <X size={18} /> : total ? <BellRing size={18} /> : <Bell size={18} />}
+            {total > 0 && <span className="social-notifications-toggle-count">{total > 99 ? '99+' : total}</span>}
+        </button>,
+        triggerHost
+    ) : null;
+    const toastLayer = toasts.length ? createPortal(
+        <div className="social-notification-toasts" aria-live="polite" aria-relevant="additions" dir="rtl">
+            {toasts.map(toast => (
+                <article className={`social-notification-toast social-notification-toast--${toast.type}`} key={toast.id}>
+                    <div className="social-notification-toast-icon">{toast.type === 'request' ? <UserRoundPlus size={18} /> : <Gamepad2 size={18} />}</div>
+                    <div className="social-notification-toast-content">
+                        <strong>{toast.title}</strong>
+                        <span>{toast.body}</span>
+                    </div>
+                    <button type="button" className="social-notification-toast-close" onClick={() => removeToast(toast.id)} aria-label="إخفاء الإشعار"><X size={15} /></button>
+                    <div className="social-notification-toast-actions">{renderActions(toast, true)}</div>
+                </article>
+            ))}
+        </div>,
+        document.body
+    ) : null;
+    const notificationPanel = open ? createPortal(
+        <div className="social-notifications-root" style={{ top: panelPosition.top, left: panelPosition.left }} dir="ltr">
             {open && (
                 <section aria-label="إشعارات الأصدقاء واللعب" className="social-notifications-panel" dir="rtl">
                     <header className="social-notifications-header">
@@ -386,5 +423,7 @@ export default function SocialNotifications() {
             )}
         </div>,
         document.body
-    );
+    ) : null;
+
+    return <>{triggerButton}{toastLayer}{notificationPanel}</>;
 }

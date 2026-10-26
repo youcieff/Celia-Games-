@@ -1,13 +1,10 @@
 .social-notifications-root {
   position: fixed;
   z-index: 140;
-  top: max(12px, env(safe-area-inset-top));
-  left: max(12px, env(safe-area-inset-left));
   display: flex;
   width: min(380px, calc(100vw - 24px));
   flex-direction: column;
-  align-items: flex-start;
-  gap: 9px;
+  align-items: stretch;
   color: var(--text-color);
   font-family: inherit;
   direction: ltr;
@@ -16,11 +13,13 @@
 
 .social-notifications-root button { font: inherit; }
 
+.social-notifications-anchor { display: grid; width: 40px; height: 40px; flex: 0 0 40px; place-items: center; }
+
 .social-notifications-toggle {
   position: relative;
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--surface-line));
   border-radius: 15px;
@@ -227,6 +226,7 @@
 
 .social-notification-toasts {
   position: fixed;
+  z-index: 4000;
   top: max(12px, env(safe-area-inset-top));
   left: 50%;
   direction: rtl;
@@ -270,8 +270,8 @@
 @keyframes social-toast-in { from { opacity: 0; transform: translateY(-10px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 @media (max-width: 520px) {
-  .social-notifications-root { top: max(10px, env(safe-area-inset-top)); left: max(10px, env(safe-area-inset-left)); width: min(360px, calc(100vw - 20px)); }
-  .social-notifications-toggle { width: 42px; height: 42px; border-radius: 14px; }
+  .social-notifications-root { width: min(360px, calc(100vw - 20px)); }
+  .social-notifications-toggle { width: 40px; height: 40px; border-radius: 14px; }
   .social-notifications-panel { max-height: min(72dvh, 560px); border-radius: 18px; }
   .social-notifications-list { max-height: min(54dvh, 410px); }
   .social-notification-toasts { top: max(10px, env(safe-area-inset-top)); width: calc(100vw - 20px); }

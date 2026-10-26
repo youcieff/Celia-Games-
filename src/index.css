@@ -2119,12 +2119,6 @@
   .hub-stat-dot { animation: none !important; }
 }
 
-/* Keep the global notification bell clear of the hub's theme/audio controls. */
-.hub-page .hub-header { padding-left: 60px; }
-@media (max-width: 640px) {
-  .hub-page .hub-header { padding-left: 52px; }
-}
-
 /* The shared multiplayer lobby scrolls inside every game shell, including short phones. */
 .p2p-lobby-scroll {
   flex: 1 1 auto;

@@ -429,6 +429,7 @@ export default function Hub({ setView }) {
                     {/* Left: Theme toggle ('ولادي' / 'بناتي') + Mute button */}
                     <div className="flex items-center gap-1.5 shrink-0">
                         <ThemeToggle />
+                        <div id="social-notifications-anchor" className="social-notifications-anchor" />
                         <GlobalMuteButton />
                     </div>
                 </header>
