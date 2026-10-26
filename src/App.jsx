@@ -86,8 +86,6 @@ function App() {
   React.useEffect(() => {
     if (view === 'hub' || view === 'admin') {
       window.dispatchEvent(new Event('celia-game-ended'));
-    } else {
-      window.dispatchEvent(new CustomEvent('celia-game-started', { detail: { gameId: view } }));
     }
   }, [view]);
 
