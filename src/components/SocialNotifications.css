@@ -1,6 +1,6 @@
 .social-notifications-root {
   position: fixed;
-  z-index: 3000;
+  z-index: 140;
   top: max(12px, env(safe-area-inset-top));
   left: max(12px, env(safe-area-inset-left));
   display: flex;
@@ -10,16 +10,11 @@
   gap: 9px;
   color: var(--text-color);
   font-family: inherit;
+  direction: ltr;
   pointer-events: none;
 }
 
 .social-notifications-root button { font: inherit; }
-
-.social-notifications-root--game {
-  top: max(56px, calc(env(safe-area-inset-top) + 50px));
-  right: max(12px, env(safe-area-inset-right));
-  left: auto;
-}
 
 .social-notifications-toggle {
   position: relative;
@@ -234,6 +229,7 @@
   position: fixed;
   top: max(12px, env(safe-area-inset-top));
   left: 50%;
+  direction: rtl;
   display: flex;
   width: min(430px, calc(100vw - 28px));
   flex-direction: column;
@@ -275,7 +271,6 @@
 
 @media (max-width: 520px) {
   .social-notifications-root { top: max(10px, env(safe-area-inset-top)); left: max(10px, env(safe-area-inset-left)); width: min(360px, calc(100vw - 20px)); }
-  .social-notifications-root--game { top: max(54px, calc(env(safe-area-inset-top) + 48px)); right: max(10px, env(safe-area-inset-right)); left: auto; }
   .social-notifications-toggle { width: 42px; height: 42px; border-radius: 14px; }
   .social-notifications-panel { max-height: min(72dvh, 560px); border-radius: 18px; }
   .social-notifications-list { max-height: min(54dvh, 410px); }

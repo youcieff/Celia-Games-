@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { onValue, ref } from 'firebase/database';
 import { Bell, BellRing, Check, Clock3, Gamepad2, ShieldCheck, Swords, UserRoundPlus, Volume2, X } from 'lucide-react';
@@ -7,6 +8,7 @@ import { acceptFriendRequest, dismissGameInvite, rejectFriendRequest } from '../
 import { setPresenceActivity, startPresence } from '../lib/socialPresence';
 import { playSound } from '../lib/audioEngine';
 import './SocialNotifications.css';
+import { announceOverlayOpen } from '../lib/overlayEvents';
 
 function formatNotificationTime(timestamp) {
     const time = Number(timestamp);
@@ -50,7 +52,7 @@ function buildInviteUrl(invite) {
     return `/?${new URLSearchParams({ game: invite.gameId, room: invite.roomCode, invite: invite.id }).toString()}`;
 }
 
-export default function SocialNotifications({ isHub = false }) {
+export default function SocialNotifications() {
     const [uid, setUid] = useState(null);
     const [requests, setRequests] = useState([]);
     const [invites, setInvites] = useState([]);
@@ -165,7 +167,10 @@ export default function SocialNotifications({ isHub = false }) {
             activityRef.current = { status: 'online', gameId: '' };
             if (uidRef.current) void setPresenceActivity(uidRef.current, 'online');
         };
-        const handleOpen = () => setOpen(true);
+        const handleOpen = () => {
+            announceOverlayOpen('notifications');
+            setOpen(true);
+        };
         window.addEventListener('celia-game-started', handleGameStarted);
         window.addEventListener('celia-game-ended', handleGameEnded);
         window.addEventListener('celia-open-notifications', handleOpen);
@@ -178,6 +183,14 @@ export default function SocialNotifications({ isHub = false }) {
             window.removeEventListener('celia-open-notifications', handleOpen);
         };
     }, [notify, pushToast]);
+
+    useEffect(() => {
+        const closeForAnotherOverlay = event => {
+            if (event.detail?.id !== 'notifications') setOpen(false);
+        };
+        window.addEventListener('celia-overlay-open', closeForAnotherOverlay);
+        return () => window.removeEventListener('celia-overlay-open', closeForAnotherOverlay);
+    }, []);
 
     useEffect(() => {
         if (!open) return undefined;
@@ -259,6 +272,14 @@ export default function SocialNotifications({ isHub = false }) {
         }))
     ].sort((left, right) => Number(right.createdAt || 0) - Number(left.createdAt || 0));
 
+    const toggleNotifications = () => {
+        if (open) setOpen(false);
+        else {
+            announceOverlayOpen('notifications');
+            setOpen(true);
+        }
+    };
+
     const renderActions = (notification, toast = false) => {
         const request = notification.request;
         const invite = notification.invite;
@@ -275,8 +296,9 @@ export default function SocialNotifications({ isHub = false }) {
         </>;
     };
 
-    return (
-        <div className={`social-notifications-root ${isHub ? 'social-notifications-root--hub' : 'social-notifications-root--game'}`} dir="rtl">
+    if (typeof document === 'undefined') return null;
+    return createPortal(
+        <div className="social-notifications-root" dir="rtl">
             {toasts.length > 0 && (
                 <div className="social-notification-toasts" aria-live="polite" aria-relevant="additions">
                     {toasts.map(toast => (
@@ -293,13 +315,13 @@ export default function SocialNotifications({ isHub = false }) {
                 </div>
             )}
 
-            <button type="button" onClick={() => setOpen(current => !current)} aria-label={open ? 'إغلاق مركز التنبيهات' : `فتح مركز التنبيهات${total ? `، ${total} محفوظ` : ''}`} aria-expanded={open} className="social-notifications-toggle">
+            <button type="button" onClick={toggleNotifications} aria-label={open ? 'إغلاق مركز التنبيهات' : `فتح مركز التنبيهات${total ? `، ${total} محفوظ` : ''}`} aria-expanded={open} className="social-notifications-toggle">
                 {open ? <X size={19} /> : total ? <BellRing size={19} /> : <Bell size={19} />}
                 {total > 0 && <span className="social-notifications-toggle-count">{total > 99 ? '99+' : total}</span>}
             </button>
 
             {open && (
-                <section aria-label="إشعارات الأصدقاء واللعب" className="social-notifications-panel">
+                <section aria-label="إشعارات الأصدقاء واللعب" className="social-notifications-panel" dir="rtl">
                     <header className="social-notifications-header">
                         <div className="social-notifications-heading">
                             <div className="social-notifications-icon"><BellRing size={19} /></div>
@@ -362,6 +384,7 @@ export default function SocialNotifications({ isHub = false }) {
                     </div>
                 </section>
             )}
-        </div>
+        </div>,
+        document.body
     );
 }

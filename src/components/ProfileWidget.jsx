@@ -11,6 +11,7 @@ import Flame from 'lucide-react/dist/esm/icons/flame';
 import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2';
 import Lock from 'lucide-react/dist/esm/icons/lock';
 import AccountAccessPanel from './AccountAccessPanel';
+import { announceOverlayOpen } from '../lib/overlayEvents';
 
 export default function ProfileWidget() {
     const [profile, updateProfile] = useProfile();
@@ -24,6 +25,7 @@ export default function ProfileWidget() {
 
     const handleOpen = () => {
         setTempNick(profile.nickname);
+        announceOverlayOpen('profile');
         setIsOpen(true);
         playSound('click');
         playHaptic(10);
@@ -31,13 +33,33 @@ export default function ProfileWidget() {
 
     useEffect(() => {
         const openFromNotification = () => handleOpen();
+        const closeForAnotherOverlay = event => {
+            if (event.detail?.id !== 'profile') setIsOpen(false);
+        };
         window.addEventListener('celia-open-profile', openFromNotification);
-        return () => window.removeEventListener('celia-open-profile', openFromNotification);
+        window.addEventListener('celia-overlay-open', closeForAnotherOverlay);
+        return () => {
+            window.removeEventListener('celia-open-profile', openFromNotification);
+            window.removeEventListener('celia-overlay-open', closeForAnotherOverlay);
+        };
     }, [profile.nickname]);
+
+    useEffect(() => {
+        const closeOnEscape = event => {
+            if (event.key === 'Escape') setIsOpen(false);
+        };
+        window.addEventListener('keydown', closeOnEscape);
+        return () => window.removeEventListener('keydown', closeOnEscape);
+    }, []);
 
     const handleSave = () => {
         if (tempNick.trim()) {
-            updateProfile({ nickname: tempNick.trim() });
+            const nickname = tempNick.trim();
+            const ownNames = new Set([
+                ...(Array.isArray(profile.nicknameAliases) ? profile.nicknameAliases : []),
+                profile.nickname
+            ].map(name => String(name || '').trim()).filter(name => name && name.toLocaleLowerCase('ar') !== nickname.toLocaleLowerCase('ar')));
+            updateProfile({ nickname, nicknameAliases: [...ownNames].slice(-20) });
         }
         setIsOpen(false);
         playSound('pop');
@@ -74,7 +96,10 @@ export default function ProfileWidget() {
             </button>
 
             {isOpen && (
-                <div className="safe-area-overlay fixed inset-0 bg-black/80 backdrop-blur-md z-[120] flex items-center justify-center p-3 animate-fade-in">
+                <div
+                    className="safe-area-overlay fixed inset-0 bg-black/80 backdrop-blur-md z-[120] flex items-center justify-center p-3 animate-fade-in"
+                    onPointerDown={event => { if (event.target === event.currentTarget) setIsOpen(false); }}
+                >
                     <div className="glass-card rounded-3xl p-5 w-full max-w-md flex flex-col gap-4 animate-pop-in border border-white/10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
                         
                         {/* Header & Close */}

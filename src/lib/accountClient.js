@@ -12,7 +12,7 @@ const ACCOUNT_KEY = 'celia_account_session';
 const GUEST_BACKUP_KEY = 'celia_guest_backup';
 const PENDING_MATCHES_KEY = 'celia_pending_account_matches';
 const PENDING_PROFILE_KEY = 'celia_pending_account_profile';
-const LEADERBOARD_IMPORT_PREFIX = 'celia_leaderboard_imported:';
+const LEADERBOARD_IMPORT_PREFIX = 'celia_leaderboard_imported:v2:';
 
 function readJson(key, fallback) {
     try {
@@ -302,10 +302,11 @@ export async function fetchAccountLeaderboard() {
     if (!user) return null;
     const token = await user.getIdToken();
     const marker = `${LEADERBOARD_IMPORT_PREFIX}${user.uid}`;
-    let alreadyImported = false;
-    try { alreadyImported = localStorage.getItem(marker) === '1'; } catch { }
-    if (!alreadyImported) {
-        const players = getKnownPlayersForAccountImport();
+    const players = getKnownPlayersForAccountImport();
+    const importSignature = JSON.stringify(players);
+    let importedSignature = '';
+    try { importedSignature = localStorage.getItem(marker) || ''; } catch { }
+    if (importedSignature !== importSignature) {
         const importResponse = await fetch('/api/leaderboard', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -313,7 +314,7 @@ export async function fetchAccountLeaderboard() {
         });
         const importResult = await importResponse.json().catch(() => ({}));
         if (!importResponse.ok) throw new Error(importResult.error || 'تعذر نقل قائمة اللاعبين القديمة');
-        try { localStorage.setItem(marker, '1'); } catch { }
+        try { localStorage.setItem(marker, importSignature); } catch { }
     }
     const response = await fetch('/api/leaderboard', { headers: { Authorization: `Bearer ${token}` } });
     const result = await response.json().catch(() => ({}));

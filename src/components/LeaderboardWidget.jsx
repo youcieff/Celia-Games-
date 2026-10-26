@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import useProfile from '../hooks/useProfile';
 import { getGlobalLeaderboard } from '../lib/leaderboardEngine';
-import { fetchAccountLeaderboard, subscribeToAccount } from '../lib/accountClient';
+import { fetchAccountLeaderboard, getSavedAccount, subscribeToAccount } from '../lib/accountClient';
 import { auth } from '../lib/firebase';
 import { AvatarDisplay } from './icons/AvatarIcons';
 import { playSound, playHaptic } from '../lib/audioEngine';
@@ -11,6 +11,7 @@ import Crown from 'lucide-react/dist/esm/icons/crown';
 import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import Users from 'lucide-react/dist/esm/icons/users';
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
+import { announceOverlayOpen } from '../lib/overlayEvents';
 
 export default function LeaderboardWidget() {
     const [profile] = useProfile();
@@ -18,8 +19,10 @@ export default function LeaderboardWidget() {
     const [cloudLeaderboard, setCloudLeaderboard] = useState(null);
     const [cloudLoading, setCloudLoading] = useState(false);
     const [cloudError, setCloudError] = useState('');
+    const [accountUid, setAccountUid] = useState(auth.currentUser?.uid || getSavedAccount()?.uid || null);
+    const [refreshKey, setRefreshKey] = useState(0);
 
-    const leaderboard = cloudLeaderboard ?? getGlobalLeaderboard(profile);
+    const leaderboard = cloudLeaderboard ?? (accountUid ? [] : getGlobalLeaderboard(profile));
     const myEntry = leaderboard.find(p => p.isMe);
     const playerCount = leaderboard.length;
 
@@ -28,10 +31,15 @@ export default function LeaderboardWidget() {
         let request = null;
         let requestUid = null;
         const refresh = user => {
+            setAccountUid(user?.uid || null);
             if (!user) {
                 setCloudLeaderboard(null);
                 setCloudError('');
                 return;
+            }
+            if (requestUid !== user.uid) {
+                setCloudLeaderboard(null);
+                setCloudError('');
             }
             if (request) {
                 if (requestUid !== user.uid) requestUid = user.uid;
@@ -64,9 +72,18 @@ export default function LeaderboardWidget() {
             if (interval) window.clearInterval(interval);
             window.removeEventListener('focus', refreshCurrent);
         };
-    }, [isOpen]);
+    }, [isOpen, refreshKey]);
+
+    useEffect(() => {
+        const closeForAnotherOverlay = event => {
+            if (event.detail?.id !== 'leaderboard') setIsOpen(false);
+        };
+        window.addEventListener('celia-overlay-open', closeForAnotherOverlay);
+        return () => window.removeEventListener('celia-overlay-open', closeForAnotherOverlay);
+    }, []);
 
     const handleOpen = () => {
+        announceOverlayOpen('leaderboard');
         setIsOpen(true);
         playSound('click');
         playHaptic(15);
@@ -89,7 +106,10 @@ export default function LeaderboardWidget() {
             </button>
 
             {isOpen && (
-                <div className="safe-area-overlay fixed inset-0 bg-black/80 backdrop-blur-md z-[130] flex items-center justify-center p-3 animate-fade-in">
+                <div
+                    className="safe-area-overlay fixed inset-0 bg-black/80 backdrop-blur-md z-[130] flex items-center justify-center p-3 animate-fade-in"
+                    onPointerDown={event => { if (event.target === event.currentTarget) setIsOpen(false); }}
+                >
                     <div className="glass-card rounded-3xl p-5 w-full max-w-md flex flex-col gap-4 animate-pop-in border border-white/10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
                         
                         {/* Header */}
@@ -114,7 +134,18 @@ export default function LeaderboardWidget() {
                             </div>
                         </div>
 
-                        {cloudError && <p className="text-[10px] font-bold text-rose-300 text-center">تعذر الاتصال بالمتصدرين؛ المعروض من هذا الجهاز مؤقتًا.</p>}
+                        {cloudError && (
+                            <div role="alert" className="rounded-xl border border-rose-400/20 bg-rose-500/10 p-3 text-center">
+                                <p className="text-[11px] font-bold text-rose-200">تعذر تحميل ترتيب الحساب من الإنترنت. القائمة المحلية لن تُعرض بدلًا منها.</p>
+                                <button type="button" onClick={() => setRefreshKey(value => value + 1)} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-[10px] font-black text-white/80 hover:bg-white/5">
+                                    <RefreshCw size={12} /> حاول مرة أخرى
+                                </button>
+                            </div>
+                        )}
+
+                        {accountUid && cloudLoading && !cloudLeaderboard && !cloudError && (
+                            <p className="py-6 text-center text-xs font-bold text-white/55">جارٍ تحميل ترتيب حسابك…</p>
+                        )}
 
                         {/* Leaderboard Cards */}
                         <div className="flex flex-col gap-2.5 my-1">
@@ -190,15 +221,24 @@ export default function LeaderboardWidget() {
                         </div>
 
                         {/* Info Banner when playing alone */}
-                        {playerCount <= 1 && (
+                        {playerCount <= 1 && !cloudLoading && !cloudError && (
                             <div className="glass-card p-4 rounded-2xl border border-white/10 text-center flex flex-col items-center gap-2 bg-white/[0.02]">
                                 <Users size={24} className="text-amber-400/80 animate-pulse" />
                                 <p className="text-xs font-bold text-white/80">
-                                    تحدَّ صديقك أونلاين عبر رابط المباراة!
+                                    {accountUid ? 'لا توجد مباريات مسجلة في ترتيب حسابك بعد.' : 'الترتيب هنا محفوظ على هذا الجهاز فقط.'}
                                 </p>
                                 <p className="text-[10px] text-white/50 leading-relaxed max-w-xs">
-                                    عند اللعب ضد صديقك من الموبايل أو الكمبيوتر، سيتم حفظ نتائجكما ومنافستكما الحقيقية هنا تلقائياً دون أي بيانات وهمية.
+                                    {accountUid
+                                        ? 'المباريات الجديدة مع أصدقاء مسجلين ستظهر هنا بعد اكتمالها.'
+                                        : 'سجّل الدخول بالحساب نفسه على أجهزتك لمتابعة تقدمك ومبارياتك بينها.'}
                                 </p>
+                            </div>
+                        )}
+
+                        {!accountUid && (
+                            <div className="rounded-2xl border border-[var(--surface-line)] bg-[var(--surface-raised)] p-3 text-center">
+                                <p className="text-[10px] font-bold text-white/65">كضيف، تظهر بيانات هذا الجهاز فقط. سجّل الدخول بالحساب نفسه على أجهزتك لمتابعة تقدمك بينها.</p>
+                                <button type="button" onClick={() => { setIsOpen(false); window.dispatchEvent(new Event('celia-open-profile')); }} className="mt-2 rounded-xl border border-[var(--accent-border)] bg-[var(--accent-soft)] px-3 py-2 text-[10px] font-black text-[var(--accent)]">فتح الملف وتسجيل الدخول</button>
                             </div>
                         )}
 

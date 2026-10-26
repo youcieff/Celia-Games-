@@ -130,7 +130,7 @@ function App() {
         {view === 'taboo-online' && <TabooGame setView={setView} mode="online" />}
         {view === 'taboo-together' && <TabooGame setView={setView} mode="together" />}
       </div>
-      <SocialNotifications isHub={view === 'hub'} />
+      <SocialNotifications />
     </ThemeProvider>
   );
 }

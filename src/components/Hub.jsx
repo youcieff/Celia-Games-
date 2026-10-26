@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import ThemeToggle from './ThemeToggle';
 import Logo from './Logo';
 import ProfileWidget from './ProfileWidget';
@@ -13,6 +13,7 @@ import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import X from 'lucide-react/dist/esm/icons/x';
 import Play from 'lucide-react/dist/esm/icons/play';
 import MessageCircle from 'lucide-react/dist/esm/icons/message-circle';
+import { announceOverlayOpen } from '../lib/overlayEvents';
 
 /* ─── game catalogue ─────────────────────────────────────────────────────── */
 const GAMES = [
@@ -198,7 +199,7 @@ function OnlinePip({ accentVar }) {
 /* ─── word game modal / sub-selector ─────────────────────────────────────── */
 function WordGameSelector({ onSelect, onClose }) {
     return (
-        <div className="safe-area-overlay fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="safe-area-overlay fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in" onPointerDown={event => { if (event.target === event.currentTarget) onClose(); }}>
             <div className="glass-card max-w-xs w-full p-5 rounded-3xl border border-white/20 text-center shadow-2xl relative">
                 <button
                     onClick={onClose}
@@ -242,7 +243,7 @@ function WordGameSelector({ onSelect, onClose }) {
 
 function TabooGameSelector({ onSelect, onClose }) {
     return (
-        <div className="safe-area-overlay fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+        <div className="safe-area-overlay fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-black/80 p-4 backdrop-blur-md" onPointerDown={event => { if (event.target === event.currentTarget) onClose(); }}>
             <div className="glass-card relative w-full max-w-sm rounded-3xl border border-white/20 p-5 text-center shadow-2xl">
                 <button onClick={onClose} aria-label="إغلاق" className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20">
                     <X size={16} />
@@ -273,7 +274,7 @@ function TabooGameSelector({ onSelect, onClose }) {
 
 function WhoAmIGameSelector({ onSelect, onClose }) {
     return (
-        <div className="safe-area-overlay fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+        <div className="safe-area-overlay fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-black/80 p-4 backdrop-blur-md" onPointerDown={event => { if (event.target === event.currentTarget) onClose(); }}>
             <div className="glass-card relative w-full max-w-sm rounded-3xl border border-white/20 p-5 text-center shadow-2xl">
                 <button onClick={onClose} aria-label="إغلاق" className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20">
                     <X size={16} />
@@ -354,6 +355,17 @@ export default function Hub({ setView }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
 
+    useEffect(() => {
+        const closeForAnotherOverlay = event => {
+            if (event.detail?.id === 'game-selector') return;
+            setWordModalOpen(false);
+            setTabooModalOpen(false);
+            setWhoAmIModalOpen(false);
+        };
+        window.addEventListener('celia-overlay-open', closeForAnotherOverlay);
+        return () => window.removeEventListener('celia-overlay-open', closeForAnotherOverlay);
+    }, []);
+
     const go = (viewName) => {
         playSound('click');
         playHaptic(15);
@@ -363,12 +375,15 @@ export default function Hub({ setView }) {
     const handleCardClick = (game) => {
         if (game.id === 'word-game') {
             playSound('click');
+            announceOverlayOpen('game-selector');
             setWordModalOpen(true);
         } else if (game.id === 'taboo-game') {
             playSound('click');
+            announceOverlayOpen('game-selector');
             setTabooModalOpen(true);
         } else if (game.id === 'whoami-online') {
             playSound('click');
+            announceOverlayOpen('game-selector');
             setWhoAmIModalOpen(true);
         } else {
             go(game.id);
