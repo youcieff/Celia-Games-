@@ -160,23 +160,22 @@ async function loadLeaderboard(uid) {
         readProfilesByUid(database, 'users', registeredUids)
     ]);
     const publicProfiles = publicProfilesSnapshot?.val() || {};
-    const namesToHide = new Set([profile.nickname, ...(profile.nicknameAliases || [])].map(normalizeName).filter(Boolean));
     const loadedOpponents = opponentEntries.map(([key, raw]) => {
         const saved = raw && typeof raw === 'object' ? raw : {};
         const opponentUid = typeof saved.opponentUid === 'string' && ID_PATTERN.test(saved.opponentUid)
             ? saved.opponentUid
             : null;
-        const latestProfile = opponentUid ? publicProfiles[opponentUid] || null : null;
         const privateProfile = opponentUid ? privateProfiles.get(opponentUid) : null;
+        const latestProfile = opponentUid ? publicProfiles[opponentUid] || privateProfile : null;
+        if (!opponentUid || opponentUid === uid || !privateProfile?.username) return null;
         const nickname = String(latestProfile?.nickname || saved.nickname || '').trim().slice(0, 24);
         const aliases = [...new Set([
             ...(Array.isArray(saved.aliases) ? saved.aliases : []),
             ...(Array.isArray(privateProfile?.nicknameAliases) ? privateProfile.nicknameAliases : [])
         ])];
-        if (!nickname || (!opponentUid && (namesToHide.has(normalizeName(nickname)) || aliases.some(alias => namesToHide.has(normalizeName(alias)))))
-            || opponentUid === uid) return null;
+        if (!nickname) return null;
         return {
-            id: opponentUid || String(saved.opponentId || key),
+            id: opponentUid,
             opponentUid,
             nickname,
             aliases: [...aliases, ...(latestProfile?.nickname ? [latestProfile.nickname] : [])],
@@ -187,22 +186,8 @@ async function loadLeaderboard(uid) {
             isMe: false
         };
     });
-    const registeredAliasOwners = new Map();
-    for (const opponent of loadedOpponents.filter(Boolean).filter(row => row.opponentUid)) {
-        for (const alias of [opponent.nickname, ...opponent.aliases]) {
-            const normalized = normalizeName(alias);
-            if (!normalized) continue;
-            if (!registeredAliasOwners.has(normalized)) registeredAliasOwners.set(normalized, new Set());
-            registeredAliasOwners.get(normalized).add(opponent.opponentUid);
-        }
-    }
-    const opponents = loadedOpponents.filter(Boolean).filter(opponent => {
-        if (opponent.opponentUid) return true;
-        return ![opponent.nickname, ...opponent.aliases].some(alias => {
-            const owners = registeredAliasOwners.get(normalizeName(alias));
-            return owners?.size === 1;
-        });
-    }).map(({ opponentUid, aliases, ...opponent }) => opponent);
+    const opponents = [...new Map(loadedOpponents.filter(Boolean).map(opponent => [opponent.id, opponent])).values()]
+        .map(({ opponentUid, aliases, ...opponent }) => opponent);
     const rows = [{
         id: uid,
         nickname: String(profile.nickname || 'لاعب').slice(0, 24),

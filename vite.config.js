@@ -10,6 +10,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'logo.png'],
+      workbox: {
+        importScripts: ['/firebase-messaging-sw.js']
+      },
       manifest: {
         name: 'ألعاب سيليا',
         short_name: 'Celia Games',

@@ -15,6 +15,24 @@ import {
 const PIN_BYTES = 64;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const MAX_LOGIN_ATTEMPTS = 8;
+const ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+const DEFAULT_NICKNAMES = new Set([
+    '\u0644\u0627\u0639\u0628 \u0639\u0638\u064a\u0645',
+    '\u0644\u0627\u0639\u0628'
+]);
+
+function isDefaultNickname(value) {
+    return DEFAULT_NICKNAMES.has(String(value || '').trim().normalize('NFKC'));
+}
+
+function resolvedNickname(value, username) {
+    const nickname = normalizeNickname(value, username);
+    return isDefaultNickname(nickname) ? username : nickname;
+}
+
+function safeCount(value) {
+    return Math.max(0, Math.min(1_000_000, Math.floor(Number(value) || 0)));
+}
 
 function sanitizeStreak(value = {}) {
     return {
@@ -241,14 +259,25 @@ async function register(body) {
     const salt = randomBytes(16);
     const pinHash = scryptSync(pin, salt, PIN_BYTES).toString('hex');
     const sourceProfile = body.profile && typeof body.profile === 'object' ? body.profile : {};
+    const sourceGuestId = !sourceProfile.uid && typeof sourceProfile.playerId === 'string' && ID_PATTERN.test(sourceProfile.playerId)
+        ? sourceProfile.playerId
+        : '';
+    const history = sanitizeHistory(body.history);
+    const importedGuestProfiles = sourceGuestId
+        ? { [Buffer.from(sourceGuestId, 'utf8').toString('base64url')]: Date.now() }
+        : {};
+    const profileInput = {
+        ...sourceProfile,
+        nickname: resolvedNickname(sourceProfile.nickname, normalized)
+    };
     const profile = {
-        ...sanitizeProfile(sourceProfile, normalized, uid),
+        ...sanitizeProfile(profileInput, normalized, uid),
         createdAt: Date.now(),
         lastSeenAt: Date.now(),
         usernameKey,
-        recentMatchIds: []
+        recentMatchIds: history.map(match => match.id).filter(Boolean).slice(-500),
+        importedGuestProfiles
     };
-    const history = sanitizeHistory(body.history);
     const streak = sanitizeStreak(body.streak);
     profile.currentStreak = streak.currentStreak;
     profile.maxStreak = streak.maxStreak;
@@ -283,7 +312,8 @@ async function syncAccount(req, body) {
     const database = getAdminDatabase();
     const userRef = database.ref(`users/${identity.uid}`);
     const incoming = body.profile && typeof body.profile === 'object' ? body.profile : {};
-    const registrationNickname = await getRegistrationNickname(identity.uid);
+    const registrationNicknameValue = await getRegistrationNickname(identity.uid);
+    const registrationNickname = isDefaultNickname(registrationNicknameValue) ? '' : registrationNicknameValue;
     const incomingProfile = {
         ...incoming,
         nicknameAliases: [
@@ -296,8 +326,10 @@ async function syncAccount(req, body) {
         const source = current || recovery.profile;
         if (!source) return;
         const safeIncoming = sanitizeProfile(incomingProfile, source.username, identity.uid);
-        const nextNickname = normalizeNickname(incomingProfile.nickname, source.username);
-        const previousNickname = normalizeNickname(source.nickname, source.username);
+        const nextNickname = isDefaultNickname(incomingProfile.nickname)
+            ? resolvedNickname(source.nickname, source.username)
+            : normalizeNickname(incomingProfile.nickname, source.username);
+        const previousNickname = resolvedNickname(source.nickname, source.username);
         const nicknameAliases = sanitizeProfile({
             nickname: nextNickname,
             nicknameAliases: [
@@ -431,6 +463,122 @@ async function recordAccountMatch(req, body) {
     return { profile: toAccountProfile(profile), history, streak };
 }
 
+async function mergeGuestProfile(req, body) {
+    const identity = await verifyBearerToken(req);
+    const snapshot = body.snapshot && typeof body.snapshot === 'object' ? body.snapshot : {};
+    const guestProfile = snapshot.profile && typeof snapshot.profile === 'object' ? snapshot.profile : {};
+    const guestId = typeof guestProfile.playerId === 'string' && ID_PATTERN.test(guestProfile.playerId) && !guestProfile.uid
+        ? guestProfile.playerId
+        : '';
+    if (!guestId) {
+        const error = new Error('ØªØ¹Ø°Ø± Ù†Ù‚Ù„ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¶ÙŠÙ Ù…Ù† Ù‡Ø°Ø§ Ø§Ù„Ø¬Ù‡Ø§Ø²');
+        error.status = 400;
+        throw error;
+    }
+
+    const guestKey = Buffer.from(guestId, 'utf8').toString('base64url');
+    const guestHistory = sanitizeHistory(snapshot.history);
+    const guestStreak = sanitizeStreak(snapshot.streak || {
+        currentStreak: guestProfile.currentStreak,
+        maxStreak: guestProfile.maxStreak
+    });
+    const guestGames = Math.max(safeCount(guestProfile.gamesPlayed), guestHistory.length);
+    const guestWins = Math.max(safeCount(guestProfile.wins), guestHistory.filter(match => match.isWin).length);
+    const guestXp = Math.max(safeCount(guestProfile.xp), guestHistory.reduce((sum, match) => sum + match.xpEarned, 0));
+    const database = getAdminDatabase();
+    const userRef = database.ref(`users/${identity.uid}`);
+    const historyRef = database.ref(`matchHistory/${identity.uid}`);
+    const existingHistorySnapshot = await historyRef.get();
+    const existingHistory = Array.isArray(existingHistorySnapshot.val()) ? existingHistorySnapshot.val() : [];
+    const storedMatchIds = new Set(existingHistory.map(match => match?.id).filter(Boolean));
+
+    await historyRef.transaction(current => {
+        const entries = Array.isArray(current) ? current : [];
+        const byId = new Map(entries.map(match => [match.id, match]));
+        for (const match of guestHistory) if (!byId.has(match.id)) byId.set(match.id, match);
+        return [...byId.values()].sort((left, right) => right.timestamp - left.timestamp).slice(0, 25);
+    }, undefined, false);
+
+    const guestNickname = String(guestProfile.nickname || '').trim().slice(0, 24);
+    const transaction = await userRef.transaction(current => {
+        if (!current) return;
+        const previousImports = current.importedGuestProfiles && typeof current.importedGuestProfiles === 'object'
+            ? current.importedGuestProfiles
+            : {};
+        if (previousImports[guestKey]) return current;
+
+        const accountMatchIds = new Set([
+            ...(Array.isArray(current.recentMatchIds) ? current.recentMatchIds : []),
+            ...storedMatchIds
+        ]);
+        const overlappingMatches = guestHistory.filter(match => accountMatchIds.has(match.id));
+        const guestAlreadyIncluded = guestHistory.length > 0
+            && overlappingMatches.length === guestHistory.length
+            && safeCount(current.gamesPlayed) >= guestGames
+            && safeCount(current.wins) >= guestWins
+            && safeCount(current.xp) >= guestXp;
+        const overlapWins = overlappingMatches.filter(match => match.isWin).length;
+        const overlapXp = overlappingMatches.reduce((sum, match) => sum + match.xpEarned, 0);
+        const importGames = guestAlreadyIncluded ? 0 : Math.max(0, guestGames - overlappingMatches.length);
+        const importWins = guestAlreadyIncluded ? 0 : Math.max(0, guestWins - overlapWins);
+        const importXp = guestAlreadyIncluded ? 0 : Math.max(0, guestXp - overlapXp);
+        const nicknameAliases = sanitizeProfile({
+            ...current,
+            nickname: resolvedNickname(current.nickname, current.username),
+            nicknameAliases: [
+                ...(Array.isArray(current.nicknameAliases) ? current.nicknameAliases : []),
+                ...(guestNickname && !isDefaultNickname(guestNickname) ? [guestNickname] : [])
+            ]
+        }, current.username, identity.uid).nicknameAliases;
+        const imports = { ...previousImports, [guestKey]: Date.now() };
+        const limitedImports = Object.fromEntries(Object.entries(imports).slice(-100));
+        const addedGames = Math.min(importGames, 1_000_000);
+        const updatedGames = Math.min(1_000_000, safeCount(current.gamesPlayed) + addedGames);
+        const updatedWins = Math.min(updatedGames, safeCount(current.wins) + Math.min(importWins, addedGames));
+
+        return {
+            ...current,
+            nickname: resolvedNickname(current.nickname, current.username),
+            nicknameAliases,
+            gamesPlayed: updatedGames,
+            wins: updatedWins,
+            xp: Math.min(1_000_000, safeCount(current.xp) + Math.min(importXp, 1_000_000)),
+            currentStreak: Math.max(safeCount(current.currentStreak), guestStreak.currentStreak),
+            maxStreak: Math.max(safeCount(current.maxStreak), guestStreak.maxStreak),
+            recentMatchIds: [...new Set([
+                ...(Array.isArray(current.recentMatchIds) ? current.recentMatchIds : []),
+                ...guestHistory.map(match => match.id)
+            ])].slice(-500),
+            importedGuestProfiles: limitedImports,
+            lastSeenAt: Math.max(Date.now(), (Number(current.lastSeenAt) || 0) + 1)
+        };
+    }, undefined, false);
+
+    const profile = transaction.snapshot.val();
+    if (!transaction.committed || !profile) {
+        const error = new Error('Ø§Ù„Ø­Ø³Ø§Ø¨ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯');
+        error.status = 404;
+        throw error;
+    }
+    const [historySnapshot, streakSnapshot] = await Promise.all([
+        historyRef.get(),
+        database.ref(`winStreaks/${identity.uid}`).get()
+    ]);
+    const history = Array.isArray(historySnapshot.val()) ? historySnapshot.val() : [];
+    const streak = {
+        currentStreak: profile.currentStreak || 0,
+        maxStreak: profile.maxStreak || 0
+    };
+    await database.ref().update({
+        [`publicProfiles/${identity.uid}`]: toPublicProfile(profile),
+        [`winStreaks/${identity.uid}`]: {
+            currentStreak: Math.max(safeCount(streakSnapshot.val()?.currentStreak), streak.currentStreak),
+            maxStreak: Math.max(safeCount(streakSnapshot.val()?.maxStreak), streak.maxStreak)
+        }
+    });
+    return { profile: toAccountProfile(profile), history, streak };
+}
+
 export default async function handler(req, res) {
     try {
         if (req.method === 'GET') {
@@ -443,7 +591,9 @@ export default async function handler(req, res) {
             ]);
             if (!profile.exists()) return sendJson(res, 404, { error: 'الحساب غير موجود' });
             const storedProfile = profile.val();
-            const registrationNickname = await getRegistrationNickname(identity.uid);
+            const registrationNicknameValue = await getRegistrationNickname(identity.uid);
+            const registrationNickname = isDefaultNickname(registrationNicknameValue) ? '' : registrationNicknameValue;
+            const nickname = resolvedNickname(storedProfile.nickname, storedProfile.username);
             const nicknameAliases = sanitizeProfile({
                 ...storedProfile,
                 nicknameAliases: [
@@ -456,11 +606,15 @@ export default async function handler(req, res) {
                 [`users/${identity.uid}/lastSeenAt`]: lastSeenAt,
                 [`publicProfiles/${identity.uid}/lastSeenAt`]: lastSeenAt
             };
+            if (nickname !== storedProfile.nickname) {
+                updates[`users/${identity.uid}/nickname`] = nickname;
+                updates[`publicProfiles/${identity.uid}/nickname`] = nickname;
+            }
             if (JSON.stringify(nicknameAliases) !== JSON.stringify(storedProfile.nicknameAliases || [])) {
                 updates[`users/${identity.uid}/nicknameAliases`] = nicknameAliases.length ? nicknameAliases : null;
             }
             await database.ref().update(updates);
-            const currentProfile = { ...storedProfile, nicknameAliases, lastSeenAt };
+            const currentProfile = { ...storedProfile, nickname, nicknameAliases, lastSeenAt };
             return sendJson(res, 200, {
                 profile: toAccountProfile(currentProfile),
                 history: history.val() || [],
@@ -474,6 +628,7 @@ export default async function handler(req, res) {
         if (body.action === 'login') return sendJson(res, 200, await login(body.username, body.pin));
         if (body.action === 'sync') return sendJson(res, 200, await syncAccount(req, body));
         if (body.action === 'record_match') return sendJson(res, 200, await recordAccountMatch(req, body));
+        if (body.action === 'merge_guest_profile') return sendJson(res, 200, await mergeGuestProfile(req, body));
         return sendJson(res, 400, { error: 'طلب غير صالح' });
     } catch (error) {
         const status = Number(error.status) || (error.message?.includes('FIREBASE_SERVICE_ACCOUNT_JSON') ? 503 : 500);

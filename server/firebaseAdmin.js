@@ -1,6 +1,7 @@
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getDatabase } from 'firebase-admin/database';
+import { getMessaging } from 'firebase-admin/messaging';
 
 const DEFAULT_DATABASE_URL = 'https://celia-games-9ed83-default-rtdb.europe-west1.firebasedatabase.app';
 
@@ -29,6 +30,10 @@ export function getAdminAuth() {
 
 export function getAdminDatabase() {
     return getDatabase(getFirebaseAdminApp());
+}
+
+export function getAdminMessaging() {
+    return getMessaging(getFirebaseAdminApp());
 }
 
 export function normalizeUsername(value) {

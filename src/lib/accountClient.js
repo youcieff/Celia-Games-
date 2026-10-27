@@ -3,6 +3,7 @@ import { auth } from './firebase';
 import { ensureProfileIdentity } from './profileIdentity';
 import { stopPresence } from './socialPresence';
 import { getKnownPlayersForAccountImport } from './leaderboardEngine';
+import { unregisterPushNotifications } from './pushNotifications';
 
 const PROFILE_KEY = 'celia_games_profile';
 const PLAYER_ID_KEY = 'celia_player_id';
@@ -12,6 +13,7 @@ const ACCOUNT_KEY = 'celia_account_session';
 const GUEST_BACKUP_KEY = 'celia_guest_backup';
 const PENDING_MATCHES_KEY = 'celia_pending_account_matches';
 const PENDING_PROFILE_KEY = 'celia_pending_account_profile';
+const PENDING_GUEST_IMPORT_KEY = 'celia_pending_guest_imports';
 const LEADERBOARD_IMPORT_PREFIX = 'celia_leaderboard_imported:v2:';
 
 function readJson(key, fallback) {
@@ -88,8 +90,29 @@ export async function createAccount(username, pin, profile) {
 }
 
 export async function loginToAccount(username, pin) {
+    const guestSnapshot = getLocalAccountSnapshot();
+    if (!guestSnapshot.profile?.uid) {
+        guestSnapshot.profile = ensureProfileIdentity(guestSnapshot.profile || {});
+    }
+    const hasGuestData = !guestSnapshot.profile?.uid && (
+        Number(guestSnapshot.profile?.gamesPlayed) > 0
+        || Number(guestSnapshot.profile?.wins) > 0
+        || Number(guestSnapshot.profile?.xp) > 0
+        || (Array.isArray(guestSnapshot.history) && guestSnapshot.history.length > 0)
+    );
     const result = await postAccount({ action: 'login', username, pin });
+    if (hasGuestData && result.profile?.uid) {
+        const pending = readPendingGuestImports();
+        const guestId = guestSnapshot.profile.playerId;
+        const next = pending.filter(item => !(item.uid === result.profile.uid && item.snapshot?.profile?.playerId === guestId));
+        next.push({ uid: result.profile.uid, snapshot: guestSnapshot });
+        savePendingGuestImports(next);
+    }
     await establishSession(result);
+    if (hasGuestData) {
+        try { await flushPendingGuestImports(); }
+        catch (error) { console.warn('Guest match history will retry after account sign-in', error); }
+    }
     return result.profile;
 }
 
@@ -192,6 +215,57 @@ function savePendingMatches(matches) {
     } catch (error) {
         console.warn('Could not save pending account matches', error);
     }
+}
+
+function readPendingGuestImports() {
+    const pending = readJson(PENDING_GUEST_IMPORT_KEY, []);
+    return Array.isArray(pending) ? pending.filter(item => item?.uid && item?.snapshot?.profile?.playerId) : [];
+}
+
+function savePendingGuestImports(pending) {
+    try { localStorage.setItem(PENDING_GUEST_IMPORT_KEY, JSON.stringify(pending.slice(-10))); } catch { }
+}
+
+let pendingGuestImportPromise = null;
+let pendingGuestImportRetryTimer = null;
+
+function scheduleGuestImportRetry() {
+    if (pendingGuestImportRetryTimer) return;
+    pendingGuestImportRetryTimer = setTimeout(() => {
+        pendingGuestImportRetryTimer = null;
+        void flushPendingGuestImports().catch(error => console.warn('Guest match history will retry later', error));
+    }, 15_000);
+}
+
+export function flushPendingGuestImports() {
+    const user = auth.currentUser;
+    if (!user) return Promise.resolve(false);
+    if (pendingGuestImportPromise) return pendingGuestImportPromise;
+
+    pendingGuestImportPromise = (async () => {
+        let pending = readPendingGuestImports();
+        const forUser = pending.filter(item => item.uid === user.uid);
+        if (!forUser.length) return false;
+        try {
+            for (const item of forUser) {
+                const token = await user.getIdToken();
+                const result = await postAccount({ action: 'merge_guest_profile', snapshot: item.snapshot }, token);
+                if (auth.currentUser?.uid === user.uid) applyAccountSnapshot(result);
+                pending = readPendingGuestImports().filter(candidate => !(
+                    candidate.uid === item.uid
+                    && candidate.snapshot?.profile?.playerId === item.snapshot?.profile?.playerId
+                ));
+                savePendingGuestImports(pending);
+            }
+            clearTimeout(pendingGuestImportRetryTimer);
+            pendingGuestImportRetryTimer = null;
+            return true;
+        } catch (error) {
+            scheduleGuestImportRetry();
+            throw error;
+        }
+    })().finally(() => { pendingGuestImportPromise = null; });
+    return pendingGuestImportPromise;
 }
 
 export async function flushPendingAccountMatches() {
@@ -340,6 +414,8 @@ export async function fetchAccountLeaderboard() {
 }
 
 export async function logoutAccount() {
+    try { await unregisterPushNotifications(auth.currentUser); }
+    catch (error) { console.warn('Could not unregister this device notification token', error); }
     await stopPresence(auth.currentUser?.uid);
     await signOut(auth);
     localStorage.removeItem(ACCOUNT_KEY);
@@ -380,6 +456,7 @@ export function subscribeToAccount(callback) {
         if (user) {
             void flushPendingAccountProfile().catch(error => console.warn('Pending account profile will retry later', error));
             void flushPendingAccountMatches().catch(error => console.warn('Pending account matches will retry later', error));
+            void flushPendingGuestImports().catch(error => console.warn('Guest match history will retry later', error));
         }
     });
 }
@@ -388,6 +465,7 @@ if (typeof window !== 'undefined') {
     const retryPendingAccountData = () => {
         void flushPendingAccountProfile().catch(error => console.warn('Pending account profile will retry later', error));
         void flushPendingAccountMatches().catch(error => console.warn('Pending account matches will retry later', error));
+        void flushPendingGuestImports().catch(error => console.warn('Guest match history will retry later', error));
     };
     window.addEventListener('online', retryPendingAccountData);
     window.addEventListener('focus', retryPendingAccountData);

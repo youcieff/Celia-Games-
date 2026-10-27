@@ -1,5 +1,7 @@
+import { createHash } from 'node:crypto';
 import {
     getAdminDatabase,
+    getAdminMessaging,
     normalizeUsername,
     sendJson,
     usernameDatabaseKey,
@@ -33,6 +35,61 @@ const GAME_TITLES = {
 };
 const SOCIAL_RATE_WINDOW_MS = 60 * 60 * 1000;
 const PRESENCE_ACTIVITY_TTL_MS = 75_000;
+
+function notificationTokenKey(token) {
+    return createHash('sha256').update(token).digest('hex');
+}
+
+async function registerNotificationToken(database, uid, body) {
+    const token = String(body.token || '').trim();
+    if (token.length < 20 || token.length > 4096 || /\s/.test(token)) throw fail(400, 'ØªØ¹Ø°Ø± ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¥Ø´Ø¹Ø§Ø±Ø§Øª Ù„Ù‡Ø°Ø§ Ø§Ù„Ø¬Ù‡Ø§Ø²');
+    const key = notificationTokenKey(token);
+    await database.ref(`notificationTokens/${uid}/${key}`).set({ token, updatedAt: Date.now() });
+    return { ok: true };
+}
+
+async function removeNotificationToken(database, uid, body) {
+    const token = String(body.token || '').trim();
+    if (token.length < 20 || token.length > 4096 || /\s/.test(token)) return { ok: true };
+    await database.ref(`notificationTokens/${uid}/${notificationTokenKey(token)}`).remove();
+    return { ok: true };
+}
+
+async function deliverPushNotification(database, uid, { title, body, type, notificationId, url = '/' }) {
+    try {
+        const snapshot = await database.ref(`notificationTokens/${uid}`).get();
+        const tokens = Object.values(snapshot.val() || {})
+            .map(value => String(value?.token || ''))
+            .filter(token => token.length >= 20 && token.length <= 4096)
+            .slice(-30);
+        if (!tokens.length) return;
+
+        const messaging = getAdminMessaging();
+        await Promise.all(tokens.map(async token => {
+            try {
+                await messaging.send({
+                    token,
+                    data: {
+                        title: String(title || 'إشعار جديد').slice(0, 80),
+                        body: String(body || '').slice(0, 180),
+                        type: String(type || 'social').slice(0, 30),
+                        notificationId: String(notificationId || '').slice(0, 120),
+                        url: String(url || '/').slice(0, 500)
+                    },
+                    webpush: { headers: { TTL: '86400' } }
+                });
+            } catch (error) {
+                if (['messaging/registration-token-not-registered', 'messaging/invalid-registration-token'].includes(error.code)) {
+                    await database.ref(`notificationTokens/${uid}/${notificationTokenKey(token)}`).remove().catch(() => {});
+                } else {
+                    console.warn('[social-api] push delivery failed', { code: String(error.code || '').slice(0, 80) });
+                }
+            }
+        }));
+    } catch (error) {
+        console.warn('[social-api] push delivery unavailable', { code: String(error.code || '').slice(0, 80) });
+    }
+}
 
 async function applyRateLimit(database, uid, action, maximum) {
     const now = Date.now();
@@ -118,6 +175,14 @@ async function sendFriendRequest(database, uid, body) {
     } : undefined, undefined, false);
     if (!result.committed) throw fail(409, 'طلب الصداقة اتبعت قبل كده');
     await database.ref(`outgoingFriendRequests/${uid}/${targetUid}`).set(Date.now());
+    const createdAt = Number(result.snapshot.val()?.createdAt) || Date.now();
+    await deliverPushNotification(database, targetUid, {
+        title: 'طلب صداقة جديد',
+        body: `${publicProfile(uid, senderProfile.val() || {}).nickname} بعتلك طلب صداقة`,
+        type: 'friend-request',
+        notificationId: `celia-friend-request-${uid}:${createdAt}`,
+        url: '/?openNotifications=1'
+    });
     return { ok: true, target: publicProfile(targetUid, targetProfile.val() || {}) };
 }
 
@@ -187,6 +252,14 @@ async function sendGameInvite(database, uid, body) {
         [`gameInvites/${friendUid}/${inviteRef.key}`]: invite,
         [`outgoingGameInvites/${uid}/${inviteRef.key}`]: { toUid: friendUid, createdAt: invite.createdAt }
     });
+    const url = `/?${new URLSearchParams({ game: invite.gameId, room: invite.roomCode, invite: inviteRef.key }).toString()}`;
+    await deliverPushNotification(database, friendUid, {
+        title: 'دعوة لعب جديدة',
+        body: `${invite.fromNickname} دعاك إلى ${invite.gameTitle}`,
+        type: 'game-invite',
+        notificationId: `celia-game-invite-${inviteRef.key}`,
+        url
+    });
     return { ok: true };
 }
 
@@ -227,6 +300,8 @@ export default async function handler(req, res) {
 
         const body = req.body && typeof req.body === 'object' ? req.body : {};
         if (body.action === 'set_presence_activity') return sendJson(res, 200, await setPresenceActivity(database, identity.uid, body));
+        if (body.action === 'register_notification_token') return sendJson(res, 200, await registerNotificationToken(database, identity.uid, body));
+        if (body.action === 'remove_notification_token') return sendJson(res, 200, await removeNotificationToken(database, identity.uid, body));
         if (body.action === 'send_friend_request') return sendJson(res, 201, await sendFriendRequest(database, identity.uid, body));
         if (body.action === 'accept_friend_request') return sendJson(res, 200, await acceptFriendRequest(database, identity.uid, String(body.fromUid || '')));
         if (body.action === 'reject_friend_request') {

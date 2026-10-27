@@ -6,6 +6,7 @@ import { Bell, BellRing, Check, Clock3, Gamepad2, ShieldCheck, Swords, UserRound
 import { auth, db } from '../lib/firebase';
 import { acceptFriendRequest, dismissGameInvite, rejectFriendRequest } from '../lib/socialClient';
 import { setPresenceActivity, startPresence } from '../lib/socialPresence';
+import { registerPushNotifications } from '../lib/pushNotifications';
 import { playSound } from '../lib/audioEngine';
 import './SocialNotifications.css';
 import { announceOverlayOpen } from '../lib/overlayEvents';
@@ -36,9 +37,23 @@ function claimNotification(uid, type, id) {
     return true;
 }
 
-function showBrowserNotification(title, body, tag) {
+async function showBrowserNotification(title, body, tag) {
     if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') return;
     try {
+        if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.ready;
+            await registration.showNotification(title, {
+                body,
+                icon: '/logo.png',
+                badge: '/favicon.svg',
+                tag,
+                renotify: false,
+                requireInteraction: true,
+                vibrate: [180, 90, 180],
+                data: { url: '/?openNotifications=1' }
+            });
+            return;
+        }
         const notification = new Notification(title, { body, icon: '/logo.png', tag, renotify: true, requireInteraction: true });
         notification.onclick = () => {
             window.focus();
@@ -65,6 +80,7 @@ export default function SocialNotifications() {
     const [permission, setPermission] = useState(() => (
         typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
     ));
+    const [pushReady, setPushReady] = useState(false);
     const requestIds = useRef(null);
     const inviteIds = useRef(null);
     const uidRef = useRef(null);
@@ -100,7 +116,9 @@ export default function SocialNotifications() {
         if (shouldShowToast) playSound('notification', { dedupeKey: `social:${userUid}:${type}:${id}`, dedupeMs: 24 * 60 * 60 * 1000 });
         if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted'
             && claimNotification(userUid, `${type}-browser`, id)) {
-            showBrowserNotification(title, body, `celia-${type}-${id}`);
+            void showBrowserNotification(title, body, `celia-${type}-${id}`).catch(error => {
+                console.warn('Could not display a device notification', error);
+            });
         }
         return shouldShowToast;
     }, []);
@@ -197,6 +215,33 @@ export default function SocialNotifications() {
     }, [notify, pushToast]);
 
     useEffect(() => {
+        if (!uid || permission !== 'granted') {
+            setPushReady(false);
+            return undefined;
+        }
+        let active = true;
+        registerPushNotifications()
+            .then(ready => { if (active) setPushReady(Boolean(ready)); })
+            .catch(error => {
+                if (active) setPushReady(false);
+                console.warn('Device push notifications could not be registered', error);
+            });
+        return () => { active = false; };
+    }, [uid, permission]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('openNotifications') !== '1') return undefined;
+        const timer = window.setTimeout(() => {
+            window.dispatchEvent(new Event('celia-open-notifications'));
+            params.delete('openNotifications');
+            const search = params.toString();
+            window.history.replaceState({}, '', `${window.location.pathname}${search ? `?${search}` : ''}${window.location.hash}`);
+        }, 0);
+        return () => window.clearTimeout(timer);
+    }, []);
+
+    useEffect(() => {
         const closeForAnotherOverlay = event => {
             if (event.detail?.id !== 'notifications') setOpen(false);
         };
@@ -285,6 +330,18 @@ export default function SocialNotifications() {
             }
         } catch {
             setPermission(Notification.permission);
+        }
+    };
+
+    const retryPushRegistration = async () => {
+        setError('');
+        try {
+            const ready = await registerPushNotifications();
+            setPushReady(Boolean(ready));
+            if (!ready) setError('المتصفح لا يدعم إشعارات الخلفية على هذا الجهاز.');
+        } catch (registrationError) {
+            setPushReady(false);
+            setError(registrationError.message || 'تعذر تشغيل إشعارات الهاتف. اسمح بإشعارات الموقع ثم حاول مرة أخرى.');
         }
     };
 
@@ -385,10 +442,16 @@ export default function SocialNotifications() {
 
                     {(canRequestPermission || permission === 'granted') && (
                         <div className="social-notifications-permission">
-                            <p>{permission === 'granted' ? 'تنبيه المتصفح مفعّل' : 'فعّل تنبيهات المتصفح للدعوات الجديدة'}</p>
+                            <p>{permission === 'granted'
+                                ? pushReady ? 'إشعارات الجهاز تعمل في الخلفية' : 'إذن إشعارات الجهاز مفعّل'
+                                : 'فعّل إشعارات الجهاز للدعوات الجديدة'}</p>
                             {canRequestPermission ? (
                                 <button type="button" onClick={() => void requestBrowserPermission()} className="social-notifications-permission-button">تفعيل</button>
-                            ) : <ShieldCheck size={15} className="shrink-0 text-[var(--accent)]" />}
+                            ) : pushReady || !uid ? (
+                                <ShieldCheck size={15} className="shrink-0 text-[var(--accent)]" />
+                            ) : (
+                                <button type="button" onClick={() => void retryPushRegistration()} className="social-notifications-permission-button">تشغيل</button>
+                            )}
                         </div>
                     )}
                     {permission === 'denied' && <p className="social-notifications-denied">إشعارات المتصفح مقفولة. اسمح بها من إعدادات الموقع في المتصفح.</p>}
