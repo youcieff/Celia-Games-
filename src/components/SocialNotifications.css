@@ -38,6 +38,12 @@
   background: color-mix(in srgb, var(--accent) 10%, var(--surface-card));
 }
 
+.social-notifications-toggle--open {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-card));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent), 0 9px 26px rgba(0, 0, 0, .24);
+}
+
 .social-notifications-toggle-count {
   position: absolute;
   top: -5px;
@@ -269,11 +275,22 @@
 @keyframes social-panel-in { from { opacity: 0; transform: translateY(-6px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes social-toast-in { from { opacity: 0; transform: translateY(-10px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-@media (max-width: 520px) {
-  .social-notifications-root { width: min(360px, calc(100vw - 20px)); }
+@media (max-width: 640px) {
+  .social-notifications-root {
+    inset: 0 !important;
+    z-index: 3000;
+    display: grid;
+    width: 100%;
+    height: 100dvh;
+    place-items: center;
+    padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+    background: rgba(8, 7, 12, .56);
+    backdrop-filter: blur(5px);
+    pointer-events: auto;
+  }
   .social-notifications-toggle { width: 40px; height: 40px; border-radius: 14px; }
-  .social-notifications-panel { max-height: min(72dvh, 560px); border-radius: 18px; }
-  .social-notifications-list { max-height: min(54dvh, 410px); }
+  .social-notifications-panel { width: min(100%, 440px); max-height: min(82dvh, 640px); border-radius: 20px; }
+  .social-notifications-list { max-height: min(64dvh, 480px); }
   .social-notification-toasts { top: max(10px, env(safe-area-inset-top)); width: calc(100vw - 20px); }
   .social-notification-toast { gap: 8px; padding: 10px; }
 }

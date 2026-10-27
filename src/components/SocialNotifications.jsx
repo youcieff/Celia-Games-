@@ -224,15 +224,19 @@ export default function SocialNotifications() {
     useEffect(() => {
         if (!open) return undefined;
         const updatePanelPosition = () => {
+            if (window.matchMedia('(max-width: 640px)').matches) {
+                setPanelPosition({ top: 0, left: 0, mobile: true });
+                return;
+            }
             const trigger = document.querySelector('.social-notifications-toggle');
             if (!trigger) {
-                setPanelPosition({ top: 12, left: 12 });
+                setPanelPosition({ top: 12, left: 12, mobile: false });
                 return;
             }
             const bounds = trigger.getBoundingClientRect();
             const width = Math.min(380, window.innerWidth - 24);
             const left = Math.max(12, Math.min(bounds.left, window.innerWidth - width - 12));
-            setPanelPosition({ top: bounds.bottom + 8, left });
+            setPanelPosition({ top: bounds.bottom + 8, left, mobile: false });
         };
         updatePanelPosition();
         window.addEventListener('resize', updatePanelPosition);
@@ -333,8 +337,8 @@ export default function SocialNotifications() {
 
     if (typeof document === 'undefined') return null;
     const triggerButton = triggerHost ? createPortal(
-        <button type="button" onClick={toggleNotifications} aria-label={open ? 'إغلاق مركز التنبيهات' : `فتح مركز التنبيهات${total ? `، ${total} محفوظ` : ''}`} aria-expanded={open} className="social-notifications-toggle">
-            {open ? <X size={18} /> : total ? <BellRing size={18} /> : <Bell size={18} />}
+        <button type="button" onClick={toggleNotifications} aria-label={open ? 'مركز التنبيهات مفتوح' : `فتح مركز التنبيهات${total ? `، ${total} محفوظ` : ''}`} aria-expanded={open} className={`social-notifications-toggle${open ? ' social-notifications-toggle--open' : ''}`}>
+            {total ? <BellRing size={18} /> : <Bell size={18} />}
             {total > 0 && <span className="social-notifications-toggle-count">{total > 99 ? '99+' : total}</span>}
         </button>,
         triggerHost
@@ -356,7 +360,12 @@ export default function SocialNotifications() {
         document.body
     ) : null;
     const notificationPanel = open ? createPortal(
-        <div className="social-notifications-root" style={{ top: panelPosition.top, left: panelPosition.left }} dir="ltr">
+        <div
+            className={`social-notifications-root${panelPosition.mobile ? ' social-notifications-root--mobile' : ''}`}
+            style={panelPosition.mobile ? undefined : { top: panelPosition.top, left: panelPosition.left }}
+            onPointerDown={event => { if (event.target === event.currentTarget) setOpen(false); }}
+            dir="ltr"
+        >
             {open && (
                 <section aria-label="إشعارات الأصدقاء واللعب" className="social-notifications-panel" dir="rtl">
                     <header className="social-notifications-header">
