@@ -804,7 +804,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
     }
 
     return (
-        <div className="p2p-lobby-scroll flex flex-col items-center justify-start w-full max-w-md mx-auto gap-4 pt-2">
+        <div className="p2p-lobby-scroll flex flex-col items-center justify-start w-full mx-auto gap-4 pt-2">
 
             {/* ── Rejoin previous room ── */}
             {rejoinCode && (
@@ -1035,7 +1035,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
 
             {/* ── Play vs AI ── */}
             {gameIdPrefix && allowAI && (
-                <>
+                <div className="lobby-ai-dock">
                     <div className="flex items-center gap-3 w-full">
                         <div className="h-px flex-1 bg-white/8" />
                         <span className="text-[11px] font-black opacity-25 tracking-wide">أو العب أوفلاين</span>
@@ -1066,7 +1066,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                             <path d="M10 8L6 4M10 8L6 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                         </svg>
                     </button>
-                </>
+                </div>
             )}
         </div>
     );
