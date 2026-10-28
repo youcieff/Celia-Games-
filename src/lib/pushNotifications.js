@@ -2,6 +2,7 @@ import { auth } from './firebase';
 
 const TOKEN_KEY = 'celia_push_token';
 const TOKEN_UID_KEY = 'celia_push_token_uid';
+const DEFAULT_FIREBASE_VAPID_KEY = 'BIdILmWzBl5CWReWEAvbXPWLXOge1WVgzCExSBzXctFDv0nkUMyaOAtbzkXY1VLmMK6VMlOwCQPpX_s3WmA4I04';
 
 async function sendTokenAction(action, token, user) {
     const idToken = await user.getIdToken();
@@ -23,7 +24,7 @@ export async function registerPushNotifications() {
     const messagingSdk = await import('firebase/messaging');
     if (!await messagingSdk.isSupported()) return false;
     const registration = await navigator.serviceWorker.ready;
-    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || DEFAULT_FIREBASE_VAPID_KEY;
     let token;
     try {
         token = await messagingSdk.getToken(messagingSdk.getMessaging(), {
