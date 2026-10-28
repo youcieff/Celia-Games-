@@ -16,14 +16,15 @@ export default function ConnectionPauseOverlay({ conn, onLeave, opponentName, on
     const inviteOpponent = onInvite || conn?.inviteOpponentBack;
 
     const handleInviteOpponent = async () => {
-        if (!inviteOpponent || inviteState === 'sending' || inviteState === 'sent') return;
+        if (!inviteOpponent || inviteState === 'sending') return;
+        const previousInviteState = inviteState;
         setInviteState('sending');
         setInviteError('');
         try {
             await inviteOpponent();
             setInviteState('sent');
         } catch (error) {
-            setInviteState('idle');
+            setInviteState(previousInviteState === 'sent' ? 'sent' : 'idle');
             setInviteError(error?.message || 'تعذر إرسال دعوة الرجوع. حاول مرة أخرى.');
         }
     };
@@ -131,15 +132,16 @@ export default function ConnectionPauseOverlay({ conn, onLeave, opponentName, on
                             <>
                                 <button
                                     type="button"
-                                    disabled={inviteState === 'sending' || inviteState === 'sent'}
+                                    disabled={inviteState === 'sending'}
                                     onClick={() => void handleInviteOpponent()}
                                     className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-sky-300/25 bg-sky-400/10 py-3 text-xs font-black text-sky-100 transition hover:bg-sky-400/15 active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
                                 >
                                     <Send size={15} />
                                     {inviteState === 'sending' ? 'جاري إرسال الدعوة...' : inviteState === 'sent'
-                                        ? `اتبعثت دعوة الرجوع إلى ${opponentName || 'صديقك'}`
-                                        : `دعوة ${opponentName || 'صديقك'} للعودة لنفس المباراة`}
+                                        ? `إرسال دعوة أخرى لـ ${opponentName || 'صديقك'} لنفس المباراة`
+                                        : `إرسال دعوة لـ ${opponentName || 'صديقك'} لدخول نفس المباراة`}
                                 </button>
+                                {inviteState === 'sent' && <p className="mb-2 text-[10px] font-bold text-emerald-300">تم إرسال الدعوة. يمكنك إرسالها مرة أخرى إذا لم تصله.</p>}
                                 {inviteError && <p role="alert" className="mb-3 text-xs font-bold text-rose-300">{inviteError}</p>}
                             </>
                         )}
