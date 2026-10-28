@@ -263,6 +263,74 @@ async function sendGameInvite(database, uid, body) {
     return { ok: true };
 }
 
+async function sendReconnectInvite(database, uid, body) {
+    await applyRateLimit(database, uid, 'gameInvites', 20);
+    const gameId = String(body.gameId || '');
+    const roomPrefix = String(body.roomPrefix || gameId);
+    const roomCode = String(body.roomCode || '').trim().toUpperCase();
+    if (!GAME_TITLES[gameId]) throw fail(400, 'اللعبة غير مدعومة للدعوات');
+    if (!GAME_TITLES[roomPrefix]) throw fail(400, 'الغرفة غير صالحة');
+    if (!/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4}$/.test(roomCode)) throw fail(400, 'كود الغرفة غير صالح');
+
+    const roomPath = `rooms/${roomPrefix}-${roomCode}`;
+    const [statusSnapshot, profilesSnapshot, presenceSnapshot] = await Promise.all([
+        database.ref(`${roomPath}/status`).get(),
+        database.ref(`${roomPath}/profiles`).get(),
+        database.ref(`${roomPath}/presence`).get()
+    ]);
+    if (!statusSnapshot.exists()) throw fail(404, 'المباراة لم تعد موجودة');
+
+    const profiles = profilesSnapshot.val() || {};
+    const senderRole = ['host', 'guest'].find(role => profiles[role]?.uid === uid);
+    if (!senderRole) throw fail(403, 'لا يمكن إرسال دعوة من غرفة لا تخص حسابك');
+    const targetRole = senderRole === 'host' ? 'guest' : 'host';
+    const targetUid = String(profiles[targetRole]?.uid || '');
+    if (!/^[A-Za-z0-9_-]{8,128}$/.test(targetUid) || targetUid === uid) {
+        throw fail(409, 'لا يمكن إرسال دعوة مباشرة؛ الخصم يحتاج حسابًا داخل اللعبة');
+    }
+
+    const [friendshipSnapshot, senderProfileSnapshot, targetProfileSnapshot] = await Promise.all([
+        database.ref(`friends/${uid}/${targetUid}`).get(),
+        database.ref(`publicProfiles/${uid}`).get(),
+        database.ref(`publicProfiles/${targetUid}`).get()
+    ]);
+    if (!friendshipSnapshot.val()) throw fail(403, 'أضيفوا بعض كأصدقاء لإرسال دعوة رجوع مباشرة');
+    const senderProfile = senderProfileSnapshot.val();
+    const targetProfile = targetProfileSnapshot.val();
+    if (!senderProfile?.username || !targetProfile?.username) throw fail(404, 'تعذر العثور على حساب أحد اللاعبين');
+
+    const presence = presenceSnapshot.val() || {};
+    if (presence[senderRole] !== 'online') throw fail(409, 'اتصالك بالغرفة غير مستقر؛ حاول مرة أخرى');
+    if (presence[targetRole] === 'online') throw fail(409, 'عاد اتصال صديقك بالفعل');
+
+    const inviteRef = database.ref(`gameInvites/${targetUid}`).push();
+    const invite = {
+        fromUid: uid,
+        fromUsername: senderProfile.username,
+        fromNickname: senderProfile.nickname || senderProfile.username,
+        fromAvatar: senderProfile.avatar || 'cool',
+        gameId,
+        gameTitle: GAME_TITLES[gameId],
+        roomCode,
+        reconnect: true,
+        createdAt: Date.now()
+    };
+    await database.ref().update({
+        [`rooms/${roomPrefix}-${roomCode}/status`]: 'waiting',
+        [`gameInvites/${targetUid}/${inviteRef.key}`]: invite,
+        [`outgoingGameInvites/${uid}/${inviteRef.key}`]: { toUid: targetUid, createdAt: invite.createdAt }
+    });
+    const url = `/?${new URLSearchParams({ game: invite.gameId, room: invite.roomCode, invite: inviteRef.key }).toString()}`;
+    await deliverPushNotification(database, targetUid, {
+        title: 'دعوة للعودة إلى المباراة',
+        body: `${invite.fromNickname} يدعوك للرجوع إلى نفس مباراة ${invite.gameTitle}`,
+        type: 'game-invite',
+        notificationId: `celia-game-invite-${inviteRef.key}`,
+        url
+    });
+    return { ok: true, targetNickname: targetProfile.nickname || targetProfile.username };
+}
+
 async function setPresenceActivity(database, uid, body) {
     await applyRateLimit(database, uid, 'presenceActivity', 240);
     const sessionId = String(body.sessionId || '');
@@ -314,6 +382,7 @@ export default async function handler(req, res) {
             return sendJson(res, 200, { ok: true });
         }
         if (body.action === 'remove_friend') return sendJson(res, 200, await removeFriend(database, identity.uid, String(body.friendUid || '')));
+        if (body.action === 'send_reconnect_invite') return sendJson(res, 201, await sendReconnectInvite(database, identity.uid, body));
         if (body.action === 'send_game_invite') return sendJson(res, 201, await sendGameInvite(database, identity.uid, body));
         if (body.action === 'dismiss_invite') {
             const inviteId = String(body.inviteId || '');

@@ -180,8 +180,12 @@ export default function SocialNotifications() {
                 const previousIds = inviteIds.current;
                 next.forEach(invite => {
                     const isNew = previousIds ? !previousIds.has(invite.id) : Date.now() - Number(invite.createdAt || 0) < 10 * 60 * 1000;
-                    if (isNew && notify(user.uid, 'game-invite', invite.id, 'دعوة لعب جديدة', `${invite.fromNickname || 'صديقك'} دعاك إلى ${invite.gameTitle || 'لعبة'}`)) {
-                        pushToast({ id: `invite:${invite.id}`, type: 'invite', title: 'دعوة لعب جديدة', body: `${invite.fromNickname || 'صديقك'} دعاك إلى ${invite.gameTitle || 'لعبة'}`, invite });
+                    const title = invite.reconnect ? 'دعوة للعودة إلى المباراة' : 'دعوة لعب جديدة';
+                    const body = invite.reconnect
+                        ? `${invite.fromNickname || 'صديقك'} يدعوك للرجوع إلى نفس مباراة ${invite.gameTitle || 'اللعبة'}`
+                        : `${invite.fromNickname || 'صديقك'} دعاك إلى ${invite.gameTitle || 'لعبة'}`;
+                    if (isNew && notify(user.uid, 'game-invite', invite.id, title, body)) {
+                        pushToast({ id: `invite:${invite.id}`, type: 'invite', title, body, invite });
                     }
                 });
                 inviteIds.current = new Set(next.map(invite => invite.id));
@@ -324,7 +328,11 @@ export default function SocialNotifications() {
                 });
                 invites.forEach(invite => {
                     if (Date.now() - Number(invite.createdAt || 0) < 10 * 60 * 1000) {
-                        notify(uid, 'game-invite', invite.id, 'دعوة لعب جديدة', `${invite.fromNickname || 'صديقك'} دعاك إلى ${invite.gameTitle || 'لعبة'}`);
+                        const title = invite.reconnect ? 'دعوة للعودة إلى المباراة' : 'دعوة لعب جديدة';
+                        const body = invite.reconnect
+                            ? `${invite.fromNickname || 'صديقك'} يدعوك للرجوع إلى نفس مباراة ${invite.gameTitle || 'اللعبة'}`
+                            : `${invite.fromNickname || 'صديقك'} دعاك إلى ${invite.gameTitle || 'لعبة'}`;
+                        notify(uid, 'game-invite', invite.id, title, body);
                     }
                 });
             }
@@ -362,8 +370,10 @@ export default function SocialNotifications() {
             key: `invite:${invite.id}`,
             type: 'invite',
             createdAt: invite.createdAt,
-            title: `${invite.fromNickname || 'صديقك'} دعاك للعب`,
-            detail: `${invite.gameTitle || 'لعبة'} · كود الغرفة ${invite.roomCode || '—'}`,
+            title: invite.reconnect ? `${invite.fromNickname || 'صديقك'} يدعوك للعودة` : `${invite.fromNickname || 'صديقك'} دعاك للعب`,
+            detail: invite.reconnect
+                ? `${invite.gameTitle || 'لعبة'} · استكمال نفس المباراة`
+                : `${invite.gameTitle || 'لعبة'} · كود الغرفة ${invite.roomCode || '—'}`,
             invite
         }))
     ].sort((left, right) => Number(right.createdAt || 0) - Number(left.createdAt || 0));
@@ -387,7 +397,7 @@ export default function SocialNotifications() {
             </>;
         }
         return <>
-            <button type="button" disabled={busy[actionKey]} onClick={() => window.location.assign(buildInviteUrl(invite))} className="social-notification-button social-notification-button--primary"><Swords size={14} /> ادخل اللعب</button>
+            <button type="button" disabled={busy[actionKey]} onClick={() => window.location.assign(buildInviteUrl(invite))} className="social-notification-button social-notification-button--primary"><Swords size={14} /> {invite.reconnect ? 'ارجع لنفس المباراة' : 'ادخل اللعب'}</button>
             <button type="button" disabled={busy[actionKey]} onClick={() => void runAction(actionKey, () => dismissGameInvite(invite.id))} className="social-notification-button"><X size={13} /> رفض</button>
         </>;
     };

@@ -8,7 +8,7 @@ import Check from 'lucide-react/dist/esm/icons/check';
 import createAIConn from '../ai/createAIConn';
 import { ensureProfileIdentity } from '../lib/profileIdentity';
 import { setActiveMatchOpponent } from '../lib/activeMatchOpponent';
-import { dismissGameInvite, loadSocialData, sendGameInvite } from '../lib/socialClient';
+import { dismissGameInvite, loadSocialData, sendGameInvite, sendReconnectInvite } from '../lib/socialClient';
 import { subscribeFriendPresence } from '../lib/socialPresence';
 import { CircleCheck, Send, UserPlus, UsersRound, X } from 'lucide-react';
 import { 
@@ -110,21 +110,8 @@ function createFirebaseConn(roomPath, isHost, roomCode, gameIdPrefix, clientId, 
 
     return {
         async inviteOpponentBack() {
-            if (typeof window === 'undefined' || !roomCode) return;
-            // A player may have left through the game's leave button, which marks
-            // the room closed. Reopen it so the shared invite can actually rejoin.
-            set(ref(db, `${roomPath}/status`), 'waiting').catch(() => {});
-            const inviteUrl = `${window.location.origin}/?game=${encodeURIComponent(inviteGameId)}&room=${encodeURIComponent(roomCode)}`;
-            const message = `ارجع نكمل اللعبة معايا: ${inviteUrl}`;
-            try {
-                if (navigator.share) {
-                    await navigator.share({ title: 'دعوة للرجوع للعبة', text: message, url: inviteUrl });
-                    return;
-                }
-            } catch (error) {
-                if (error?.name === 'AbortError') return;
-            }
-            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+            if (!roomCode) throw new Error('الغرفة غير متاحة لإرسال دعوة الرجوع.');
+            await sendReconnectInvite(inviteGameId, gameIdPrefix, roomCode);
         },
         send(data) {
             if (closed) return;

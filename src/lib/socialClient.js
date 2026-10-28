@@ -90,3 +90,9 @@ export const sendGameInvite = (friendUid, gameId, roomPrefix, roomCode) => socia
     roomPrefix,
     roomCode
 });
+export const sendReconnectInvite = (gameId, roomPrefix, roomCode) => socialRequest({
+    action: 'send_reconnect_invite',
+    gameId,
+    roomPrefix,
+    roomCode
+});

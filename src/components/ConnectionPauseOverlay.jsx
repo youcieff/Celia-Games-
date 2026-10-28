@@ -3,15 +3,30 @@ import WifiOff from 'lucide-react/dist/esm/icons/wifi-off';
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 import Home from 'lucide-react/dist/esm/icons/home';
 import Zap from 'lucide-react/dist/esm/icons/zap';
-import Share2 from 'lucide-react/dist/esm/icons/share-2';
+import Send from 'lucide-react/dist/esm/icons/send';
 import { playSound } from '../lib/audioEngine';
 
 export default function ConnectionPauseOverlay({ conn, onLeave, opponentName, onInvite, onConnectionPause, onConnectionResume }) {
     const [isPaused, setIsPaused] = useState(false);
     const [timeLeft, setTimeLeft] = useState(30);
     const [isReconnected, setIsReconnected] = useState(false);
+    const [inviteState, setInviteState] = useState('idle');
+    const [inviteError, setInviteError] = useState('');
     const pauseNotifiedRef = useRef(false);
     const inviteOpponent = onInvite || conn?.inviteOpponentBack;
+
+    const handleInviteOpponent = async () => {
+        if (!inviteOpponent || inviteState === 'sending' || inviteState === 'sent') return;
+        setInviteState('sending');
+        setInviteError('');
+        try {
+            await inviteOpponent();
+            setInviteState('sent');
+        } catch (error) {
+            setInviteState('idle');
+            setInviteError(error?.message || 'تعذر إرسال دعوة الرجوع. حاول مرة أخرى.');
+        }
+    };
 
     useEffect(() => {
         if (!conn) return;
@@ -113,13 +128,20 @@ export default function ConnectionPauseOverlay({ conn, onLeave, opponentName, on
                         </div>
 
                         {inviteOpponent && (
-                            <button
-                                type="button"
-                                onClick={inviteOpponent}
-                                className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-sky-300/25 bg-sky-400/10 py-3 text-xs font-black text-sky-100 transition hover:bg-sky-400/15 active:scale-[0.98]"
-                            >
-                                <Share2 size={15} /> ابعت دعوة لـ {opponentName || 'الخصم'} عشان يرجع
-                            </button>
+                            <>
+                                <button
+                                    type="button"
+                                    disabled={inviteState === 'sending' || inviteState === 'sent'}
+                                    onClick={() => void handleInviteOpponent()}
+                                    className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-sky-300/25 bg-sky-400/10 py-3 text-xs font-black text-sky-100 transition hover:bg-sky-400/15 active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+                                >
+                                    <Send size={15} />
+                                    {inviteState === 'sending' ? 'جاري إرسال الدعوة...' : inviteState === 'sent'
+                                        ? `اتبعثت دعوة الرجوع إلى ${opponentName || 'صديقك'}`
+                                        : `دعوة ${opponentName || 'صديقك'} للعودة لنفس المباراة`}
+                                </button>
+                                {inviteError && <p role="alert" className="mb-3 text-xs font-bold text-rose-300">{inviteError}</p>}
+                            </>
                         )}
 
                         {timeLeft === 0 ? (
