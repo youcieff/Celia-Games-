@@ -2147,15 +2147,14 @@ div.flex-1:has(> .p2p-lobby-scroll) {
 .p2p-lobby-scroll::-webkit-scrollbar-thumb { border-radius: 99px; background: color-mix(in srgb, var(--accent) 46%, transparent); }
 
 .lobby-ai-dock {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
+  position: static;
+  z-index: auto;
   width: 100%;
   flex: 0 0 auto;
-  margin-top: auto;
-  padding: 10px 0 max(8px, env(safe-area-inset-bottom));
-  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--bg-base) 94%, transparent) 28%);
-  backdrop-filter: blur(12px);
+  margin-top: 0;
+  padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+  background: none;
+  backdrop-filter: none;
 }
 
 .lobby-rejoin-notice {
@@ -2283,28 +2282,6 @@ div.flex-1:has(> .p2p-lobby-scroll) {
 .lobby-instructions-footer { margin: 12px 2px 0; color: color-mix(in srgb, var(--text-color) 48%, transparent); font-size: 10px; font-weight: 700; text-align: center; }
 @keyframes lobby-help-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes lobby-help-pop-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-
-/* Normalize the networking panel width/position across game-specific shells. */
-.min-h-dvh:has(.p2p-lobby-scroll) { width: 100%; max-width: 32rem !important; }
-.min-h-dvh:has(.p2p-lobby-scroll) > .grid.grid-cols-3.items-center,
-.game-fullscreen-shell:has(.p2p-lobby-scroll) > .grid.grid-cols-3.items-center {
-  width: 100%;
-  max-width: 32rem !important;
-  margin-inline: auto;
-  margin-bottom: .5rem !important;
-  padding-block: .5rem;
-}
-.grid.grid-cols-3.items-center:has(+ div.flex-1:has(> .p2p-lobby-scroll)) {
-  min-height: 3.5rem;
-}
-div.flex-1:has(> .p2p-lobby-scroll) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  width: 100%;
-  padding-inline: 1rem;
-}
 
 @media (max-height: 740px) {
   .p2p-lobby-scroll:not(.p2p-lobby-scroll--connected) { gap: 10px; padding-top: 4px; }
