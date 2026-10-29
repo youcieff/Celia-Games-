@@ -1087,17 +1087,6 @@ export default function BrickBreakerGame({ setView }) {
                         </button>
                     </div>
                 </div>
-                <div className="mb-4 w-full rounded-2xl border border-amber-300/20 bg-amber-300/[0.07] px-4 py-3 text-right">
-                    <h2 className="mb-2 text-sm font-black text-amber-200">العبها في ٣ خطوات</h2>
-                    <ol className="space-y-1 text-xs leading-5 text-white/85">
-                        <li>١. حرّك المضرب يمين وشمال عشان تلحق كرتك.</li>
-                        <li>٢. المس/انقر الساحة أو اضغط Space لإطلاق الكرة؛ حرّك المضرب قبلها لاختيار زاويتها.</li>
-                        <li>٣. بعد أول إطلاق، معاك دقيقتين: كل كتلة مكسورة = ١٠ نقاط، وأعلى مجموع يكسب.</li>
-                    </ol>
-                    <p className="mt-2 text-[10px] leading-5 text-white/70">كل لاعب له مضرب وكرة بلون مختلف، والكتل مشتركة. الكتل الذهبية في الموجات المتقدمة تحتاج ضربتين.</p>
-                    <p className="mt-1 text-[10px] leading-5 text-white/70">التشكيلة تتغير كل موجة: الوردية تمنح ٢٥ نقطة، والبرتقالية تفجر الكتل المجاورة. كل ٣ كتل متتالية ترفع مضاعف نقاطك حتى ×٤.</p>
-                    <p className="mt-2 text-[10px] leading-5 text-white/60">لو كرتك عدّت المضرب، خصمك ياخد ٥ نقاط. العب ضد الذكاء الاصطناعي أو اعمل غرفة لصديقك.</p>
-                </div>
                 <div className="flex-1 flex pb-16 safe-area-pb">
                     <P2PConnectionManager gameIdPrefix="celia-brick" onGameStart={handleGameStart} />
                 </div>

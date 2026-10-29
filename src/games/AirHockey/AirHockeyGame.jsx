@@ -1199,7 +1199,6 @@ export default function AirHockeyGame({ setView }) {
     if (gameState === 'lobby') {
         return (
             <>
-                <div className="animated-bg"><div className="bg-orb-1" /><div className="bg-orb-2" /></div>
                 <div className="min-h-dvh max-w-lg mx-auto px-4 flex flex-col safe-area-pt overflow-x-hidden overflow-y-auto pb-6">
                     <div className="grid grid-cols-3 items-center py-4 mb-2">
                         <div><Logo size="small" /></div>
@@ -1212,10 +1211,6 @@ export default function AirHockeyGame({ setView }) {
                         <div className="flex justify-end"><button onClick={() => { gameActiveRef.current = false; connRef.current?.close?.(); setView('hub'); }} className="glass-card px-4 py-2 rounded-2xl text-xs font-bold hover:scale-105 active:scale-95 transition-transform text-white/90">الرئيسية</button></div>
                     </div>
 
-                    <div className="mb-4 w-full rounded-2xl border border-sky-300/20 bg-sky-300/[0.07] px-4 py-3 text-right">
-                        <h2 className="mb-1 text-sm font-black text-sky-200">طريقة اللعب</h2>
-                        <p className="text-xs leading-6 text-white/80">اختار «ضد الذكاء الاصطناعي» لمباراة سريعة، أو أنشئ غرفة وشارك الكود مع صديق. المضيف يختار الألوان ثم يبدأ. أثناء اللعب اسحب بإصبعك لتحريك المضرب، وأدخل القرص في مرمى الخصم؛ أول ٧ أهداف يكسب.</p>
-                    </div>
                     <div className="flex-1 flex pb-16 safe-area-pb">
                         <P2PConnectionManager
                             gameIdPrefix="celia-hockey"

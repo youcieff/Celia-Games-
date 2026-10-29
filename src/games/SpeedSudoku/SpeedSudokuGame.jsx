@@ -913,11 +913,6 @@ export default function SpeedSudokuGame({ setView }) {
                         </button>
                     </div>
                 </div>
-                <div className="sudoku-lobby-info mb-4 w-full rounded-2xl border px-4 py-3 text-right">
-                    <h2 className="mb-1 text-sm font-black">طريقة اللعب</h2>
-                    <p className="text-xs leading-6 text-white/80">كل لاعب بيحل نفس اللغز على لوحة مستقلة. اختار خانة فاضية واتأكد إن الرقم مناسب للصف والعمود والمربع ٣×٣. الإجابة الغلط تتحسب خطأ من غير ما تكتب في اللوحة، وأول لاعب يكمل الحل الصحيح يكسب نقطة الجولة.</p>
-                    <p className="mt-1 text-[10px] leading-5 text-white/60">ضد الكمبيوتر: اضغط «ضد الذكاء الاصطناعي». مع صديق: أنشئ غرفة وابعث الكود له، أو ادخل بكوده.</p>
-                </div>
                 <div className="flex-1 flex pb-16 safe-area-pb">
                     <P2PConnectionManager gameIdPrefix="celia-sudoku" onGameStart={handleGameStart} />
                 </div>

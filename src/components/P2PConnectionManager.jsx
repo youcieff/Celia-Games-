@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { db } from '../lib/firebase';
 import { ref, set, onValue, push, onChildAdded, remove, get, onDisconnect, runTransaction } from 'firebase/database';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
@@ -11,6 +10,7 @@ import { setActiveMatchOpponent } from '../lib/activeMatchOpponent';
 import { dismissGameInvite, loadSocialData, sendGameInvite, sendReconnectInvite } from '../lib/socialClient';
 import { subscribeFriendPresence } from '../lib/socialPresence';
 import { CircleCheck, Send, UserPlus, UsersRound, X } from 'lucide-react';
+import GameLobbyInstructions from './GameLobbyInstructions';
 import { 
     IconCopy, IconJoin, IconChip, IconHourglass,
     IconBusComplete, IconConnect4, IconDotsBoxes, IconCodeGame, 
@@ -734,7 +734,10 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
     // ── CONNECTED STATE ────────────────────────────────────────────────────────
     if (lobbyState === 'connected') {
         return (
-            <div className="p2p-lobby-scroll p2p-lobby-scroll--connected">
+            <div className="p2p-lobby-scroll p2p-lobby-scroll--connected flex flex-col items-center">
+                <div className="lobby-instructions-row">
+                    <GameLobbyInstructions gameIdPrefix={inviteGameId} />
+                </div>
                 <div className="lobby-connected-card w-full max-w-sm mx-auto my-auto">
                     {/* Animated rings */}
                     <div className="lobby-rings">
@@ -805,6 +808,9 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
 
     return (
         <div className="p2p-lobby-scroll flex flex-col items-center justify-start w-full mx-auto gap-4 pt-2">
+            <div className="lobby-instructions-row">
+                <GameLobbyInstructions gameIdPrefix={inviteGameId} />
+            </div>
 
             {/* ── Rejoin previous room ── */}
             {rejoinCode && (
