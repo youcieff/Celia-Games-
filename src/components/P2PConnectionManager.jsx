@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { db } from '../lib/firebase';
 import { ref, set, onValue, push, onChildAdded, remove, get, onDisconnect, runTransaction } from 'firebase/database';
 import Loader2 from 'lucide-react/dist/esm/icons/loader-2';
@@ -9,7 +10,7 @@ import { ensureProfileIdentity } from '../lib/profileIdentity';
 import { setActiveMatchOpponent } from '../lib/activeMatchOpponent';
 import { dismissGameInvite, loadSocialData, sendGameInvite, sendReconnectInvite } from '../lib/socialClient';
 import { subscribeFriendPresence } from '../lib/socialPresence';
-import { CircleCheck, Send, UserPlus, UsersRound, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CircleCheck, Send, UserPlus, UsersRound, X } from 'lucide-react';
 import GameLobbyInstructions from './GameLobbyInstructions';
 import { 
     IconCopy, IconJoin, IconChip, IconHourglass,
@@ -378,6 +379,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
     const [isConnecting, setIsConnecting] = useState(false);
     const [roomCreated, setRoomCreated] = useState(false);
     const [showFriendInvites, setShowFriendInvites] = useState(false);
+    const [friendPage, setFriendPage] = useState(0);
     const [inviteFriends, setInviteFriends] = useState([]);
     const [inviteSentTo, setInviteSentTo] = useState('');
     const [inviteLoading, setInviteLoading] = useState(false);
@@ -629,6 +631,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
         try {
             const data = await loadSocialData();
             setInviteFriends(data.friends);
+            setFriendPage(0);
             setShowFriendInvites(true);
             if (data.friends.length === 0) setInviteMessage('أضف صديقًا من ملفك الشخصي الأول');
         } catch (error) {
@@ -734,7 +737,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
     // ── CONNECTED STATE ────────────────────────────────────────────────────────
     if (lobbyState === 'connected') {
         return (
-            <div className="p2p-lobby-scroll p2p-lobby-scroll--connected flex flex-col items-center">
+            <div className="p2p-lobby-viewport p2p-lobby-viewport--connected flex flex-col items-center">
                 <div className="lobby-instructions-row">
                     <GameLobbyInstructions gameIdPrefix={inviteGameId} />
                 </div>
@@ -807,7 +810,7 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
     }
 
     return (
-        <div className="p2p-lobby-scroll flex flex-col items-center justify-start w-full mx-auto gap-4 pt-2">
+        <div className="p2p-lobby-viewport flex flex-col items-center justify-start w-full mx-auto gap-4 pt-2">
             <div className="lobby-instructions-row">
                 <GameLobbyInstructions gameIdPrefix={inviteGameId} />
             </div>
@@ -928,8 +931,9 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                     </span>
                     <span className="shrink-0 text-sm text-white/40">{showFriendInvites ? '−' : '←'}</span>
                 </button>
-                {showFriendInvites && (
-                    <div className="lobby-friend-picker relative z-[1] mt-2.5 rounded-2xl p-3.5">
+                {showFriendInvites && createPortal(
+                    <div className="lobby-friend-sheet-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setShowFriendInvites(false); }}>
+                    <div className="lobby-friend-picker rounded-2xl p-3.5" role="dialog" aria-modal="true" aria-label="اختيار صديق لدعوته" onMouseDown={event => event.stopPropagation()}>
                         <div className="mb-3 flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2.5">
                                 <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.045] text-white/75"><UsersRound size={17} /></span>
@@ -941,8 +945,8 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                             <button type="button" onClick={() => setShowFriendInvites(false)} aria-label="إغلاق قائمة الأصدقاء" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-white/45 transition hover:border-white/15 hover:text-white"><X size={15} /></button>
                         </div>
                         {inviteFriends.length > 0 ? (
-                            <div className="lobby-friend-list flex max-h-52 flex-col gap-2 overflow-y-auto pl-0.5">
-                                {inviteFriends.map(friend => {
+                            <div className="lobby-friend-list flex flex-col gap-2 pl-0.5">
+                                {inviteFriends.slice(friendPage * 3, friendPage * 3 + 3).map(friend => {
                                     const sent = inviteSentTo === friend.uid;
                                     const unavailable = Boolean(inviteSentTo) && !sent;
                                     const presence = invitePresence[friend.uid];
@@ -981,8 +985,17 @@ export default function P2PConnectionManager({ gameIdPrefix, inviteGameId = game
                                 <p className="mt-1 text-[10px] font-bold text-white/40">أضف أصحابك من ملفك الشخصي وهتقدر تعزمهم هنا</p>
                             </div>
                         )}
+                        {inviteFriends.length > 3 && (
+                            <div className="lobby-friend-pagination" dir="ltr">
+                                <button type="button" onClick={() => setFriendPage(page => Math.max(0, page - 1))} disabled={friendPage === 0} aria-label="الأصدقاء السابقون"><ChevronLeft size={16} /></button>
+                                <span>{friendPage + 1} / {Math.ceil(inviteFriends.length / 3)}</span>
+                                <button type="button" onClick={() => setFriendPage(page => Math.min(Math.ceil(inviteFriends.length / 3) - 1, page + 1))} disabled={(friendPage + 1) * 3 >= inviteFriends.length} aria-label="الأصدقاء التاليون"><ChevronRight size={16} /></button>
+                            </div>
+                        )}
                         {inviteMessage && <p role="status" className={`mt-3 rounded-xl px-3 py-2 text-center text-[10px] font-black ${inviteSentTo ? 'border border-emerald-300/15 bg-emerald-300/[0.07] text-emerald-200' : 'lobby-invite-message-error'}`}>{inviteMessage}</p>}
                     </div>
+                    </div>,
+                    document.body
                 )}
             </div>
 

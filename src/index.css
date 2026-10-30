@@ -1158,8 +1158,8 @@
 .lobby-ticket {
   position: relative;
   background:
-    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 56%),
-    linear-gradient(145deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.018) 72%);
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 56%),
+    linear-gradient(145deg, color-mix(in srgb, var(--surface-raised) 88%, white 12%) 0%, color-mix(in srgb, var(--surface-card) 84%, white 16%) 72%);
   border: 1px solid color-mix(in srgb, var(--glass-border) 88%, var(--accent));
   border-radius: 24px;
   padding: 18px 20px 16px;
@@ -1205,7 +1205,7 @@
   padding: 12px 10px 10px;
   border: 1px solid rgba(255,255,255,0.075);
   border-radius: 19px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.035), rgba(0,0,0,0.14));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--surface-raised) 82%, white 18%), color-mix(in srgb, var(--surface-card) 86%, white 14%));
 }
 
 /* Single code digit box */
@@ -1343,6 +1343,46 @@
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
   animation: lobby-friend-picker-in 0.2s ease-out both;
 }
+.lobby-friend-sheet-backdrop {
+  position: fixed;
+  z-index: 190;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  background: rgba(8, 9, 12, .58);
+  backdrop-filter: blur(8px);
+}
+.lobby-friend-sheet-backdrop .lobby-friend-picker {
+  width: min(100%, 26rem);
+  max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface-raised) 72%, white 28%);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--glass-border));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .32);
+}
+.lobby-friend-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 10px;
+  color: color-mix(in srgb, var(--text-color) 62%, transparent);
+  font-size: 11px;
+  font-weight: 900;
+}
+.lobby-friend-pagination button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-raised) 70%, white 30%);
+  color: var(--accent);
+}
+.lobby-friend-pagination button:disabled { cursor: default; opacity: .35; }
 .lobby-friend-row {
   border-color: rgba(255,255,255,0.075);
   background: linear-gradient(110deg, rgba(255,255,255,0.04), rgba(255,255,255,0.018));
@@ -1351,9 +1391,6 @@
   border-color: rgba(110,231,183,0.17);
   background: linear-gradient(110deg, rgba(16,185,129,0.085), rgba(255,255,255,0.018));
 }
-.lobby-friend-list::-webkit-scrollbar { width: 4px; }
-.lobby-friend-list::-webkit-scrollbar-thumb { border-radius: 99px; background: rgba(255,255,255,0.15); }
-
 @keyframes lobby-friend-picker-in {
   from { opacity: 0; transform: translateY(-5px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1415,7 +1452,7 @@
   padding: 14px 16px;
   border-radius: 18px;
   border: 1px solid var(--glass-border);
-  background: rgba(255,255,255,0.03);
+  background: color-mix(in srgb, var(--surface-raised) 82%, white 18%);
   color: var(--text-color);
   cursor: pointer;
   direction: rtl;
@@ -2119,32 +2156,36 @@
   .hub-stat-dot { animation: none !important; }
 }
 
-/* The shared multiplayer lobby scrolls inside every game shell, including short phones. */
-.p2p-lobby-scroll {
-  flex: 1 1 auto;
-  align-self: stretch;
+/* Every online game uses the same fixed, non-scrolling lobby viewport. */
+.p2p-lobby-viewport {
+  flex: 1 1 0;
+  align-self: center;
   min-width: 0;
   min-height: 0;
   width: min(24rem, calc(100vw - 2rem));
   max-width: 24rem;
   height: 100%;
   max-height: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-  padding-bottom: max(1rem, env(safe-area-inset-bottom));
-  scrollbar-color: color-mix(in srgb, var(--accent) 52%, transparent) transparent;
-  scrollbar-width: thin;
+  overflow: hidden;
+  overscroll-behavior: none;
+  padding: 0 0 max(4px, env(safe-area-inset-bottom));
 }
 
-div.flex-1:has(> .p2p-lobby-scroll) {
+div.flex-1:has(> .p2p-lobby-viewport) {
+  display: flex;
+  flex: 1 1 0;
+  align-items: stretch;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0 1rem max(4px, env(safe-area-inset-bottom)) !important;
+  overflow: hidden;
   min-width: 0;
   min-height: 0;
 }
 
-.p2p-lobby-scroll--connected { justify-content: center; }
-.p2p-lobby-scroll::-webkit-scrollbar { width: 4px; }
-.p2p-lobby-scroll::-webkit-scrollbar-thumb { border-radius: 99px; background: color-mix(in srgb, var(--accent) 46%, transparent); }
+.p2p-lobby-viewport:not(.p2p-lobby-viewport--connected) { gap: clamp(5px, 1dvh, 10px); padding-top: 0; }
+.p2p-lobby-viewport--connected { justify-content: center; }
 
 .lobby-ai-dock {
   position: static;
@@ -2179,12 +2220,46 @@ div.flex-1:has(> .p2p-lobby-scroll) {
 .lobby-invite-message-error { border: 1px solid var(--accent-border); background: var(--accent-soft); color: var(--accent); }
 
 /* One shared help control and non-scrolling rules sheet for every game lobby. */
-#root > div:has(.p2p-lobby-scroll) {
-  min-height: 100dvh;
-  background: var(--bg-base);
+#root,
+html:has(.p2p-lobby-viewport),
+body:has(.p2p-lobby-viewport) { height: 100dvh; overflow: hidden; }
+#root > div:has(.p2p-lobby-viewport),
+.min-h-dvh:has(.p2p-lobby-viewport) {
+  box-sizing: border-box;
+  width: min(100%, 32rem) !important;
+  max-width: 32rem !important;
+  height: 100dvh;
+  min-height: 0 !important;
+  margin-inline: auto;
+  padding-bottom: max(4px, env(safe-area-inset-bottom)) !important;
+  overflow: hidden !important;
+  background: color-mix(in srgb, var(--bg-mid) 84%, white 16%);
 }
-.game-fullscreen-shell:has(.p2p-lobby-scroll) {
-  background: var(--bg-base) !important;
+.game-fullscreen-shell:has(.p2p-lobby-viewport) {
+  width: 100%;
+  max-width: none !important;
+  height: 100dvh;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  background: color-mix(in srgb, var(--bg-mid) 84%, white 16%) !important;
+}
+.fixed.inset-0:has(.p2p-lobby-viewport) {
+  right: 0;
+  left: 0;
+  width: min(100%, 32rem);
+  height: 100dvh;
+  margin-inline: auto;
+  background: color-mix(in srgb, var(--bg-mid) 84%, white 16%) !important;
+}
+.min-h-dvh:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center,
+.game-fullscreen-shell:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center,
+.fixed.inset-0:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center {
+  flex: 0 0 auto;
+  width: min(100%, 28rem) !important;
+  max-width: 28rem !important;
+  min-height: 54px;
+  margin: 0 auto 4px !important;
+  padding-block: 6px !important;
 }
 .lobby-instructions-trigger {
   display: inline-flex;
@@ -2291,12 +2366,16 @@ div.flex-1:has(> .p2p-lobby-scroll) {
 @keyframes lobby-help-pop-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 @media (max-height: 740px) {
-  .p2p-lobby-scroll:not(.p2p-lobby-scroll--connected) { gap: 10px; padding-top: 4px; }
+  .p2p-lobby-viewport:not(.p2p-lobby-viewport--connected) { gap: 7px; padding-top: 0; }
   .lobby-ticket { padding-top: 12px; padding-bottom: 11px; }
-  .lobby-code-stage { margin-top: 10px; padding-top: 8px; padding-bottom: 8px; }
-  .lobby-digit { height: 48px; }
-  .lobby-ai-btn { min-height: 56px; padding: 9px 12px; }
-  .lobby-friend-picker { padding: 10px; }
+  .lobby-instructions-row { margin-bottom: 0; }
+  .lobby-code-stage { margin-top: 9px; padding-top: 7px; padding-bottom: 7px; }
+  .lobby-digit { height: 46px; }
+  .lobby-action-btn { min-height: 42px; }
+  .lobby-friend-invite { height: 44px; }
+  .lobby-ai-btn { min-height: 50px; padding: 8px 11px; }
+  .lobby-ai-icon { width: 34px; height: 34px; }
+  .lobby-friend-picker { padding: 9px; }
 }
 
 @media (max-height: 500px) {
@@ -2309,15 +2388,57 @@ div.flex-1:has(> .p2p-lobby-scroll) {
 }
 
 @media (max-height: 570px) {
-  .p2p-lobby-scroll:not(.p2p-lobby-scroll--connected) { gap: 8px; }
-  .lobby-ticket { padding-top: 9px; padding-bottom: 9px; border-radius: 18px; }
+  .p2p-lobby-viewport:not(.p2p-lobby-viewport--connected) { gap: 5px; }
+  .lobby-instructions-trigger { width: 32px; min-width: 32px; height: 32px; }
+  .lobby-ticket { padding-top: 7px; padding-bottom: 7px; border-radius: 18px; }
   .lobby-ticket-header .h-10 { height: 34px; width: 34px; }
-  .lobby-code-stage { margin-top: 7px; padding: 6px; }
-  .lobby-digit { width: 42px; height: 42px; font-size: 1.2rem; }
-  .lobby-code-hint { margin-top: 5px; }
-  .lobby-action-btn { min-height: 39px; }
-  .lobby-friend-invite { height: 43px; }
-  .lobby-ai-btn { min-height: 50px; }
+  .lobby-code-stage { margin-top: 5px; padding: 5px; }
+  .lobby-digit { width: 40px; height: 38px; font-size: 1.15rem; }
+  .lobby-code-hint { margin-top: 3px; }
+  .lobby-action-btn { min-height: 36px; font-size: 10px; }
+  .lobby-friend-invite { height: 38px; margin-top: 6px; }
+  .lobby-ai-dock { padding-block: 3px; }
+  .lobby-ai-btn { min-height: 42px; padding: 5px 8px; gap: 8px; }
+  .lobby-ai-icon { width: 30px; height: 30px; }
+  .lobby-ai-btn > div:nth-child(2) p:first-child { font-size: 11px; }
+  .lobby-ai-btn > div:nth-child(2) p:last-child { font-size: 9px; }
+}
+
+@media (max-height: 680px) {
+  .min-h-dvh:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center,
+  .game-fullscreen-shell:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center,
+  .fixed.inset-0:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center { min-height: 44px; padding-block: 2px !important; margin-bottom: 2px !important; }
+  .lobby-ticket-header > div:first-child > div > p { display: none; }
+}
+
+@media (max-height: 480px) {
+  .min-h-dvh:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center,
+  .game-fullscreen-shell:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center,
+  .fixed.inset-0:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center { min-height: 38px; margin-bottom: 0 !important; }
+  .lobby-instructions-trigger { width: 28px; min-width: 28px; height: 28px; }
+  .lobby-ticket-header > div:first-child > div > p,
+  .lobby-code-hint { display: none; }
+  .lobby-ticket { padding: 5px 8px; }
+  .lobby-code-stage { margin-top: 4px; padding: 3px; }
+  .lobby-digit { width: 34px; height: 32px; font-size: 1rem; }
+  .lobby-code-copy { width: 32px; height: 32px; }
+  .lobby-action-btn { min-height: 32px; }
+  .lobby-friend-invite { height: 34px; margin-top: 4px; }
+  .lobby-ai-dock { padding: 2px 0; }
+  .lobby-ai-dock > div:first-child { margin-bottom: 2px; }
+  .lobby-ai-btn { min-height: 36px; padding: 3px 6px; }
+  .lobby-ai-icon { width: 26px; height: 26px; }
+  .lobby-ai-btn > div:nth-child(2) p:last-child { display: none; }
+  .lobby-join-field { min-height: 36px; padding: 6px 10px; }
+  .lobby-join-input { font-size: 1.1rem; }
+  .lobby-join-field + .mt-2 { margin-top: 2px; }
+}
+
+@media (max-width: 430px) {
+  .min-h-dvh:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center,
+  .game-fullscreen-shell:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center,
+  .fixed.inset-0:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center { width: min(100%, calc(100vw - 32px)) !important; }
+  .lobby-ticket { border-radius: 20px; }
 }
 
 /* Make release and exclusive badges read like polished announcements. */
