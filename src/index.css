@@ -1158,8 +1158,8 @@
 .lobby-ticket {
   position: relative;
   background:
-    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 56%),
-    linear-gradient(145deg, color-mix(in srgb, var(--surface-raised) 88%, white 12%) 0%, color-mix(in srgb, var(--surface-card) 84%, white 16%) 72%);
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 56%),
+    linear-gradient(145deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.018) 72%);
   border: 1px solid color-mix(in srgb, var(--glass-border) 88%, var(--accent));
   border-radius: 24px;
   padding: 18px 20px 16px;
@@ -1205,7 +1205,7 @@
   padding: 12px 10px 10px;
   border: 1px solid rgba(255,255,255,0.075);
   border-radius: 19px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--surface-raised) 82%, white 18%), color-mix(in srgb, var(--surface-card) 86%, white 14%));
+  background: linear-gradient(135deg, rgba(255,255,255,0.035), rgba(0,0,0,0.14));
 }
 
 /* Single code digit box */
@@ -1358,7 +1358,7 @@
   width: min(100%, 26rem);
   max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   overflow: hidden;
-  background: color-mix(in srgb, var(--surface-raised) 72%, white 28%);
+  background: var(--surface-raised);
   border-color: color-mix(in srgb, var(--accent) 28%, var(--glass-border));
   box-shadow: 0 24px 70px rgba(0, 0, 0, .32);
 }
@@ -1379,7 +1379,7 @@
   place-items: center;
   border: 1px solid var(--glass-border);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--surface-raised) 70%, white 30%);
+  background: var(--surface-raised);
   color: var(--accent);
 }
 .lobby-friend-pagination button:disabled { cursor: default; opacity: .35; }
@@ -1452,7 +1452,7 @@
   padding: 14px 16px;
   border-radius: 18px;
   border: 1px solid var(--glass-border);
-  background: color-mix(in srgb, var(--surface-raised) 82%, white 18%);
+  background: rgba(255,255,255,0.03);
   color: var(--text-color);
   cursor: pointer;
   direction: rtl;
@@ -2226,37 +2226,25 @@ body:has(.p2p-lobby-viewport) { height: 100dvh; overflow: hidden; }
 #root > div:has(.p2p-lobby-viewport),
 .min-h-dvh:has(.p2p-lobby-viewport) {
   box-sizing: border-box;
-  width: min(100%, 32rem) !important;
-  max-width: 32rem !important;
   height: 100dvh;
   min-height: 0 !important;
-  margin-inline: auto;
   padding-bottom: max(4px, env(safe-area-inset-bottom)) !important;
   overflow: hidden !important;
-  background: color-mix(in srgb, var(--bg-mid) 84%, white 16%);
+  background: var(--bg-base);
 }
 .game-fullscreen-shell:has(.p2p-lobby-viewport) {
-  width: 100%;
-  max-width: none !important;
   height: 100dvh;
   min-height: 0 !important;
   overflow: hidden !important;
-  background: color-mix(in srgb, var(--bg-mid) 84%, white 16%) !important;
+  background: var(--bg-base) !important;
 }
 .fixed.inset-0:has(.p2p-lobby-viewport) {
-  right: 0;
-  left: 0;
-  width: min(100%, 32rem);
   height: 100dvh;
-  margin-inline: auto;
-  background: color-mix(in srgb, var(--bg-mid) 84%, white 16%) !important;
 }
 .min-h-dvh:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center,
 .game-fullscreen-shell:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center,
 .fixed.inset-0:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center {
   flex: 0 0 auto;
-  width: min(100%, 28rem) !important;
-  max-width: 28rem !important;
   min-height: 54px;
   margin: 0 auto 4px !important;
   padding-block: 6px !important;
