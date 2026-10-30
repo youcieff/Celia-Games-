@@ -2230,16 +2230,17 @@ body:has(.p2p-lobby-viewport) { height: 100dvh; overflow: hidden; }
   min-height: 0 !important;
   padding-bottom: max(4px, env(safe-area-inset-bottom)) !important;
   overflow: hidden !important;
-  background: var(--bg-base);
+  background: linear-gradient(160deg, var(--bg-base) 0%, var(--bg-mid) 100%);
 }
 .game-fullscreen-shell:has(.p2p-lobby-viewport) {
   height: 100dvh;
   min-height: 0 !important;
   overflow: hidden !important;
-  background: var(--bg-base) !important;
+  background: linear-gradient(160deg, var(--bg-base) 0%, var(--bg-mid) 100%) !important;
 }
 .fixed.inset-0:has(.p2p-lobby-viewport) {
   height: 100dvh;
+  background: linear-gradient(160deg, var(--bg-base) 0%, var(--bg-mid) 100%) !important;
 }
 .min-h-dvh:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center,
 .game-fullscreen-shell:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center,
