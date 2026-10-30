@@ -2179,6 +2179,13 @@ div.flex-1:has(> .p2p-lobby-scroll) {
 .lobby-invite-message-error { border: 1px solid var(--accent-border); background: var(--accent-soft); color: var(--accent); }
 
 /* One shared help control and non-scrolling rules sheet for every game lobby. */
+#root > div:has(.p2p-lobby-scroll) {
+  min-height: 100dvh;
+  background: var(--bg-base);
+}
+.game-fullscreen-shell:has(.p2p-lobby-scroll) {
+  background: var(--bg-base) !important;
+}
 .lobby-instructions-trigger {
   display: inline-flex;
   min-width: 36px;
