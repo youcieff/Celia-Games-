@@ -2156,32 +2156,32 @@
   .hub-stat-dot { animation: none !important; }
 }
 
-/* Every online game uses the same fixed, non-scrolling lobby viewport. */
+/* Keep the shared online lobby inside the normal document scroll flow. */
 .p2p-lobby-viewport {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   align-self: center;
   min-width: 0;
-  min-height: 0;
+  min-height: auto;
   width: min(24rem, calc(100vw - 2rem));
   max-width: 24rem;
-  height: 100%;
-  max-height: 100%;
-  overflow: hidden;
-  overscroll-behavior: none;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior: auto;
   padding: 0 0 max(4px, env(safe-area-inset-bottom));
 }
 
 div.flex-1:has(> .p2p-lobby-viewport) {
   display: flex;
-  flex: 1 1 0;
+  flex: 1 0 auto;
   align-items: stretch;
   justify-content: center;
   box-sizing: border-box;
   width: 100%;
   padding: 0 1rem max(4px, env(safe-area-inset-bottom)) !important;
-  overflow: hidden;
+  overflow: visible;
   min-width: 0;
-  min-height: 0;
+  min-height: auto;
 }
 
 .p2p-lobby-viewport:not(.p2p-lobby-viewport--connected) { gap: clamp(5px, 1dvh, 10px); padding-top: 0; }
@@ -2219,27 +2219,29 @@ div.flex-1:has(> .p2p-lobby-viewport) {
 .lobby-friend-online-label { color: rgb(110, 231, 183); }
 .lobby-invite-message-error { border: 1px solid var(--accent-border); background: var(--accent-soft); color: var(--accent); }
 
-/* One shared help control and non-scrolling rules sheet for every game lobby. */
-#root,
-html:has(.p2p-lobby-viewport),
-body:has(.p2p-lobby-viewport) { height: 100dvh; overflow: hidden; }
+/* Game lobby pages remain vertically scrollable when the viewport is short. */
 #root > div:has(.p2p-lobby-viewport),
 .min-h-dvh:has(.p2p-lobby-viewport) {
   box-sizing: border-box;
-  height: 100dvh;
-  min-height: 0 !important;
+  min-height: 100dvh;
   padding-bottom: max(4px, env(safe-area-inset-bottom)) !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   background: linear-gradient(160deg, var(--bg-base) 0%, var(--bg-mid) 100%);
 }
 .game-fullscreen-shell:has(.p2p-lobby-viewport) {
-  height: 100dvh;
-  min-height: 0 !important;
-  overflow: hidden !important;
+  position: relative !important;
+  inset: auto !important;
+  height: auto;
+  min-height: 100dvh !important;
+  overflow: visible !important;
   background: linear-gradient(160deg, var(--bg-base) 0%, var(--bg-mid) 100%) !important;
 }
 .fixed.inset-0:has(.p2p-lobby-viewport) {
-  height: 100dvh;
+  position: relative !important;
+  inset: auto !important;
+  height: auto;
+  min-height: 100dvh;
+  overflow: visible !important;
   background: linear-gradient(160deg, var(--bg-base) 0%, var(--bg-mid) 100%) !important;
 }
 .min-h-dvh:has(.p2p-lobby-viewport) > .grid.grid-cols-3.items-center,
